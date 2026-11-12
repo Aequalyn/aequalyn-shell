@@ -1,0 +1,23 @@
+singleton AtelierService 1.0 AtelierService.qml
+Atelier 1.0 Atelier.qml
+AtelierCard 1.0 AtelierCard.qml
+PaletteMock 1.0 PaletteMock.qml
+LayoutPicker 1.0 LayoutPicker.qml
+RotationPane 1.0 RotationPane.qml
+PalettePane 1.0 PalettePane.qml
+singleton LayoutService 1.0 LayoutService.qml
+LayoutArt 1.0 LayoutArt.qml
+LayoutsPane 1.0 LayoutsPane.qml
+singleton AtelierHost 1.0 AtelierHost.qml
+AtelierView 1.0 AtelierView.qml
+HeaderButton 1.0 HeaderButton.qml
+PanelPane 1.0 PanelPane.qml
+StyleTile 1.0 StyleTile.qml
+StyleEditor 1.0 StyleEditor.qml
+BarMini 1.0 BarMini.qml
+DockMini 1.0 DockMini.qml
+BarPane 1.0 BarPane.qml
+DocksPane 1.0 DocksPane.qml
+Desk 1.0 Desk.qml
+Stage 1.0 Stage.qml
+LookCard 1.0 LookCard.qml
