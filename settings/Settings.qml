@@ -243,6 +243,8 @@ Scope {
         property real maxValue: 100
         property real stepValue: 1
         property bool decimals: false
+        // shown instead of 0, for settings where 0 means "automatic"
+        property string zeroText: ""
         Layout.fillWidth: true
         spacing: 6
         RowLayout {
@@ -255,8 +257,9 @@ Scope {
                 Layout.fillWidth: true
             }
             Text {
-                text: sr.decimals ? Number(AequalynSettings[sr.settingKey]).toFixed(2)
-                                  : AequalynSettings[sr.settingKey]
+                text: sr.zeroText !== "" && AequalynSettings[sr.settingKey] === 0 ? sr.zeroText
+                    : sr.decimals ? Number(AequalynSettings[sr.settingKey]).toFixed(2)
+                    : AequalynSettings[sr.settingKey]
                 color: root.theme.accentPrimary
                 font.pixelSize: 12
                 font.family: root.font
@@ -609,6 +612,15 @@ Scope {
                                 StepperRow {
                                     label: "Bar opacity"; settingKey: "barOpacity"
                                     minValue: 40; maxValue: 100; stepValue: 5
+                                }
+                                SubLabel { text: "How wide the left and right regions, and the center, may get before their widgets scroll sideways. Auto: as wide as fits without running into the next region." }
+                                StepperRow {
+                                    label: "Sides scroll after (px)"; settingKey: "barSideWidth"
+                                    minValue: 0; maxValue: 1600; stepValue: 50; zeroText: "Auto"
+                                }
+                                StepperRow {
+                                    label: "Center scrolls after (px)"; settingKey: "barCenterWidth"
+                                    minValue: 0; maxValue: 1600; stepValue: 50; zeroText: "Auto"
                                 }
                                 Divider {}
                                 SectionTitle { text: "Arrange plugins" }

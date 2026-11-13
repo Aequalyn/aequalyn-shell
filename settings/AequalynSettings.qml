@@ -27,6 +27,10 @@ QtObject {
     property bool themeApps: true
     property int barHeight: 32
     property int barOpacity: 100
+    // widest the bar's regions get before they scroll, in px; 0 = as wide as fits
+    // without running into the next region
+    property int barSideWidth: 0
+    property int barCenterWidth: 0
     property bool showClock: true
     property bool showWorkspaces: true
     property bool showMedia: true
@@ -319,6 +323,8 @@ QtObject {
                 barRight: root.barRight,
                 barHeight: root.barHeight,
                 barOpacity: root.barOpacity,
+                barSideWidth: root.barSideWidth,
+                barCenterWidth: root.barCenterWidth,
                 showClock: root.showClock,
                 showWorkspaces: root.showWorkspaces,
                 showMedia: root.showMedia,
@@ -467,6 +473,8 @@ QtObject {
         root.themeApps = pick(a.themeApps, root.themeApps)
         root.barHeight = pick(a.barHeight, root.barHeight)
         root.barOpacity = pick(a.barOpacity, root.barOpacity)
+        root.barSideWidth = Math.max(0, Number(pick(a.barSideWidth, root.barSideWidth)) || 0)
+        root.barCenterWidth = Math.max(0, Number(pick(a.barCenterWidth, root.barCenterWidth)) || 0)
         root.showClock = pick(a.showClock, root.showClock)
         root.showWorkspaces = pick(a.showWorkspaces, root.showWorkspaces)
         root.showMedia = pick(a.showMedia, root.showMedia)
