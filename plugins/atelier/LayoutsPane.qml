@@ -293,5 +293,35 @@ Item {
                 }
             }
         }
+
+        // Keys and windows: how the layout keys behave, and how the windows look
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: keysRow.implicitHeight + 20
+            radius: 10
+            color: pane.theme.bgSurface
+            border.color: pane.theme.bgBorder
+            Flow {
+                id: keysRow
+                anchors.fill: parent
+                anchors.margins: 10
+                anchors.leftMargin: 14
+                spacing: 18
+                // one press of Super + - / =, as a share of the screen (Alt: a quarter, Ctrl: four times)
+                Stepper {
+                    theme: pane.theme; font: pane.font
+                    label: "Resize step"; suffix: "%"
+                    from: 0.25; to: 5; step: 0.25
+                    value: Math.round((LayoutService.status.step || 0.01) * 400) / 4
+                    onStepped: v => LayoutService.option("step", (v / 100).toFixed(4))
+                }
+                Toggle {
+                    theme: pane.theme; font: pane.font
+                    label: "Show the layout's name when it changes"
+                    checked: LayoutService.status.notify !== false
+                    onToggled: v => LayoutService.option("notify", v ? "true" : "false")
+                }
+            }
+        }
     }
 }
