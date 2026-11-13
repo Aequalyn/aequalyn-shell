@@ -6,6 +6,7 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 
@@ -199,6 +200,10 @@ Scope {
 
       if (root._isInitialLoad) {
         root.initEditState();
+        // start on the screen you're on, so its settings (brightness first) are right there
+        const here = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+        const i = root.editState.findIndex(m => m.name === here);
+        root.selectedIndex = i >= 0 ? i : (root.editState.length === 1 ? 0 : -1);
       } else {
         if (root._hasExternalChange()) {
           root.hotplugDetected = true;
