@@ -215,13 +215,25 @@ function params(d, pal, w, h, margin, opts) {
     }
 
     var blur = 0, shadow = "";
-    if (d.shadow !== "none") {
+    // the painted shadow/glow blur can be turned off by the caller: when the
+    // bar is hidden, or when the user disables blur. Any of these aliases works.
+    var blurOn = true;
+    if (o) {
+        var aliases = ["blur", "shadowBlur", "shadows", "shadow", "blurEnabled"];
+        for (var bi = 0; bi < aliases.length; bi++) {
+            var bv = o[aliases[bi]];
+            if (bv === false || bv === 0 || bv === "false" || bv === "none") blurOn = false;
+        }
+        if (o.barHidden === true || o.barVisible === false || o.barShown === false) blurOn = false;
+    }
+    if (d.shadow !== "none" && blurOn) {
         if (d.shadowColor === "accent") { blur = d.shadow === "strong" ? 14 : 8; shadow = css(mine, d.shadow === "strong" ? 0.8 : 0.55); }
         else { blur = d.shadow === "strong" ? 14 : 8; shadow = css([0, 0, 0], d.shadow === "strong" ? 0.55 : 0.35); }
     }
-    if (Ln.glow === true && blur === 0) { blur = 8; shadow = css(mine, 0.5); }
-    if (S.ownShadow === true && blur === 0) { blur = 10; shadow = css([0, 0, 0], 0.5); }
+    if (blurOn && Ln.glow === true && blur === 0) { blur = 8; shadow = css(mine, 0.5); }
+    if (blurOn && S.ownShadow === true && blur === 0) { blur = 10; shadow = css([0, 0, 0], 0.5); }
     blur = Math.min(blur, Math.max(0, margin - 2));
+    if (!blurOn) { blur = 0; shadow = ""; }
 
     var inner = innerFor(edge);
     var edgeSide = inner === "start" ? "end" : "start";

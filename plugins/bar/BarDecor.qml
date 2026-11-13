@@ -4,11 +4,12 @@
 // docks use. The widgets are measured a few times a second; shapes only move
 // (and only repaint) when something actually changed.
 import QtQuick
-import "../style/Shapes.js" as Shapes
-import "../style/Style.js" as Style
-import "../style/Paint.js" as Paint
-import "../style/BarLooks.js" as BarLooks
-import "../style/Colors.js" as Colors
+import  "../../style/Shapes.js" as Shapes
+import  "../../style/Style.js" as Style
+import  "../../style/Paint.js" as Paint
+import  "../../style/BarLooks.js" as BarLooks
+import  "../../style/Colors.js" as Colors
+import "root:/settings"
 
 Item {
     id: deco
@@ -44,7 +45,8 @@ Item {
         }
         if (region === "center" && look.centerStyle === "tinted") d.gradientTo = "accent";
         const tone = toneFor(index);
-        const p = Style.params(d, pal, w, h, deco.margin, { edge: "top", tone: tone !== "" ? tone : undefined });
+        const p = Style.params(d, pal, w, h, deco.margin, { edge: "top", tone: tone !== "" ? tone : undefined,
+            blur: AequalynSettings.blurEnabled, blurEnabled: AequalynSettings.blurEnabled });
         p.dir = BarLooks.dirFor(look, region);
         p.r = r;
         p.ends = look.shape === "full" ? "square" : look.ends;

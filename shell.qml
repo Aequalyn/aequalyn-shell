@@ -13,20 +13,19 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
-import "bar"
-import "app-launcher"
-import "notifications"
+import "plugins/bar"
+import "plugins/appLauncher"
+import "plugins/notifications"
 import "theme-switcher"
-import "atelier"
-import "osd"
-import "monitor-manager"
-import "idle-inhibitor"
+import "plugins/atelier"
+import "plugins/osd"
+import "plugins/monitorManager"
+import "plugins/idleInhibitor"
 import "settings"
-import "clipboard"
-import "power-menu"
-import "docks"
+import "plugins/clipboard"
+import "plugins/powerMenu"
+import "plugins/docks"
 import "root:/settings"
-import "root:/clipboard"
 
 // Root scope: instantiates every UI module once and shares a single active
 // theme object (`ts.theme`) from ThemeSwitcher. Modules are otherwise
@@ -38,29 +37,12 @@ Scope {
   // palette generation. Exposes the active palette as `ts.theme`.
   ThemeSwitcher {
     id: ts
-    onOpenRequested: collection => atelier.open(collection)
   }
 
-  // Top status bar (plugins, tray, clock, workspaces, quick actions).
-  Bar               { id: bar; theme: ts.theme }
-  // Application launcher overlay (SUPER+D / IPC "launcher").
-  AppLauncher       { theme: ts.theme }
-  // Notification daemon popup stack (freedesktop notifications via Quickshell).
-  NotificationPopup { theme: ts.theme }
-  // Atelier: themes, wallpapers, rotation modes and palette in one picker.
-  Atelier           { id: atelier; theme: ts.theme }
-  // On-screen display for volume/brightness changes.
-  OSD               { theme: ts.theme }
-  // Visual monitor/layout manager (Hyprland monitor configuration).
-  MonitorManager    { theme: ts.theme }
-  // Idle inhibitor ("caffeine") toggle/badge and Wayland inhibitor.
-  CaffeineToggle    { theme: ts.theme }
-  // Unified settings panel (appearance, bar, Hyprland, dock, power, etc.).
-  Settings          { theme: ts.theme }
-  // Clipboard history panel/service integration.
-  ClipboardPanel    { theme: ts.theme }
-  // Power/session menu (lock/logout/reboot/shutdown).
-  PowerMenu         { theme: ts.theme }
-  // Up to 16 docks on any edge of any screen, styled with the bar or on their own.
-  DocksService      { shellTheme: ts.theme; barShown: bar.barVisible }
+  // All shell elements are loaded as plugins (see PluginManager.qml), so each
+  // can be enabled/disabled independently from Settings -> Plugins.
+  PluginManager {
+    theme: ts.theme
+    themeSwitcher: ts
+  }
 }

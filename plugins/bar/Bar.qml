@@ -18,13 +18,13 @@ import Quickshell.Io
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
-import "root:/bluetooth"
-import "root:/wifi"
-import "root:/idle-inhibitor"
+import "root:/plugins/bluetooth"
+import "root:/plugins/wifi"
+import "root:/plugins/idleInhibitor"
 import QtQuick.Controls
-import "root:/atelier"
-import "../style/Shapes.js" as Shapes
-import "../style/BarLooks.js" as BarLooks
+import "root:/plugins/atelier"
+import  "../../style/Shapes.js" as Shapes
+import  "../../style/BarLooks.js" as BarLooks
 
 Scope {
   id: root

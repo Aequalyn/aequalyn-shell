@@ -1,8 +1,8 @@
 // A small bar with made up widgets, painted by the bar's own BarDecor: the
 // shape cards, the ready made looks and the preview on the Bar tab.
 import QtQuick
-import "../bar"
-import "../style/Shapes.js" as Shapes
+import  "../bar"
+import  "../../style/Shapes.js" as Shapes
 
 Item {
     id: mini

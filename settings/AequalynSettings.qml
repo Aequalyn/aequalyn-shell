@@ -121,8 +121,17 @@ QtObject {
     // settings file is on disk, so aequalyn-theme never reads stale values.
     property bool pendingRetheme: false
 
+    // ---- Plugins / modules ----------------------------------------------
+    // Which shell elements are loaded. Missing entries default to all of them.
+    property var enabledPlugins: [
+        "bar", "appLauncher", "notifications", "atelier", "osd",
+        "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
+        "docks", "settings"
+    ]
+
     // ---- Dock -------------------------------------------------------------
-    property bool dockEnabled: true
+    // Docks are a plugin now: enabled iff "docks" is in enabledPlugins.
+    readonly property bool dockEnabled: (Array.isArray(enabledPlugins) ? enabledPlugins : []).indexOf("docks") >= 0
     property string dockPosition: "bottom"   // top|bottom|left|right
     property bool dockAutohide: false
     property int dockIconSize: 40
@@ -337,9 +346,10 @@ QtObject {
             wallpaper: root.wallpaperCfg,
             palette: root.paletteCfg,
             atelier: root.atelierCfg,
+            plugins: root.enabledPlugins,
             barStyle: root.barStyleCfg,
             dock: {
-                enabled: root.dockEnabled,
+                enabled: (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).indexOf("docks") >= 0,
                 position: root.dockPosition,
                 autohide: root.dockAutohide,
                 iconSize: root.dockIconSize,
@@ -412,6 +422,15 @@ QtObject {
         root.save()
         themeProc.command = ["aequalyn-theme", path]
         themeProc.running = true
+    }
+
+    function togglePlugin(id, on) {
+        const cur = Array.isArray(root.enabledPlugins) ? root.enabledPlugins.slice() : []
+        const i = cur.indexOf(id)
+        if (on && i < 0) cur.push(id)
+        if (!on && i >= 0) cur.splice(i, 1)
+        root.enabledPlugins = cur
+        root.save()
     }
 
     function apply(key, value) {
@@ -497,10 +516,11 @@ QtObject {
         root.wallpaperCfg = root._merge(root.wallpaperDefaults, d.wallpaper)
         root.paletteCfg = root._merge(root.paletteDefaults, d.palette)
         root.atelierCfg = root._merge(root.atelierDefaults, d.atelier)
+        if (Array.isArray(d.plugins)) root.enabledPlugins = d.plugins.slice()
+        if (dk.enabled === false) root.enabledPlugins = (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).filter(x => x !== "docks")
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })
 
-        root.dockEnabled = pick(dk.enabled, root.dockEnabled)
         root.dockPosition = pick(dk.position, root.dockPosition)
         root.dockAutohide = pick(dk.autohide, root.dockAutohide)
         root.dockIconSize = pick(dk.iconSize, root.dockIconSize)

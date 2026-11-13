@@ -6,9 +6,9 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import "controls"
-import "../style/AequalynLooks.js" as Looks
-import "../style/BarLooks.js" as BarLooks
-import "../style/Effects.js" as Fx
+import  "../../style/AequalynLooks.js" as Looks
+import  "../../style/BarLooks.js" as BarLooks
+import  "../../style/Effects.js" as Fx
 import "root:/settings"
 
 Flickable {
@@ -67,7 +67,7 @@ Flickable {
             label: "Docks"
             sublabel: "Up to 16, 4 on each edge of each screen. Right-click a dock to come back here."
             checked: AequalynSettings.dockEnabled
-            onToggled: v => AequalynSettings.apply("dockEnabled", v)
+            onToggled: v => AequalynSettings.togglePlugin("docks", v)
         }
 
         // ---- the docks: one card each ------------------------------------------------
