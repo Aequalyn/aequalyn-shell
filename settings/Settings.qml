@@ -11,6 +11,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
+import "../Plugins.js" as PluginRegistry
 import "root:/settings"
 import "root:/plugins/bluetooth"
 import "root:/plugins/wifi"
@@ -60,12 +61,12 @@ Scope {
 
     property var tabs: [
         { key: "appearance", label: "Appearance" },
-        { key: "bar",        label: "Top bar" },
         { key: "hyprland",   label: "Hyprland" },
         { key: "bluetooth",  label: "Bluetooth" },
         { key: "wifi",       label: "Wi-Fi" },
         { key: "displays",   label: "Displays" },
         { key: "dock",       label: "Dock" },
+        { key: "bar",        label: "Top bar" },
         { key: "plugins",    label: "Plugins" },
         { key: "updates",    label: "Updates" },
         { key: "power",      label: "Power" },
@@ -78,11 +79,11 @@ Scope {
         function openSettings(): void { root.panelVisible = true }
         function closeSettings(): void { root.panelVisible = false }
         function appearance(): void { root.tab = "appearance"; root.panelVisible = true }
-        function bar(): void { root.tab = "bar"; root.panelVisible = true }
         function displays(): void { root.tab = "displays"; root.panelVisible = true }
         function bluetooth(): void { root.tab = "bluetooth"; root.panelVisible = true }
         function wifi(): void { root.tab = "wifi"; root.panelVisible = true }
         function hyprland(): void { root.tab = "hyprland"; root.panelVisible = true }
+        function bar(): void { root.tab = "bar"; root.panelVisible = true }
         function dock(): void { root.tab = "dock"; root.panelVisible = true }
         function updates(): void { root.tab = "updates"; root.panelVisible = true }
         function power(): void { root.tab = "power"; root.panelVisible = true }
@@ -520,9 +521,9 @@ Scope {
 
                                 SubLabel { text: "Themes, wallpapers, rotation (slideshow, time of day, per workspace, live) and palette options all live in Atelier." }
 
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 12
+                                Flow {
+                                    width: parent.width
+                                    spacing: 8
                                     ActionButton {
                                         label: "Themes"
                                         hint: "SUPER+T"
@@ -847,40 +848,6 @@ Scope {
                                             font.family: root.font
                                             elide: Text.ElideRight
                                         }
-                                    }
-                                }
-
-                                Divider {}
-                                SectionTitle { text: "Show plugins" }
-                                SubLabel { text: "Toggle individual widgets. Hidden plugins keep their position in the order above." }
-                                Repeater {
-                                    model: [
-                                        { label: "Clock & date",        key: "showClock" },
-                                        { label: "Workspaces",          key: "showWorkspaces" },
-                                        { label: "Now playing",         key: "showMedia" },
-                                        { label: "Window title",        key: "showTitle" },
-                                        { label: "Audio / volume",      key: "showVolume" },
-                                        { label: "Brightness",          key: "showBrightness" },
-                                        { label: "CPU usage",           key: "showCpu" },
-                                        { label: "Network",             key: "showNetwork" },
-                                        { label: "Bluetooth",           key: "showBluetooth" },
-                                        { label: "Battery",             key: "showBattery" },
-                                        { label: "Temperature",         key: "showTemperature" },
-                                        { label: "System tray",         key: "showTray" },
-                                        { label: "Power menu",          key: "showPower" },
-                                        { label: "Screen recorder",     key: "showScreenRecorder" },
-                                        { label: "Screenshot",          key: "showScreenshot" },
-                                        { label: "Caffeine (idle inhibit)", key: "showCaffeine" },
-                                        { label: "Atelier (themes & wallpapers)", key: "showAtelier" },
-                                        { label: "Window layout",       key: "showLayouts" },
-                                        { label: "Arch apps-menu button", key: "showAppsMenu" },
-                                        { label: "Settings gear button",  key: "showSettingsButton" }
-                                    ]
-                                    ToggleRow {
-                                        required property var modelData
-                                        label: modelData.label
-                                        checked: AequalynSettings[modelData.key]
-                                        settingKey: modelData.key
                                     }
                                 }
                             }
@@ -1464,19 +1431,7 @@ Scope {
                                 SectionTitle { text: "Plugins" }
                                 SubLabel { text: "Enable or disable whole shell elements. Changes take effect after restarting the shell." }
                                 Repeater {
-                                    model: [
-                                        { id: "bar",            label: "Top bar" },
-                                        { id: "appLauncher",    label: "App launcher" },
-                                        { id: "notifications",  label: "Notifications" },
-                                        { id: "atelier",        label: "Atelier" },
-                                        { id: "osd",            label: "On-screen display" },
-                                        { id: "monitorManager", label: "Monitor manager" },
-                                        { id: "idleInhibitor",  label: "Idle inhibitor" },
-                                        { id: "clipboard",      label: "Clipboard history" },
-                                        { id: "powerMenu",      label: "Power menu" },
-                                        { id: "docks",          label: "Docks" },
-                                        { id: "settings",       label: "Settings panel" }
-                                    ]
+                                    model: PluginRegistry.list
                                     delegate: RowLayout {
                                         required property var modelData
                                         Layout.fillWidth: true
