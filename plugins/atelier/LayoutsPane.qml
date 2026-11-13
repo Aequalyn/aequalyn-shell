@@ -338,6 +338,12 @@ Item {
                     value: LayoutService.status.others || "theme"
                     onPicked: v => LayoutService.option("others", v)
                 }
+                Toggle {
+                    theme: pane.theme; font: pane.font
+                    label: "Light up both windows of a swap"
+                    checked: LayoutService.status.flash !== false
+                    onToggled: v => LayoutService.option("flash", v ? "true" : "false")
+                }
             }
         }
     }
