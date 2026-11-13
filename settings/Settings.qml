@@ -45,26 +45,28 @@ Scope {
         if (!defaultAppsProc.running) defaultAppsProc.running = true
     }
 
-    function applyDefault(category, appId) {
+    function applyDefault(category, appId, appName) {
         if (!appId || appId === "") return
-        setDefaultProc.command = ["sh", "-c", buildSetCommand(category, appId)]
+        const name = appName && appName !== "" ? appName : appId
+        setDefaultProc.command = ["sh", "-c", buildSetCommand(category, appId, name)]
         setDefaultProc.running = true
         const c = Object.assign({}, root.currentDefaults)
         c[category] = appId
         root.currentDefaults = c
     }
 
-    function buildSetCommand(category, appId) {
+    function buildSetCommand(category, appId, appName) {
+        const notify = (msg) => "notify-send " + JSON.stringify("Default apps") + " " + JSON.stringify(msg)
         if (category === "textEditor") {
-            return "xdg-mime default " + appId + " text/plain"
+            return "xdg-mime default " + appId + " text/plain; " + notify(appName + " was set as your default text editor.")
         } else if (category === "browser") {
-            return "xdg-mime default " + appId + " text/html x-scheme-handler/http x-scheme-handler/https; hyprctl reload >/dev/null 2>&1 || true"
+            return "xdg-mime default " + appId + " text/html x-scheme-handler/http x-scheme-handler/https; hyprctl reload >/dev/null 2>&1 || true; " + notify(appName + " was set as your default browser. Super+B to open it.")
         } else if (category === "videoPlayer") {
-            return "xdg-mime default " + appId + " video/mp4 video/x-matroska video/webm video/avi video/quicktime"
+            return "xdg-mime default " + appId + " video/mp4 video/x-matroska video/webm video/avi video/quicktime; " + notify(appName + " was set as your default video player.")
         } else if (category === "terminal") {
-            return "mkdir -p ~/.config && printf '%s\\n' '" + appId + "' > ~/.config/xdg-terminals.list; hyprctl reload >/dev/null 2>&1 || true"
+            return "mkdir -p ~/.config && printf '%s\\n' '" + appId + "' > ~/.config/xdg-terminals.list; hyprctl reload >/dev/null 2>&1 || true; " + notify(appName + " was set as your default terminal. Super+Enter to open it.")
         } else if (category === "fileManager") {
-            return "xdg-mime default " + appId + " inode/directory; hyprctl reload >/dev/null 2>&1 || true"
+            return "xdg-mime default " + appId + " inode/directory; hyprctl reload >/dev/null 2>&1 || true; " + notify(appName + " was set as your default file manager. Super+E to open it.")
         }
         return "true"
     }
@@ -157,7 +159,7 @@ Scope {
         function closeSettings(): void { root.panelVisible = false }
         function appearance(): void { root.tab = "appearance"; root.panelVisible = true }
         function defaultApps(): void { root.tab = "defaultApps"; root.panelVisible = true }
-        function setDefault(category: string, appId: string): void { root.applyDefault(category, appId) }
+        function setDefault(category: string, appId: string): void { root.applyDefault(category, appId, appId) }
         function displays(): void { root.tab = "displays"; root.panelVisible = true }
         function bluetooth(): void { root.tab = "bluetooth"; root.panelVisible = true }
         function wifi(): void { root.tab = "wifi"; root.panelVisible = true }
@@ -1589,7 +1591,7 @@ Scope {
                                             }
                                             ActionButton {
                                                 label: "Apply"
-                                                onClicked: root.applyDefault(modelData.key, combo.currentValue)
+                                                onClicked: root.applyDefault(modelData.key, combo.currentValue, combo.currentText)
                                             }
                                         }
                                         Text {
