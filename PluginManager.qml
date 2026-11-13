@@ -7,6 +7,7 @@
 import QtQuick
 import Quickshell
 import "root:/settings"
+import "Plugins.js" as PluginRegistry
 
 Item {
     id: pm
@@ -18,19 +19,7 @@ Item {
 
     function pluginItem(id) { return pm.items[id] || null; }
 
-    readonly property var allPlugins: [
-        { id: "bar",            source: "plugins/bar/Bar.qml" },
-        { id: "appLauncher",    source: "plugins/appLauncher/AppLauncher.qml" },
-        { id: "notifications",  source: "plugins/notifications/NotificationPopup.qml" },
-        { id: "atelier",        source: "plugins/atelier/Atelier.qml" },
-        { id: "osd",            source: "plugins/osd/OSD.qml" },
-        { id: "monitorManager", source: "plugins/monitorManager/MonitorManager.qml" },
-        { id: "idleInhibitor",  source: "plugins/idleInhibitor/CaffeineToggle.qml" },
-        { id: "clipboard",      source: "plugins/clipboard/ClipboardPanel.qml" },
-        { id: "powerMenu",      source: "plugins/powerMenu/PowerMenu.qml" },
-        { id: "docks",          source: "plugins/docks/DocksService.qml" },
-        { id: "settings",       source: "settings/Settings.qml" }
-    ]
+    readonly property var allPlugins: PluginRegistry.list
 
     readonly property var enabledIds: (AequalynSettings.enabledPlugins && AequalynSettings.enabledPlugins.length)
         ? AequalynSettings.enabledPlugins : allPlugins.map(p => p.id)
