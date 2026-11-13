@@ -34,7 +34,10 @@ import "root:/settings"
 
 Scope {
     id: root
-    property var theme
+    // No DefaultTheme fallback: Atelier drives the live Theme singleton (with
+    // methods like setWallpaperMode/folderTheme), so it must inherit the shared
+    // theme from PluginManager even when loaded as a plugin.
+    property var theme: null
     property string font: "JetBrainsMono Nerd Font"
 
     property string collection: "themes"
