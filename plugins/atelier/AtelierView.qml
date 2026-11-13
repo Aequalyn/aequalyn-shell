@@ -86,7 +86,7 @@ FocusScope {
         } else if (event.key === Qt.Key_End && ctrl) {
             host.currentIndex = Math.max(0, host.items.length - 1);
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            // In the full screen picker Enter applies and closes, like Omarchy's
+            // In the full screen picker Enter applies and closes.
             // menus; docked or popped out it applies and stays.
             host.apply(host.currentIndex, !shift && host.surface === "overlay");
         } else {

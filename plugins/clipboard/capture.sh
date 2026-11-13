@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Aequalyn clipboard capture -- adapted from Omarchy's universal clipboard.
+# Aequalyn clipboard capture.
 #
 # Emits ONE compact JSON entry on stdout for the current clipboard selection.
 # In watch mode `wl-paste --watch` invokes this with the payload on stdin and

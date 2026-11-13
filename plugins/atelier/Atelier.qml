@@ -106,7 +106,7 @@ Scope {
                 image: f.preview || "",
                 palette: f.hasPalette ? f : null,
                 active: t.currentFolderId === f.id && (f.hasPalette ? !t.wallpaperMode : true),
-                badge: f.kind === "pack" ? "PACK" : (f.family === "Omarchy" ? "OMARCHY" : ""),
+                badge: f.kind === "pack" ? "PACK" : (f.family && f.family !== "Aequalyn" ? f.family.toUpperCase() : ""),
                 group: f.kind === "pack" ? "pack" : "theme",
                 light: f.hasPalette ? t.isLightColor(f.bgBase) : false
             });

@@ -1,5 +1,5 @@
 // List: names on the left (fast to scan and search), details on the right.
-// The closest to Omarchy's own menus.
+// Compact scrollable list of layouts.
 import QtQuick
 import QtQuick.Layouts
 import ".."

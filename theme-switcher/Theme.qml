@@ -59,9 +59,9 @@ Singleton {
         return _hex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]);
     }
 
-    // Omarchy colors.toml (accent, foreground, background, color0..15,
+    // colors.toml (accent, foreground, background, color0..15,
     // selection_background) -> the shell's 13 palette keys.
-    function paletteFromOmarchy(c) {
+    function paletteFromColors(c) {
         const bg = c.background || c.color0 || "#1e1e2e";
         const fg = c.foreground || c.color15 || c.color7 || "#cdd6f4";
         const accent = c.accent || c.color4 || "#89b4fa";
@@ -84,7 +84,7 @@ Singleton {
 
     function normaliseFolderTheme(t) {
         let pal = t.palette;
-        if (!pal && t.colors) pal = paletteFromOmarchy(t.colors);
+        if (!pal && t.colors) pal = paletteFromColors(t.colors);
         const out = {
             id: t.id, source: "folder", kind: t.kind, dir: t.dir,
             name: t.name, family: t.family, author: t.author || "",
