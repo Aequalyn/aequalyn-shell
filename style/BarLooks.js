@@ -60,6 +60,8 @@ function defaults() {
 
 function cleanLayout(key, v) {
     var s = layoutSettings[key];
+    // missing (older or hand-written settings): the default, not "off"
+    if (v === undefined || v === null) return s.fallback;
     if (s.bool) return v === true || v === "true";
     if (s.hex) return typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v.toLowerCase() : s.fallback;
     if (s.range) {
