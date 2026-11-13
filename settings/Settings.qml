@@ -1043,7 +1043,8 @@ Scope {
                                                 Text {
                                                     Layout.fillWidth: true
                                                     text: (modelData.connected ? "Connected" :
-                                                           modelData.paired ? "Paired" : "Available") +
+                                                           modelData.paired ? "Paired" :
+                                                           modelData.trusted ? "Remembered" : "Available") +
                                                           (modelData.batteryAvailable
                                                               ? " · " + Math.round(modelData.battery * 100) + "%"
                                                               : "") +
@@ -1076,7 +1077,11 @@ Scope {
                                                     cursorShape: Qt.PointingHandCursor
                                                     onClicked: {
                                                         if (modelData.connected) modelData.disconnect()
-                                                        else modelData.connect()
+                                                        else {
+                                                            try { modelData.trusted = true } catch (e) {}
+                                                            if (!modelData.paired) { try { modelData.pair() } catch (e) {} }
+                                                            try { modelData.connect() } catch (e) {}
+                                                        }
                                                     }
                                                 }
                                             }
