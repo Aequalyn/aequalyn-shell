@@ -48,7 +48,6 @@ Scope {
         if (!appId || appId === "") return
         setDefaultProc.command = ["sh", "-c", buildSetCommand(category, appId)]
         setDefaultProc.running = true
-        // update current display optimistically
         const c = Object.assign({}, root.currentDefaults)
         c[category] = appId
         root.currentDefaults = c
@@ -128,7 +127,7 @@ Scope {
 
     property Process setDefaultProc: Process {
         running: false
-        onExited: root.refreshDefaultApps()
+        onExited: (code) => { root.refreshDefaultApps() }
     }
     onPanelVisibleChanged: if (panelVisible) refreshExportFiles()
 
@@ -154,6 +153,7 @@ Scope {
         function closeSettings(): void { root.panelVisible = false }
         function appearance(): void { root.tab = "appearance"; root.panelVisible = true }
         function defaultApps(): void { root.tab = "defaultApps"; root.panelVisible = true }
+        function setDefault(category: string, appId: string): void { root.applyDefault(category, appId) }
         function displays(): void { root.tab = "displays"; root.panelVisible = true }
         function bluetooth(): void { root.tab = "bluetooth"; root.panelVisible = true }
         function wifi(): void { root.tab = "wifi"; root.panelVisible = true }
