@@ -8,6 +8,7 @@
 import Quickshell
 import QtQuick
 import Quickshell.Io
+import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
@@ -67,6 +68,12 @@ Scope {
   IpcHandler {
     target: "bar"
     function toggle(): void { root.barVisible = !root.barVisible; }
+    // the Bluetooth popup on the focused screen (`qs ipc call bar bluetooth`)
+    function bluetooth(): void {
+      const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+      const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
+      root.bluetoothPopupVisible = root.togglePopup(root.bluetoothPopupVisible, scr);
+    }
   }
 
   // Track default audio sink for volume state in bar audio widgets.
