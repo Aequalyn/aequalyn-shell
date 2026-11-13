@@ -1542,13 +1542,15 @@ Scope {
             width: parent.width / 3
             height: parent.height
             clip: true
-            contentWidth: leftSection.width
+            // at least as wide as the region, so the row can sit against its side when it fits
+            contentWidth: Math.max(width, leftSection.width)
+            boundsBehavior: Flickable.StopAtBounds
             contentHeight: parent.height
             flickableDirection: Flickable.HorizontalFlick
             interactive: !band.dragging && AequalynSettings.barLeft.length > 0
             Row {
               id: leftSection
-              anchors.left: parent.left
+              x: 0
               anchors.verticalCenter: parent.verticalCenter
               spacing: root.widgetSpacing
               Repeater {
@@ -1594,13 +1596,19 @@ Scope {
             width: parent.width / 3
             height: parent.height
             clip: true
-            contentWidth: centerSection.width
+            // at least as wide as the region, so the row can sit against its side when it fits
+            contentWidth: Math.max(width, centerSection.width)
+            boundsBehavior: Flickable.StopAtBounds
+            // overflowing: start where the widgets nearest the middle are, not at the far left
+            function settle() { contentX = centerSection.width > width ? (contentWidth - width) / 2 : 0; }
+            onWidthChanged: settle()
+            Connections { target: centerSection; function onWidthChanged() { if (!centerFlick.moving) centerFlick.settle(); } }
             contentHeight: parent.height
             flickableDirection: Flickable.HorizontalFlick
             interactive: !band.dragging && AequalynSettings.barCenter.length > 0
             Row {
               id: centerSection
-              anchors.horizontalCenter: parent.horizontalCenter
+              x: (centerFlick.contentWidth - width) / 2
               anchors.verticalCenter: parent.verticalCenter
               spacing: root.widgetSpacing
               Repeater {
@@ -1646,13 +1654,19 @@ Scope {
             width: parent.width / 3
             height: parent.height
             clip: true
-            contentWidth: rightSection.width
+            // at least as wide as the region, so the row can sit against its side when it fits
+            contentWidth: Math.max(width, rightSection.width)
+            boundsBehavior: Flickable.StopAtBounds
+            // overflowing: start where the widgets nearest the screen edge are, not at the far left
+            function settle() { contentX = rightSection.width > width ? contentWidth - width : 0; }
+            onWidthChanged: settle()
+            Connections { target: rightSection; function onWidthChanged() { if (!rightFlick.moving) rightFlick.settle(); } }
             contentHeight: parent.height
             flickableDirection: Flickable.HorizontalFlick
             interactive: !band.dragging && AequalynSettings.barRight.length > 0
             Row {
               id: rightSection
-              anchors.right: parent.right
+              x: rightFlick.contentWidth - width
               anchors.verticalCenter: parent.verticalCenter
               spacing: root.widgetSpacing
               Repeater {
