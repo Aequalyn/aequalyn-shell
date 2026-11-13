@@ -117,3 +117,8 @@ qs -p .            # or: ln -s "$PWD" ~/.config/quickshell && qs -n -d
 ## Credits
 
 [nightdevil00](https://github.com/nightdevil00) contributed to the code here.
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+See [LICENSE](LICENSE) for the full text.
