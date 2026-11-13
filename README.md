@@ -92,7 +92,9 @@ switch in `Atelier.qml` and to `LayoutPicker.qml`.
 shell.qml          entry point, shares the palette as ts.theme
 atelier/           Atelier picker, AtelierService, layouts/, controls/, Bar and Docks tabs
 style/             the painter shared by bar and docks, AequalynLooks.js (looks, ensembles)
-bar/               Bar.qml, BarDecor.qml (the shapes behind the widgets)
+bar/               Bar.qml (shared state, one bar per screen), BarSection.qml (a region that scrolls
+                   when full), BarSlot.qml, BarDecor.qml (the shapes behind the widgets),
+                   widgets/ (one file per widget, listed in widgets/Widgets.js)
 docks/             DocksService.qml (up to 16), DockWindow.qml
 theme-switcher/    Theme.qml (palette engine), curated themes.json, matugen glue
 settings/          AequalynSettings.qml (settings.json contract), Settings.qml
