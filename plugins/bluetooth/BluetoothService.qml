@@ -62,11 +62,14 @@ QtObject {
     }
 
     // Remember a device so BlueZ keeps it across reboots and can auto-connect:
-    // trust it (and pair it first when it is not paired yet).
+    // trust it (and pair it first when it is not paired yet). Make the adapter
+    // pairable first so a fresh pairing is actually allowed.
     function rememberDevice(device) {
         if (!device) return
+        try { if (root.available) root.adapter.pairable = true } catch (e) {}
         try { device.trusted = true } catch (e) {}
         if (!device.paired) {
+            try { device.cancelPairing() } catch (e) {}
             try { device.pair() } catch (e) {}
         }
     }
