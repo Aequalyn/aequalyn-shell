@@ -1423,6 +1423,52 @@ Scope {
         property string dragGhostLabel: ""
         readonly property bool dragging: dragRegion !== ""
 
+        // Dragging a widget: drop it in another place or region, or off the bar to remove it.
+        // The drop reorders the Repeater models, which destroys the dragged slot, so everything
+        // here lives on the band and the state is cleared before the move is applied.
+        function startDrag(region, index, plugin) {
+          dragRegion = region
+          dragIndex = index
+          dragPlugin = plugin
+          hoverRegion = region
+          hoverIndex = index
+          dragGhostLabel = AequalynSettings.pluginLabels[plugin] || plugin
+        }
+        function trackDrag(slot, pos) {
+          const p = slot.mapToItem(band, pos.x, pos.y)
+          barDragGhost.x = p.x - barDragGhost.width / 2
+          barDragGhost.y = p.y - barDragGhost.height / 2
+          if (p.y < -20 || p.y > band.height + 20) { hoverRegion = ""; hoverIndex = -1; return }
+          const third = band.width / 3
+          const region = p.x < third ? "left" : (p.x < third * 2 ? "center" : "right")
+          const section = region === "left" ? leftSection : (region === "center" ? centerSection : rightSection)
+          const sp = band.mapToItem(section, p.x, p.y)
+          // count widget slots only (the Row also holds its Repeater) and use their model index
+          let idx = 0
+          for (let i = 0; i < section.children.length; i++) {
+            const c = section.children[i]
+            if (c.index === undefined || !c.visible) continue
+            if (sp.x > c.x + c.width / 2) idx = c.index + 1
+          }
+          const len = region === "left" ? AequalynSettings.barLeft.length
+                    : region === "center" ? AequalynSettings.barCenter.length : AequalynSettings.barRight.length
+          hoverRegion = region
+          hoverIndex = Math.max(0, Math.min(len, idx))
+        }
+        function finishDrag() {
+          const from = dragRegion, fromIndex = dragIndex, to = hoverRegion, toIndex = hoverIndex
+          dragRegion = ""
+          dragIndex = -1
+          dragPlugin = ""
+          hoverRegion = ""
+          hoverIndex = -1
+          dragGhostLabel = ""
+          if (from === "") return
+          if (to === "") AequalynSettings.removeBarPlugin(from, fromIndex)
+          else if (!(to === from && (toIndex === fromIndex || toIndex === fromIndex + 1)))
+            AequalynSettings.moveBarPlugin(from, fromIndex, to, toIndex)
+        }
+
         // Floating drag ghost
         Rectangle {
           id: barDragGhost
@@ -1474,7 +1520,7 @@ Scope {
             contentWidth: leftSection.width
             contentHeight: parent.height
             flickableDirection: Flickable.HorizontalFlick
-            interactive: AequalynSettings.barLeft.length > 0
+            interactive: !band.dragging && AequalynSettings.barLeft.length > 0
             Row {
               id: leftSection
               anchors.left: parent.left
@@ -1508,69 +1554,8 @@ Scope {
                   DragHandler {
                     id: leftDrag
                     target: null
-                    onActiveChanged: {
-                      if (active) {
-                        band.dragRegion = "left"
-                        band.dragIndex = index
-                        band.dragPlugin = modelData
-                        band.hoverRegion = "left"
-                        band.hoverIndex = index
-                        band.dragGhostLabel = AequalynSettings.pluginLabels[modelData] || modelData
-                        leftFlick.interactive = false
-                        centerFlick.interactive = false
-                        rightFlick.interactive = false
-                      } else {
-                        // finish
-                        if (band.hoverRegion === "") {
-                          AequalynSettings.removeBarPlugin(band.dragRegion, band.dragIndex)
-                        } else if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
-                          AequalynSettings.moveBarPlugin(band.dragRegion, band.dragIndex, band.hoverRegion, band.hoverIndex)
-                        }
-                        band.dragRegion = ""
-                        band.dragIndex = -1
-                        band.dragPlugin = ""
-                        band.hoverRegion = ""
-                        band.hoverIndex = -1
-                        band.dragGhostLabel = ""
-                        barDragGhost.visible = false
-                        leftFlick.interactive = AequalynSettings.barLeft.length > 0
-                        centerFlick.interactive = AequalynSettings.barCenter.length > 0
-                        rightFlick.interactive = AequalynSettings.barRight.length > 0
-                      }
-                    }
-                    onCentroidChanged: {
-                      if (!active) return
-                      const p = centroid.position
-                      // position in band coords
-                      const bandPos = leftWrap.mapToItem(band, p.x, p.y)
-                      barDragGhost.x = bandPos.x - barDragGhost.width / 2
-                      barDragGhost.y = bandPos.y - barDragGhost.height / 2
-                      // target region by x
-                      if (bandPos.y < -20 || bandPos.y > band.height + 20) {
-                        band.hoverRegion = ""
-                        band.hoverIndex = -1
-                      } else {
-                      let tr = "left"
-                      const third = band.width / 3
-                      if (bandPos.x < third) tr = "left"
-                      else if (bandPos.x < third * 2) tr = "center"
-                      else tr = "right"
-                      // index within section
-                      const section = (tr === "left") ? leftSection : (tr === "center" ? centerSection : rightSection)
-                      const sp = band.mapToItem(section, bandPos.x, bandPos.y)
-                      let idx = 0
-                      for (let i = 0; i < section.children.length; i++) {
-                        const c = section.children[i]
-                        if (sp.x > c.x + c.width / 2) idx = i + 1
-                      }
-                      const len = (tr === "left") ? AequalynSettings.barLeft.length
-                               : (tr === "center") ? AequalynSettings.barCenter.length
-                               : AequalynSettings.barRight.length
-                      idx = Math.max(0, Math.min(len, idx))
-                      band.hoverRegion = tr
-                      band.hoverIndex = idx
-                      }
-                    }
+                    onActiveChanged: active ? band.startDrag("left", index, modelData) : band.finishDrag()
+                    onCentroidChanged: if (active) band.trackDrag(leftWrap, centroid.position)
                   }
                 }
               }
@@ -1587,7 +1572,7 @@ Scope {
             contentWidth: centerSection.width
             contentHeight: parent.height
             flickableDirection: Flickable.HorizontalFlick
-            interactive: AequalynSettings.barCenter.length > 0
+            interactive: !band.dragging && AequalynSettings.barCenter.length > 0
             Row {
               id: centerSection
               anchors.horizontalCenter: parent.horizontalCenter
@@ -1621,65 +1606,8 @@ Scope {
                   DragHandler {
                     id: centerDrag
                     target: null
-                    onActiveChanged: {
-                      if (active) {
-                        band.dragRegion = "center"
-                        band.dragIndex = index
-                        band.dragPlugin = modelData
-                        band.hoverRegion = "center"
-                        band.hoverIndex = index
-                        band.dragGhostLabel = AequalynSettings.pluginLabels[modelData] || modelData
-                        leftFlick.interactive = false
-                        centerFlick.interactive = false
-                        rightFlick.interactive = false
-                      } else {
-                        if (band.hoverRegion === "") {
-                          AequalynSettings.removeBarPlugin(band.dragRegion, band.dragIndex)
-                        } else if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
-                          AequalynSettings.moveBarPlugin(band.dragRegion, band.dragIndex, band.hoverRegion, band.hoverIndex)
-                        }
-                        band.dragRegion = ""
-                        band.dragIndex = -1
-                        band.dragPlugin = ""
-                        band.hoverRegion = ""
-                        band.hoverIndex = -1
-                        band.dragGhostLabel = ""
-                        barDragGhost.visible = false
-                        leftFlick.interactive = AequalynSettings.barLeft.length > 0
-                        centerFlick.interactive = AequalynSettings.barCenter.length > 0
-                        rightFlick.interactive = AequalynSettings.barRight.length > 0
-                      }
-                    }
-                    onCentroidChanged: {
-                      if (!active) return
-                      const p = centroid.position
-                      const bandPos = centerWrap.mapToItem(band, p.x, p.y)
-                      barDragGhost.x = bandPos.x - barDragGhost.width / 2
-                      barDragGhost.y = bandPos.y - barDragGhost.height / 2
-                      if (bandPos.y < -20 || bandPos.y > band.height + 20) {
-                        band.hoverRegion = ""
-                        band.hoverIndex = -1
-                      } else {
-                      let tr = "left"
-                      const third = band.width / 3
-                      if (bandPos.x < third) tr = "left"
-                      else if (bandPos.x < third * 2) tr = "center"
-                      else tr = "right"
-                      const section = (tr === "left") ? leftSection : (tr === "center" ? centerSection : rightSection)
-                      const sp = band.mapToItem(section, bandPos.x, bandPos.y)
-                      let idx = 0
-                      for (let i = 0; i < section.children.length; i++) {
-                        const c = section.children[i]
-                        if (sp.x > c.x + c.width / 2) idx = i + 1
-                      }
-                      const len = (tr === "left") ? AequalynSettings.barLeft.length
-                               : (tr === "center") ? AequalynSettings.barCenter.length
-                               : AequalynSettings.barRight.length
-                      idx = Math.max(0, Math.min(len, idx))
-                      band.hoverRegion = tr
-                      band.hoverIndex = idx
-                      }
-                    }
+                    onActiveChanged: active ? band.startDrag("center", index, modelData) : band.finishDrag()
+                    onCentroidChanged: if (active) band.trackDrag(centerWrap, centroid.position)
                   }
                 }
               }
@@ -1696,7 +1624,7 @@ Scope {
             contentWidth: rightSection.width
             contentHeight: parent.height
             flickableDirection: Flickable.HorizontalFlick
-            interactive: AequalynSettings.barRight.length > 0
+            interactive: !band.dragging && AequalynSettings.barRight.length > 0
             Row {
               id: rightSection
               anchors.right: parent.right
@@ -1730,65 +1658,8 @@ Scope {
                   DragHandler {
                     id: rightDrag
                     target: null
-                    onActiveChanged: {
-                      if (active) {
-                        band.dragRegion = "right"
-                        band.dragIndex = index
-                        band.dragPlugin = modelData
-                        band.hoverRegion = "right"
-                        band.hoverIndex = index
-                        band.dragGhostLabel = AequalynSettings.pluginLabels[modelData] || modelData
-                        leftFlick.interactive = false
-                        centerFlick.interactive = false
-                        rightFlick.interactive = false
-                      } else {
-                        if (band.hoverRegion === "") {
-                          AequalynSettings.removeBarPlugin(band.dragRegion, band.dragIndex)
-                        } else if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
-                          AequalynSettings.moveBarPlugin(band.dragRegion, band.dragIndex, band.hoverRegion, band.hoverIndex)
-                        }
-                        band.dragRegion = ""
-                        band.dragIndex = -1
-                        band.dragPlugin = ""
-                        band.hoverRegion = ""
-                        band.hoverIndex = -1
-                        band.dragGhostLabel = ""
-                        barDragGhost.visible = false
-                        leftFlick.interactive = AequalynSettings.barLeft.length > 0
-                        centerFlick.interactive = AequalynSettings.barCenter.length > 0
-                        rightFlick.interactive = AequalynSettings.barRight.length > 0
-                      }
-                    }
-                    onCentroidChanged: {
-                      if (!active) return
-                      const p = centroid.position
-                      const bandPos = rightWrap.mapToItem(band, p.x, p.y)
-                      barDragGhost.x = bandPos.x - barDragGhost.width / 2
-                      barDragGhost.y = bandPos.y - barDragGhost.height / 2
-                      if (bandPos.y < -20 || bandPos.y > band.height + 20) {
-                        band.hoverRegion = ""
-                        band.hoverIndex = -1
-                      } else {
-                      let tr = "left"
-                      const third = band.width / 3
-                      if (bandPos.x < third) tr = "left"
-                      else if (bandPos.x < third * 2) tr = "center"
-                      else tr = "right"
-                      const section = (tr === "left") ? leftSection : (tr === "center" ? centerSection : rightSection)
-                      const sp = band.mapToItem(section, bandPos.x, bandPos.y)
-                      let idx = 0
-                      for (let i = 0; i < section.children.length; i++) {
-                        const c = section.children[i]
-                        if (sp.x > c.x + c.width / 2) idx = i + 1
-                      }
-                      const len = (tr === "left") ? AequalynSettings.barLeft.length
-                               : (tr === "center") ? AequalynSettings.barCenter.length
-                               : AequalynSettings.barRight.length
-                      idx = Math.max(0, Math.min(len, idx))
-                      band.hoverRegion = tr
-                      band.hoverIndex = idx
-                      }
-                    }
+                    onActiveChanged: active ? band.startDrag("right", index, modelData) : band.finishDrag()
+                    onCentroidChanged: if (active) band.trackDrag(rightWrap, centroid.position)
                   }
                 }
               }
