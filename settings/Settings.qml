@@ -39,6 +39,7 @@ Scope {
     ListModel { id: browserApps }
     ListModel { id: videoPlayerApps }
     ListModel { id: terminalApps }
+    ListModel { id: fileManagerApps }
 
     function refreshDefaultApps() {
         if (!defaultAppsProc.running) defaultAppsProc.running = true
@@ -62,6 +63,8 @@ Scope {
             return "xdg-mime default " + appId + " video/mp4 video/x-matroska video/webm video/avi video/quicktime"
         } else if (category === "terminal") {
             return "mkdir -p ~/.config && printf '%s\\n' '" + appId + "' > ~/.config/xdg-terminals.list"
+        } else if (category === "fileManager") {
+            return "xdg-mime default " + appId + " inode/directory"
         }
         return "true"
     }
@@ -87,6 +90,7 @@ Scope {
             fill(browserApps, (root.defaultAppsData.browser || []), root.currentDefaults.browser)
             fill(videoPlayerApps, (root.defaultAppsData.videoPlayer || []), root.currentDefaults.videoPlayer)
             fill(terminalApps, (root.defaultAppsData.terminal || []), root.currentDefaults.terminal)
+            fill(fileManagerApps, (root.defaultAppsData.fileManager || []), root.currentDefaults.fileManager)
         } catch (e) {
             console.log("default apps parse error: " + e)
         }
@@ -1552,7 +1556,8 @@ Scope {
                                         { key: "textEditor", label: "Text editor", model: textEditorApps },
                                         { key: "browser", label: "Web browser", model: browserApps },
                                         { key: "videoPlayer", label: "Video player", model: videoPlayerApps },
-                                        { key: "terminal", label: "Terminal", model: terminalApps }
+                                        { key: "terminal", label: "Terminal", model: terminalApps },
+                                        { key: "fileManager", label: "File manager", model: fileManagerApps }
                                     ]
                                     ColumnLayout {
                                         required property var modelData
