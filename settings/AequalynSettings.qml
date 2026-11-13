@@ -383,12 +383,14 @@ QtObject {
         }
     }
 
-    // Write the JSON atomically-ish and re-apply the Hyprland half.
+    // Write the JSON and re-apply the Hyprland half. It's written next to settings.json and
+    // moved over it, so the watcher below never reads a half-written file.
     function save() {
         const json = JSON.stringify(root._data(), null, 2)
         writeProc.command = [
             "sh", "-c",
-            'mkdir -p "$HOME/.config/aequalyn" && printf \'%s\' "$1" > "$HOME/.config/aequalyn/settings.json"',
+            'd="$HOME/.config/aequalyn" && mkdir -p "$d" && printf \'%s\' "$1" > "$d/.settings.json.tmp" '
+            + '&& mv -f "$d/.settings.json.tmp" "$d/settings.json"',
             "sh", json
         ]
         writeProc.running = true
