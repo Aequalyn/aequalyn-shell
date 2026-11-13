@@ -1113,6 +1113,15 @@ Scope {
                                         border.color: modelData.connected ? root.theme.accentPrimary : root.theme.bgBorder
                                         border.width: 1
 
+                                        Connections {
+                                            target: modelData
+                                            function onPairedChanged() {
+                                                if (modelData.paired && !modelData.connected) {
+                                                    try { modelData.connect() } catch (e) {}
+                                                }
+                                            }
+                                        }
+
                                         RowLayout {
                                             anchors.fill: parent
                                             anchors.leftMargin: 12
@@ -1166,11 +1175,7 @@ Scope {
                                                     cursorShape: Qt.PointingHandCursor
                                                     onClicked: {
                                                         if (modelData.connected) modelData.disconnect()
-                                                        else {
-                                                            try { modelData.trusted = true } catch (e) {}
-                                                            if (!modelData.paired) { try { modelData.pair() } catch (e) {} }
-                                                            try { modelData.connect() } catch (e) {}
-                                                        }
+                                                        else BluetoothService.connectDevice(modelData)
                                                     }
                                                 }
                                             }
