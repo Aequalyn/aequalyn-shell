@@ -52,7 +52,7 @@ Scope {
   readonly property int bandThickness: styled ? Shapes.thicknessFor(barSize, look) : barSize
   readonly property int windowThickness: bandThickness + floatGap
   readonly property int sectionMargin: styled ? Math.round(Shapes.sectionMargin(look, 8, barSize)) : 8
-  readonly property int widgetSpacing: styled && look.shape === "widgets" ? Math.max(2, Shapes.pillSpacing(look, barSize)) : 6
+  readonly property int widgetSpacing: styled && look.shape === "widgets" ? Math.max(6, Shapes.pillSpacing(look, barSize)) : 8
 
   property var activePlayer: {
     const players = Mpris.players.values;
@@ -1277,7 +1277,7 @@ Scope {
                   id: leftWrap
                   required property string modelData
                   required property int index
-                  width: loader.implicitWidth > 0 ? loader.implicitWidth : 24
+                  width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "left" && band.dragIndex === index)
                            ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
@@ -1379,7 +1379,7 @@ Scope {
                   id: centerWrap
                   required property string modelData
                   required property int index
-                  width: loader.implicitWidth > 0 ? loader.implicitWidth : 24
+                  width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "center" && band.dragIndex === index)
                            ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
@@ -1477,7 +1477,7 @@ Scope {
                   id: rightWrap
                   required property string modelData
                   required property int index
-                  width: loader.implicitWidth > 0 ? loader.implicitWidth : 24
+                  width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "right" && band.dragIndex === index)
                            ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
