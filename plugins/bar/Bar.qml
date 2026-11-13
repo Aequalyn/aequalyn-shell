@@ -32,6 +32,9 @@ Scope {
   property string font: "JetBrainsMono Nerd Font"
   property bool barVisible: true
   property bool wifiPopupVisible: false
+  property bool powerProfileVisible: false
+  property string currentPowerProfile: ""
+  property var powerProfiles: []
 
   Shortcut {
     sequence: "Escape"
@@ -1073,6 +1076,7 @@ Scope {
   Component {
     id: cBattery
     Rectangle {
+      id: battPill
       height: 24
       width: battContent.width + 12
       radius: 12
@@ -1083,6 +1087,7 @@ Scope {
         if (SystemInfo.batteryLevelRaw > 10) return root.theme.batteryWarning;
         return root.theme.batteryCritical;
       }
+
       Row {
         id: battContent
         anchors.centerIn: parent
@@ -1100,6 +1105,206 @@ Scope {
           color: root.theme.textPrimary
           font.pixelSize: 11
           font.family: root.font
+        }
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton
+        onClicked: {
+          const w = battPill.QsWindow.window;
+          if (w) {
+            powerProfilePopup.anchor.window = w;
+            powerProfilePopup.anchor.rect.x = battPill.mapToItem(null, 0, 0).x;
+            powerProfilePopup.anchor.rect.y = w.height;
+            powerProfilePopup.anchor.rect.width = battPill.width;
+            powerProfilePopup.anchor.rect.height = 1;
+          }
+          root.powerProfileVisible = !root.powerProfileVisible;
+          if (root.powerProfileVisible) {
+            powerProfileListProc.running = true;
+            powerProfileGetProc.running = true;
+          }
+        }
+      }
+
+      Process {
+        id: powerProfileListProc
+        command: ["powerprofilesctl", "list"]
+        running: false
+        stdout: StdioCollector {
+          onStreamFinished: {
+            const lines = text.split("\n");
+            const profiles = [];
+            for (const line of lines) {
+              if (/^  [A-Za-z0-9_-]+:$/.test(line) || /^\* [A-Za-z0-9_-]+:$/.test(line)) {
+                const name = line.trim().replace(/^\*\s*/, "").replace(/:$/, "");
+                if (name !== "" && profiles.indexOf(name) === -1) profiles.push(name);
+              }
+            }
+            root.powerProfiles = profiles;
+          }
+        }
+      }
+
+      Process {
+        id: powerProfileGetProc
+        command: ["powerprofilesctl", "get"]
+        running: false
+        stdout: StdioCollector {
+          onStreamFinished: {
+            root.currentPowerProfile = text.trim();
+          }
+        }
+      }
+
+      Process {
+        id: powerProfileSetProc
+        running: false
+        stdout: StdioCollector {
+          onStreamFinished: powerProfileGetProc.running = true
+        }
+        onExited: powerProfileGetProc.running = true
+      }
+
+      PopupWindow {
+        id: powerProfilePopup
+        visible: root.powerProfileVisible
+        Shortcut {
+          sequence: "Escape"
+          onActivated: root.powerProfileVisible = false
+        }
+        implicitWidth: 200
+        implicitHeight: powerProfileColumn.implicitHeight + 24
+        color: "transparent"
+
+        anchor.window: battPill.QsWindow.window
+        anchor.rect.x: battPill.mapToItem(null, 0, 0).x
+        anchor.rect.y: battPill.QsWindow.window ? battPill.QsWindow.window.height : 32
+        anchor.rect.width: battPill.width
+        anchor.rect.height: 1
+        anchor.edges: Edges.Bottom
+        anchor.gravity: Edges.Bottom
+        anchor.adjustment: PopupAdjustment.Slide
+
+        onVisibleChanged: {
+          if (root.powerProfileVisible) {
+            powerProfileListProc.running = true;
+            powerProfileGetProc.running = true;
+          }
+        }
+
+        Rectangle {
+          anchors.fill: parent
+          color: root.theme.bgBase
+          border.color: root.theme.bgBorder
+          border.width: 1
+          radius: 12
+
+          ColumnLayout {
+            id: powerProfileColumn
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 6
+
+            Text {
+              text: "CPU Power Profile"
+              color: root.theme.accentPrimary
+              font.pixelSize: 12
+              font.bold: true
+              font.family: root.font
+              Layout.fillWidth: true
+            }
+
+            Repeater {
+              model: root.powerProfiles
+              Rectangle {
+                required property string modelData
+                Layout.fillWidth: true
+                implicitHeight: 36
+                radius: 8
+                color: root.currentPowerProfile === modelData ? root.theme.bgSelected : root.theme.bgSurface
+                border.color: root.currentPowerProfile === modelData ? root.theme.accentPrimary : root.theme.bgBorder
+                border.width: 1
+
+                RowLayout {
+                  anchors.fill: parent
+                  anchors.leftMargin: 10
+                  anchors.rightMargin: 10
+                  spacing: 8
+                  Text {
+                    text: modelData === "performance" ? "󰓅" : (modelData === "power-saver" ? "󰾆" : "󰾅")
+                    color: root.currentPowerProfile === modelData ? root.theme.accentPrimary : root.theme.textPrimary
+                    font.pixelSize: 14
+                    font.family: root.font
+                  }
+                  Text {
+                    text: modelData
+                    color: root.theme.textPrimary
+                    font.pixelSize: 11
+                    font.family: root.font
+                    Layout.fillWidth: true
+                  }
+                  Text {
+                    visible: root.currentPowerProfile === modelData
+                    text: "✓"
+                    color: root.theme.accentPrimary
+                    font.pixelSize: 12
+                    font.family: root.font
+                  }
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    powerProfileSetProc.command = ["powerprofilesctl", "set", modelData];
+                    powerProfileSetProc.running = true;
+                    root.currentPowerProfile = modelData;
+                  }
+                }
+              }
+            }
+
+            Text {
+              visible: root.powerProfiles.length === 0
+              text: "No profiles found"
+              color: root.theme.textMuted
+              font.pixelSize: 10
+              font.family: root.font
+              Layout.fillWidth: true
+            }
+
+            Rectangle {
+              Layout.fillWidth: true
+              height: 1
+              color: root.theme.bgBorder
+              visible: root.powerProfiles.length > 0
+            }
+
+            Rectangle {
+              Layout.fillWidth: true
+              implicitHeight: 28
+              radius: 6
+              color: closeHover.containsMouse ? root.theme.bgSelected : root.theme.bgSurface
+              border.color: root.theme.bgBorder
+              border.width: 1
+              Text {
+                anchors.centerIn: parent
+                text: "Close"
+                color: root.theme.textPrimary
+                font.pixelSize: 10
+                font.family: root.font
+              }
+              MouseArea {
+                id: closeHover
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.powerProfileVisible = false
+              }
+            }
+          }
         }
       }
     }
