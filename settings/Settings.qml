@@ -58,13 +58,13 @@ Scope {
         if (category === "textEditor") {
             return "xdg-mime default " + appId + " text/plain"
         } else if (category === "browser") {
-            return "xdg-mime default " + appId + " text/html x-scheme-handler/http x-scheme-handler/https"
+            return "xdg-mime default " + appId + " text/html x-scheme-handler/http x-scheme-handler/https; hyprctl reload >/dev/null 2>&1 || true"
         } else if (category === "videoPlayer") {
             return "xdg-mime default " + appId + " video/mp4 video/x-matroska video/webm video/avi video/quicktime"
         } else if (category === "terminal") {
-            return "mkdir -p ~/.config && printf '%s\\n' '" + appId + "' > ~/.config/xdg-terminals.list"
+            return "mkdir -p ~/.config && printf '%s\\n' '" + appId + "' > ~/.config/xdg-terminals.list; hyprctl reload >/dev/null 2>&1 || true"
         } else if (category === "fileManager") {
-            return "xdg-mime default " + appId + " inode/directory"
+            return "xdg-mime default " + appId + " inode/directory; hyprctl reload >/dev/null 2>&1 || true"
         }
         return "true"
     }
