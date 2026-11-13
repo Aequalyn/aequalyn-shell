@@ -35,9 +35,13 @@ Item {
     Component.onCompleted: if (slot.file !== "") setSource(Qt.resolvedUrl("widgets/" + slot.file), { bar: slot.bar })
   }
 
+  readonly property bool dragActive: drag.active
+  // going away mid-drag (its region's widget list changed): let go of the drag
+  Component.onDestruction: if (band.dragSlot === slot) band.dragSlot = null
   DragHandler {
+    id: drag
     target: null
-    onActiveChanged: active ? slot.band.startDrag(slot.region, slot.index, slot.modelData) : slot.band.finishDrag()
+    onActiveChanged: active ? slot.band.startDrag(slot, slot.region, slot.index, slot.modelData) : slot.band.finishDrag()
     onCentroidChanged: if (active) slot.band.trackDrag(slot, centroid.position)
   }
 }
