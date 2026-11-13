@@ -782,7 +782,6 @@ Scope {
         }
       }
 
-      Timer { interval: 2000; running: true; repeat: false; onTriggered: wifiPopup.visible = true }
       MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -814,7 +813,7 @@ Scope {
           onActivated: root.wifiPopupVisible = false
         }
         implicitWidth: 320
-        implicitHeight: wifiContent.implicitHeight + 24
+        implicitHeight: 360
         color: "transparent"
 
         anchor.window: netPill.QsWindow.window
@@ -979,7 +978,7 @@ Scope {
                             WifiService.disconnectNetwork(modelData)
                           } else if (WifiService.requiresCredentials(modelData.security) && !modelData.known) {
                             // fall back to settings for password entry
-                            wifiPopup.visible = false
+                            root.wifiPopupVisible = false
                             settingsProc.command = ["qs", "ipc", "call", "aequalyn", "wifi"]
                             settingsProc.running = true
                           } else {
