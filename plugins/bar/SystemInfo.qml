@@ -50,10 +50,13 @@ Singleton {
     }
   }
 
-  // Network Info (ethernet takes priority over wifi)
+  // Network Info (ethernet takes priority over wifi). Read from the devices' connection
+  // state: the wifi scan list's "active" flag drops out while NetworkManager rescans, which
+  // showed "Disconnected" while connected. The name is the connection's (normally the SSID);
+  // terse output escapes ":" in it as "\:".
   Process {
     id: netProc
-    command: ["sh", "-c", "eth=$(nmcli -t -f type,state dev 2>/dev/null | grep '^ethernet:connected'); if [ -n \"$eth\" ]; then echo 'ethernet:Ethernet'; else wifi=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | grep '^yes' | cut -d: -f2); if [ -n \"$wifi\" ]; then echo \"wifi:$wifi\"; else echo 'disconnected:'; fi; fi"]
+    command: ["sh", "-c", "dev=$(nmcli -t -f TYPE,STATE,CONNECTION dev 2>/dev/null); if printf '%s\\n' \"$dev\" | grep -q '^ethernet:connected'; then echo 'ethernet:Ethernet'; else wifi=$(printf '%s\\n' \"$dev\" | grep '^wifi:connected:' | head -1 | cut -d: -f3- | sed 's/\\\\:/:/g'); if [ -n \"$wifi\" ]; then echo \"wifi:$wifi\"; else echo 'disconnected:'; fi; fi"]
     running: true
 
     stdout: StdioCollector {
