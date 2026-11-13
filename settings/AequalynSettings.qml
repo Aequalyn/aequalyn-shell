@@ -27,10 +27,10 @@ QtObject {
     property bool themeApps: true
     property int barHeight: 32
     property int barOpacity: 100
-    // widest the bar's regions get before they scroll, in px; 0 = as wide as fits
-    // without running into the next region
-    property int barSideWidth: 0
-    property int barCenterWidth: 0
+    // widest the bar's regions get before they scroll, in px (never into the next region);
+    // 0 = as wide as fits
+    property int barSideWidth: 600
+    property int barCenterWidth: 600
     property bool showClock: true
     property bool showWorkspaces: true
     property bool showMedia: true

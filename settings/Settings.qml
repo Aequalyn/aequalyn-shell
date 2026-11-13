@@ -613,7 +613,7 @@ Scope {
                                     label: "Bar opacity"; settingKey: "barOpacity"
                                     minValue: 40; maxValue: 100; stepValue: 5
                                 }
-                                SubLabel { text: "How wide the left and right regions, and the center, may get before their widgets scroll sideways. Auto: as wide as fits without running into the next region." }
+                                SubLabel { text: "How wide the left and right regions, and the center, may get before their widgets scroll sideways (mouse wheel). They never run into the next region. Auto: as wide as fits." }
                                 StepperRow {
                                     label: "Sides scroll after (px)"; settingKey: "barSideWidth"
                                     minValue: 0; maxValue: 1600; stepValue: 50; zeroText: "Auto"
