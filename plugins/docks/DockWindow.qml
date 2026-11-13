@@ -155,10 +155,10 @@ PanelWindow {
     Region { item: edgeHit }
   }
 
-  // blur is dropped when the bar is hidden, blur is disabled, or the dock is
-  // hidden: a separate namespace keeps Hyprland from blurring that surface
-  readonly property bool dockBlur: AequalynSettings.blurEnabled && svc.barShown && win.open
-  WlrLayershell.namespace: dockBlur ? "aequalyn-dock" : "aequalyn-dock-plain"
+  // The dock is never blurred. Its surface spans the whole edge, so Hyprland blurred a full
+  // strip around the dock's shape. The blur rules match "aequalyn-.*" and "quickshell-.*",
+  // so this name must stay outside both (an underscore, not a dash).
+  WlrLayershell.namespace: "aequalyn_dock"
   WlrLayershell.layer: WlrLayer.Top
   WlrLayershell.keyboardFocus: (addOpen || setOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
