@@ -588,7 +588,7 @@ Scope {
                                 Item {
                                     id: barArrange
                                     Layout.fillWidth: true
-                                    Layout.preferredHeight: 420
+                                    Layout.preferredHeight: Math.max(420, Math.max(AequalynSettings.barLeft.length, AequalynSettings.barCenter.length, AequalynSettings.barRight.length) * 34 + 60)
                                     property int rowH: 34
                                     property string dragRegion: ""
                                     property int dragIndex: -1
@@ -655,6 +655,7 @@ Scope {
                                                         id: listArea
                                                         width: parent.width
                                                         height: regionBox.height - 50
+                                                        clip: true
 
                                                         Column {
                                                             id: itemCol

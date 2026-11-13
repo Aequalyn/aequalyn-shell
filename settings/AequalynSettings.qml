@@ -193,12 +193,12 @@ QtObject {
         const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
             "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "settingsbutton"]
-        // A section with too many plugins overflows the bar. Cap each region so
-        // the dock stays usable; extras are silently dropped.
-        const MAX_PER_REGION = 8
-        let left = root._cloneRegion(root.barLeft).slice(0, MAX_PER_REGION)
-        let center = root._cloneRegion(root.barCenter).slice(0, MAX_PER_REGION)
-        let right = root._cloneRegion(root.barRight).slice(0, MAX_PER_REGION)
+        // Keep every plugin visible in the settings arranger: regions grow to fit
+        // instead of silently dropping extras. The bar sections scroll when a
+        // region has more plugins than fits on screen.
+        let left = root._cloneRegion(root.barLeft)
+        let center = root._cloneRegion(root.barCenter)
+        let right = root._cloneRegion(root.barRight)
         const seen = {}
         function uniq(list) {
             const out = []
@@ -213,9 +213,7 @@ QtObject {
         left = uniq(left); center = uniq(center); right = uniq(right)
         for (let i = 0; i < defaults.length; i++) {
             const id = defaults[i]
-            if (!seen[id]) {
-                if (right.length < MAX_PER_REGION) { right.push(id); seen[id] = true }
-            }
+            if (!seen[id]) { right.push(id); seen[id] = true }
         }
         root.barLeft = left; root.barCenter = center; root.barRight = right
     }
