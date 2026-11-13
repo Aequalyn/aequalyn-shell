@@ -19,7 +19,9 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
 import "root:/bluetooth"
+import "root:/wifi"
 import "root:/idle-inhibitor"
+import QtQuick.Controls
 import "root:/atelier"
 import "../style/Shapes.js" as Shapes
 import "../style/BarLooks.js" as BarLooks
@@ -743,10 +745,12 @@ Scope {
   Component {
     id: cNetwork
     Rectangle {
+      id: netPill
       height: 24
       width: netContent.width + 12
       radius: 12
       color: root.chipColor
+
       Row {
         id: netContent
         anchors.centerIn: parent
@@ -770,6 +774,209 @@ Scope {
           font.family: root.font
         }
       }
+
+      Timer { interval: 2000; running: true; repeat: false; onTriggered: wifiPopup.visible = true }
+      MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: Qt.PointingHandCursor
+        onClicked: (mouse) => {
+          if (mouse.button === Qt.RightButton) {
+            settingsProc.command = ["qs", "ipc", "call", "aequalyn", "wifi"]
+            settingsProc.running = true
+          } else {
+            const w = netPill.QsWindow.window;
+            if (w) {
+              wifiPopup.anchor.window = w;
+              wifiPopup.anchor.rect.y = w.height;
+            }
+            wifiPopup.visible = !wifiPopup.visible
+          }
+        }
+      }
+
+      PopupWindow {
+        id: wifiPopup
+        visible: false
+        implicitWidth: 320
+        implicitHeight: wifiContent.implicitHeight + 24
+        color: "transparent"
+
+        anchor.window: netPill.QsWindow.window
+        anchor.rect.x: netPill.mapToItem(null, 0, 0).x
+        anchor.rect.y: netPill.QsWindow.window ? netPill.QsWindow.window.height : 32
+        anchor.rect.width: netPill.width
+        anchor.rect.height: 1
+        anchor.edges: Edges.Bottom
+        anchor.gravity: Edges.Bottom
+        anchor.adjustment: PopupAdjustment.Slide
+
+        onVisibleChanged: if (visible) WifiService.scan()
+
+        HyprlandFocusGrab {
+          windows: [wifiPopup]
+          active: wifiPopup.visible
+          onCleared: wifiPopup.visible = false
+        }
+
+        Rectangle {
+          id: wifiPopupBg
+          anchors.fill: parent
+          color: root.theme.bgBase
+          border.color: root.theme.bgBorder
+          border.width: 1
+          radius: 12
+
+          ColumnLayout {
+            id: wifiContent
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 8
+          width: parent.width
+
+          RowLayout {
+            Layout.fillWidth: true
+            Text {
+              text: WifiService.available ? (WifiService.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off") : "No adapter"
+              color: root.theme.textPrimary
+              font.pixelSize: 12
+              font.family: root.font
+              Layout.fillWidth: true
+            }
+            Rectangle {
+              implicitWidth: 52
+              implicitHeight: 24
+              radius: 6
+              color: root.theme.bgSelected
+              border.color: root.theme.bgBorder
+              border.width: 1
+              Text {
+                anchors.centerIn: parent
+                text: WifiService.wifiEnabled ? "Off" : "On"
+                color: root.theme.textPrimary
+                font.pixelSize: 10
+                font.family: root.font
+              }
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: WifiService.toggleWifi()
+              }
+            }
+            Rectangle {
+              implicitWidth: 52
+              implicitHeight: 24
+              radius: 6
+              color: root.theme.bgSelected
+              border.color: root.theme.bgBorder
+              border.width: 1
+              Text {
+                anchors.centerIn: parent
+                text: WifiService.scanning ? "…" : "Scan"
+                color: root.theme.textPrimary
+                font.pixelSize: 10
+                font.family: root.font
+              }
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: WifiService.scan()
+              }
+            }
+          }
+
+          Rectangle { Layout.fillWidth: true; height: 1; color: root.theme.bgBorder }
+
+          Text {
+            visible: WifiService.networkCount === 0
+            text: "No networks found"
+            color: root.theme.textMuted
+            font.pixelSize: 11
+            font.family: root.font
+          }
+
+          ScrollView {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(260, WifiService.networkCount * 44 + 8)
+            clip: true
+            ColumnLayout {
+              width: parent.width
+              spacing: 4
+              Repeater {
+                model: WifiService.networks
+                Rectangle {
+                  required property var modelData
+                  Layout.fillWidth: true
+                  implicitHeight: 40
+                  radius: 8
+                  color: root.theme.bgSurface
+                  border.color: modelData.connected ? root.theme.accentPrimary : root.theme.bgBorder
+                  border.width: 1
+                  RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    spacing: 8
+                    ColumnLayout {
+                      Layout.fillWidth: true
+                      spacing: 0
+                      Text {
+                        Layout.fillWidth: true
+                        text: modelData.name || "(hidden)"
+                        color: root.theme.textPrimary
+                        font.pixelSize: 11
+                        font.family: root.font
+                        elide: Text.ElideRight
+                      }
+                      Text {
+                        Layout.fillWidth: true
+                        text: Math.round(modelData.signalStrength || 0) + "% · " + WifiService.securityText(modelData.security)
+                        color: root.theme.textMuted
+                        font.pixelSize: 9
+                        font.family: root.font
+                      }
+                    }
+                    Rectangle {
+                      implicitWidth: 64
+                      implicitHeight: 22
+                      radius: 6
+                      color: connHover.containsMouse ? root.theme.accentPrimary : root.theme.bgSelected
+                      border.color: root.theme.bgBorder
+                      border.width: 1
+                      Text {
+                        anchors.centerIn: parent
+                        text: modelData.connected ? "Disconnect" : "Connect"
+                        color: connHover.containsMouse ? root.theme.bgBase : root.theme.textPrimary
+                        font.pixelSize: 9
+                        font.family: root.font
+                      }
+                      MouseArea {
+                        id: connHover
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                          if (modelData.connected) {
+                            WifiService.disconnectNetwork(modelData)
+                          } else if (WifiService.requiresCredentials(modelData.security) && !modelData.known) {
+                            // fall back to settings for password entry
+                            wifiPopup.visible = false
+                            settingsProc.command = ["qs", "ipc", "call", "aequalyn", "wifi"]
+                            settingsProc.running = true
+                          } else {
+                            WifiService.connectNetwork(modelData)
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     }
   }
 
@@ -1002,56 +1209,95 @@ Scope {
           anchors.leftMargin: root.sectionMargin
           anchors.rightMargin: root.sectionMargin
 
-          Row {
-            id: leftSection
+          // Each section is a horizontally-flickable strip so too many plugins
+          // in one region (e.g. the right side) scroll instead of overlapping
+          // the centre and becoming unselectable.
+          Flickable {
+            id: leftFlick
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            spacing: root.widgetSpacing
-            Repeater {
-              model: AequalynSettings.barLeft
-              Loader {
-                required property string modelData
-                property bool hovered: hh.hovered
-                HoverHandler { id: hh }
-                sourceComponent: root.componentFor(modelData)
-                visible: AequalynSettings.pluginVisible(modelData)
-                anchors.verticalCenter: leftSection.verticalCenter
+            width: parent.width / 3
+            height: parent.height
+            clip: true
+            contentWidth: leftSection.width
+            contentHeight: parent.height
+            flickableDirection: Flickable.HorizontalFlick
+            interactive: AequalynSettings.barLeft.length > 0
+            Row {
+              id: leftSection
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: root.widgetSpacing
+              Repeater {
+                model: AequalynSettings.barLeft
+                Loader {
+                  required property string modelData
+                  property bool hovered: hh.hovered
+                  HoverHandler { id: hh }
+                  sourceComponent: root.componentFor(modelData)
+                  visible: AequalynSettings.pluginVisible(modelData)
+                  anchors.verticalCenter: leftSection.verticalCenter
+                }
               }
             }
           }
 
-          Row {
-            id: centerSection
+          Flickable {
+            id: centerFlick
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            spacing: root.widgetSpacing
-            Repeater {
-              model: AequalynSettings.barCenter
-              Loader {
-                required property string modelData
-                property bool hovered: hh.hovered
-                HoverHandler { id: hh }
-                sourceComponent: root.componentFor(modelData)
-                visible: AequalynSettings.pluginVisible(modelData)
-                anchors.verticalCenter: centerSection.verticalCenter
+            width: parent.width / 3
+            height: parent.height
+            clip: true
+            contentWidth: centerSection.width
+            contentHeight: parent.height
+            flickableDirection: Flickable.HorizontalFlick
+            interactive: AequalynSettings.barCenter.length > 0
+            Row {
+              id: centerSection
+              anchors.horizontalCenter: parent.horizontalCenter
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: root.widgetSpacing
+              Repeater {
+                model: AequalynSettings.barCenter
+                Loader {
+                  required property string modelData
+                  property bool hovered: hh.hovered
+                  HoverHandler { id: hh }
+                  sourceComponent: root.componentFor(modelData)
+                  visible: AequalynSettings.pluginVisible(modelData)
+                  anchors.verticalCenter: centerSection.verticalCenter
+                }
               }
             }
           }
 
-          Row {
-            id: rightSection
+          Flickable {
+            id: rightFlick
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: root.widgetSpacing
-            Repeater {
-              model: AequalynSettings.barRight
-              Loader {
-                required property string modelData
-                property bool hovered: hh.hovered
-                HoverHandler { id: hh }
-                sourceComponent: root.componentFor(modelData)
-                visible: AequalynSettings.pluginVisible(modelData)
-                anchors.verticalCenter: rightSection.verticalCenter
+            width: parent.width / 3
+            height: parent.height
+            clip: true
+            contentWidth: rightSection.width
+            contentHeight: parent.height
+            flickableDirection: Flickable.HorizontalFlick
+            interactive: AequalynSettings.barRight.length > 0
+            Row {
+              id: rightSection
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: root.widgetSpacing
+              Repeater {
+                model: AequalynSettings.barRight
+                Loader {
+                  required property string modelData
+                  property bool hovered: hh.hovered
+                  HoverHandler { id: hh }
+                  sourceComponent: root.componentFor(modelData)
+                  visible: AequalynSettings.pluginVisible(modelData)
+                  anchors.verticalCenter: rightSection.verticalCenter
+                }
               }
             }
           }

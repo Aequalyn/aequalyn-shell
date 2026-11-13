@@ -812,12 +812,16 @@ PanelWindow {
     id: menuPop
     readonly property var items: {
       const s = win.menuSlot;
-      if (!s || !s.entry) return [];
-      const out = [{ t: "New window", f: () => s.entry.execute() }];
-      (s.entry.actions || []).forEach(a => { out.push({ t: a.name, f: () => a.execute() }); });
-      s.wins.forEach(t => { out.push({ t: "Focus: " + t.title.slice(0, 32), f: () => t.activate() }); });
-      if (s.wins.length > 0) out.push({ t: "Close window(s)", f: () => s.wins.forEach(t => t.close()) });
-      out.push({ t: "Remove from dock", f: () => win.svc.removeApp(win.idx, s.modelData) });
+      const out = [];
+      if (s && s.entry) {
+        out.push({ t: "New window", f: () => s.entry.execute() });
+        (s.entry.actions || []).forEach(a => { out.push({ t: a.name, f: () => a.execute() }); });
+        s.wins.forEach(t => { out.push({ t: "Focus: " + t.title.slice(0, 32), f: () => t.activate() }); });
+        if (s.wins.length > 0) out.push({ t: "Close window(s)", f: () => s.wins.forEach(t => t.close()) });
+      }
+      // "Remove from dock" is always available — even for placeholder entries
+      // whose desktop entry is missing, so they can always be unpinned.
+      if (s) out.push({ t: "Remove from dock", f: () => win.svc.removeApp(win.idx, s.modelData) });
       return out;
     }
     visible: win.menuSlot !== null

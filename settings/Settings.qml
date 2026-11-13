@@ -13,6 +13,7 @@ import QtQuick
 import QtQuick.Layouts
 import "root:/settings"
 import "root:/bluetooth"
+import "root:/wifi"
 
 Scope {
     id: root
@@ -37,6 +38,7 @@ Scope {
         { key: "bar",        label: "Top bar" },
         { key: "hyprland",   label: "Hyprland" },
         { key: "bluetooth",  label: "Bluetooth" },
+        { key: "wifi",       label: "Wi-Fi" },
         { key: "displays",   label: "Displays" },
         { key: "dock",       label: "Dock" },
         { key: "power",      label: "Power" },
@@ -52,6 +54,7 @@ Scope {
         function bar(): void { root.tab = "bar"; root.panelVisible = true }
         function displays(): void { root.tab = "displays"; root.panelVisible = true }
         function bluetooth(): void { root.tab = "bluetooth"; root.panelVisible = true }
+        function wifi(): void { root.tab = "wifi"; root.panelVisible = true }
         function hyprland(): void { root.tab = "hyprland"; root.panelVisible = true }
         function dock(): void { root.tab = "dock"; root.panelVisible = true }
         function power(): void { root.tab = "power"; root.panelVisible = true }
@@ -61,6 +64,17 @@ Scope {
     // PipeWire-Pulse card profiles for connected headsets (A2DP / HSP-HFP).
     property var audioCards: []
     property string audioMessage: ""
+
+    // Wi-Fi password prompt state
+    property string wifiPasswordSsid: ""
+    property string wifiPasswordText: ""
+
+    function connectWifiWithPassword() {
+        const net = WifiService.networkForSsid(root.wifiPasswordSsid)
+        if (net) WifiService.connectWithPsk(net, root.wifiPasswordText)
+        root.wifiPasswordSsid = ""
+        root.wifiPasswordText = ""
+    }
 
     function refreshAudio() {
         if (!audioListProc.running) audioListProc.running = true
@@ -73,7 +87,24 @@ Scope {
         audioRefreshTimer.restart()
     }
 
-    onTabChanged: if (root.tab === "bluetooth") root.refreshAudio()
+    onTabChanged: {
+        if (root.tab === "bluetooth") root.refreshAudio()
+        if (root.tab === "wifi") { WifiService.scan(); wifiScanTimer.restart() }
+    }
+
+    Timer {
+        id: wifiScanTimer
+        interval: 3000
+        repeat: false
+        onTriggered: WifiService.setScanning(false)
+    }
+
+    Timer {
+        interval: 5000
+        repeat: true
+        running: root.tab === "wifi" && root.panelVisible
+        onTriggered: WifiService.scan()
+    }
 
     Process {
         id: audioListProc
@@ -1146,6 +1177,209 @@ Scope {
                                 }
                             }
 
+                            // ============ WI-FI ============
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: root.tab === "wifi"
+                                spacing: 12
+                                SectionTitle { text: "Wi-Fi" }
+                                SubLabel { text: "Scan and connect to wireless networks through NetworkManager. The bar plugin shows the connection state; right-click it to open this page." }
+
+                                Divider {}
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: WifiService.available
+                                            ? (WifiService.wifiEnabled ? "Wi-Fi on" : "Wi-Fi off")
+                                            : "No Wi-Fi adapter / NetworkManager found"
+                                        color: root.theme.textPrimary
+                                        font.pixelSize: 12
+                                        font.family: root.font
+                                    }
+                                    ToggleSwitch {
+                                        checked: WifiService.wifiEnabled
+                                        enabled: WifiService.available
+                                        onToggled: WifiService.toggleWifi()
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+                                    ActionButton {
+                                        label: WifiService.scanning ? "Scanning…" : "Scan for networks"
+                                        enabled: WifiService.available && WifiService.wifiEnabled
+                                        onClicked: { WifiService.scan(); wifiScanTimer.restart() }
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: WifiService.networkCount + " network" + (WifiService.networkCount === 1 ? "" : "s") +
+                                              (WifiService.connectedName !== "" ? " · connected to " + WifiService.connectedName : "")
+                                        color: root.theme.textMuted
+                                        font.pixelSize: 10
+                                        font.family: root.font
+                                    }
+                                }
+
+                                Divider {}
+                                SectionTitle { text: "Networks" }
+                                SubLabel {
+                                    visible: WifiService.networkCount === 0
+                                    text: "No networks yet. Turn Wi-Fi on and scan to discover nearby networks."
+                                }
+
+                                Repeater {
+                                    model: WifiService.networks
+                                    Rectangle {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        implicitHeight: 46
+                                        radius: 8
+                                        color: root.theme.bgSurface
+                                        border.color: modelData.connected ? root.theme.accentPrimary : root.theme.bgBorder
+                                        border.width: 1
+
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 12
+                                            anchors.rightMargin: 12
+                                            spacing: 10
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: modelData.name || "(hidden network)"
+                                                    color: root.theme.textPrimary
+                                                    font.pixelSize: 12
+                                                    font.family: root.font
+                                                    elide: Text.ElideRight
+                                                }
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: (modelData.connected ? "Connected" :
+                                                           modelData.known ? "Saved" : "Available") +
+                                                          " · " + Math.round(modelData.signalStrength || 0) + "%" +
+                                                          " · " + WifiService.securityText(modelData.security)
+                                                    color: root.theme.textMuted
+                                                    font.pixelSize: 10
+                                                    font.family: root.font
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
+                                            Rectangle {
+                                                implicitWidth: wifiConnectLabel.implicitWidth + 20
+                                                implicitHeight: 28
+                                                radius: 7
+                                                color: wifiConnectHover.containsMouse ? root.theme.accentPrimary : root.theme.bgSelected
+                                                border.color: root.theme.bgBorder
+                                                border.width: 1
+                                                Text {
+                                                    id: wifiConnectLabel
+                                                    anchors.centerIn: parent
+                                                    text: modelData.connected ? "Disconnect" : "Connect"
+                                                    color: wifiConnectHover.containsMouse ? root.theme.bgBase : root.theme.textPrimary
+                                                    font.pixelSize: 10
+                                                    font.family: root.font
+                                                }
+                                                MouseArea {
+                                                    id: wifiConnectHover
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (modelData.connected) {
+                                                            WifiService.disconnectNetwork(modelData)
+                                                        } else if (WifiService.requiresCredentials(modelData.security) && !modelData.known) {
+                                                            root.wifiPasswordSsid = modelData.name || ""
+                                                            root.wifiPasswordText = ""
+                                                        } else {
+                                                            WifiService.connectNetwork(modelData)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Rectangle {
+                                                visible: modelData.known
+                                                implicitWidth: wifiForgetLabel.implicitWidth + 16
+                                                implicitHeight: 28
+                                                radius: 7
+                                                color: "transparent"
+                                                border.color: root.theme.bgBorder
+                                                border.width: 1
+                                                Text {
+                                                    id: wifiForgetLabel
+                                                    anchors.centerIn: parent
+                                                    text: "Forget"
+                                                    color: root.theme.textMuted
+                                                    font.pixelSize: 10
+                                                    font.family: root.font
+                                                }
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: WifiService.forgetNetwork(modelData)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Password prompt
+                                ColumnLayout {
+                                    visible: root.wifiPasswordSsid !== ""
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Divider {}
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: "Password for " + root.wifiPasswordSsid
+                                        color: root.theme.textPrimary
+                                        font.pixelSize: 12
+                                        font.family: root.font
+                                    }
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        implicitHeight: 32
+                                        radius: 8
+                                        color: root.theme.bgSurface
+                                        border.color: root.theme.bgBorder
+                                        border.width: 1
+                                        TextInput {
+                                            id: wifiPasswordField
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            verticalAlignment: Text.AlignVCenter
+                                            color: root.theme.textPrimary
+                                            font.pixelSize: 12
+                                            font.family: root.font
+                                            echoMode: TextInput.Password
+                                            text: root.wifiPasswordText
+                                            onTextChanged: root.wifiPasswordText = text
+                                            onAccepted: root.connectWifiWithPassword()
+                                        }
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        ActionButton {
+                                            label: "Cancel"
+                                            onClicked: { root.wifiPasswordSsid = ""; root.wifiPasswordText = "" }
+                                        }
+                                        ActionButton {
+                                            label: "Connect"
+                                            onClicked: root.connectWifiWithPassword()
+                                        }
+                                    }
+                                }
+
+                                Divider {}
+                                SubLabel { text: "Wi-Fi state is managed by NetworkManager. Scanning may take a few seconds." }
+                            }
+
                             // ============ DISPLAYS ============
                             ColumnLayout {
                                 Layout.fillWidth: true
@@ -1206,7 +1440,7 @@ Scope {
                                 Repeater {
                                     model: [
                                         { k: "SUPER + Return",  v: "Terminal (kitty)" },
-                                        { k: "SUPER + E",       v: "File manager (thunar)" },
+                                        { k: "SUPER + E",       v: "File manager (nautilus)" },
                                         { k: "SUPER + Space",   v: "Fuzzel launcher" },
                                         { k: "SUPER + D",       v: "Aequalyn app launcher" },
                                         { k: "apps-menu (bar)", v: "Open the app launcher" },
