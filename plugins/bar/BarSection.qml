@@ -34,9 +34,7 @@ Item {
     flick.contentX = Math.max(0, Math.min(maxX, flick.contentX + dx));
     offset = flick.contentX - home();
   }
-  onOverflowingChanged: settle()
   onWidthChanged: settle()
-  Connections { target: row; function onWidthChanged() { if (!flick.moving) section.settle(); } }
 
   Flickable {
     id: flick
@@ -48,6 +46,10 @@ Item {
     boundsBehavior: Flickable.StopAtBounds
     interactive: section.overflowing && !section.band.dragging
     onMovementEnded: section.offset = contentX - section.home()
+    // the row's width only reaches contentWidth (and maxX) after this updates, so settle here,
+    // not when the row changes: settling earlier used the old maxX and left a full right
+    // region at its start
+    onContentWidthChanged: if (!moving) section.settle()
 
     Row {
       id: row
