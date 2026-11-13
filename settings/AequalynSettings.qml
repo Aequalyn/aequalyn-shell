@@ -27,10 +27,10 @@ QtObject {
     property bool themeApps: true
     property int barHeight: 32
     property int barOpacity: 100
-    // widest the bar's regions get before they scroll, in px (never into the next region);
-    // 0 = as wide as fits
-    property int barSideWidth: 600
-    property int barCenterWidth: 600
+    // widest the bar's regions get before they scroll, in % of the bar's width, so it's the
+    // same on every screen (never into the next region); 33 = equal thirds, 0 = as wide as fits
+    property int barSidePercent: 33
+    property int barCenterPercent: 33
     property bool showClock: true
     property bool showWorkspaces: true
     property bool showMedia: true
@@ -323,8 +323,8 @@ QtObject {
                 barRight: root.barRight,
                 barHeight: root.barHeight,
                 barOpacity: root.barOpacity,
-                barSideWidth: root.barSideWidth,
-                barCenterWidth: root.barCenterWidth,
+                barSidePercent: root.barSidePercent,
+                barCenterPercent: root.barCenterPercent,
                 showClock: root.showClock,
                 showWorkspaces: root.showWorkspaces,
                 showMedia: root.showMedia,
@@ -473,8 +473,8 @@ QtObject {
         root.themeApps = pick(a.themeApps, root.themeApps)
         root.barHeight = pick(a.barHeight, root.barHeight)
         root.barOpacity = pick(a.barOpacity, root.barOpacity)
-        root.barSideWidth = Math.max(0, Number(pick(a.barSideWidth, root.barSideWidth)) || 0)
-        root.barCenterWidth = Math.max(0, Number(pick(a.barCenterWidth, root.barCenterWidth)) || 0)
+        root.barSidePercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barSidePercent, root.barSidePercent)) || 0)))
+        root.barCenterPercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barCenterPercent, root.barCenterPercent)) || 0)))
         root.showClock = pick(a.showClock, root.showClock)
         root.showWorkspaces = pick(a.showWorkspaces, root.showWorkspaces)
         root.showMedia = pick(a.showMedia, root.showMedia)
