@@ -5,7 +5,7 @@
 
 pragma Singleton
 
-// Aequalyn universal clipboard history service -- Omarchy-style.
+// Aequalyn universal clipboard history service.
 // Watches the Wayland clipboard for text and images, keeps a deduplicated
 // JSON history, and restores an entry with wl-copy.
 import Quickshell

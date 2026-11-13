@@ -3,7 +3,7 @@
 // and item activation to restore content to the clipboard, and is toggled via
 // shell keybind/IPC integration.
 
-// Aequalyn clipboard history overlay -- Omarchy-style, text + images, searchable.
+// Aequalyn clipboard history overlay -- text + images, searchable.
 // Open with `qs ipc call clipboard toggle` (bound to SUPER + CTRL + V).
 import Quickshell
 import Quickshell.Io
