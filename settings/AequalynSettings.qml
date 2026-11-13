@@ -231,6 +231,14 @@ QtObject {
         root.save()
     }
 
+    function removeBarPlugin(region, index) {
+        const src = root._regionArray(region)
+        if (index < 0 || index >= src.length) return
+        src.splice(index, 1)
+        root._setRegion(region, src)
+        root.save()
+    }
+
     // Legacy single-list move kept for compatibility; operates on concatenated order.
     function movePlugin(from, to) {
         if (from === to || from < 0 || to < 0) return

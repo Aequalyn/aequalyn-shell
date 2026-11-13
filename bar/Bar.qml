@@ -1308,7 +1308,9 @@ Scope {
                         rightFlick.interactive = false
                       } else {
                         // finish
-                        if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
+                        if (band.hoverRegion === "") {
+                          AequalynSettings.removeBarPlugin(band.dragRegion, band.dragIndex)
+                        } else if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
                           AequalynSettings.moveBarPlugin(band.dragRegion, band.dragIndex, band.hoverRegion, band.hoverIndex)
                         }
                         band.dragRegion = ""
@@ -1331,6 +1333,10 @@ Scope {
                       barDragGhost.x = bandPos.x - barDragGhost.width / 2
                       barDragGhost.y = bandPos.y - barDragGhost.height / 2
                       // target region by x
+                      if (bandPos.y < -20 || bandPos.y > band.height + 20) {
+                        band.hoverRegion = ""
+                        band.hoverIndex = -1
+                      } else {
                       let tr = "left"
                       const third = band.width / 3
                       if (bandPos.x < third) tr = "left"
@@ -1350,6 +1356,7 @@ Scope {
                       idx = Math.max(0, Math.min(len, idx))
                       band.hoverRegion = tr
                       band.hoverIndex = idx
+                      }
                     }
                   }
                 }
@@ -1409,7 +1416,9 @@ Scope {
                         centerFlick.interactive = false
                         rightFlick.interactive = false
                       } else {
-                        if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
+                        if (band.hoverRegion === "") {
+                          AequalynSettings.removeBarPlugin(band.dragRegion, band.dragIndex)
+                        } else if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
                           AequalynSettings.moveBarPlugin(band.dragRegion, band.dragIndex, band.hoverRegion, band.hoverIndex)
                         }
                         band.dragRegion = ""
@@ -1430,6 +1439,10 @@ Scope {
                       const bandPos = centerWrap.mapToItem(band, p.x, p.y)
                       barDragGhost.x = bandPos.x - barDragGhost.width / 2
                       barDragGhost.y = bandPos.y - barDragGhost.height / 2
+                      if (bandPos.y < -20 || bandPos.y > band.height + 20) {
+                        band.hoverRegion = ""
+                        band.hoverIndex = -1
+                      } else {
                       let tr = "left"
                       const third = band.width / 3
                       if (bandPos.x < third) tr = "left"
@@ -1448,6 +1461,7 @@ Scope {
                       idx = Math.max(0, Math.min(len, idx))
                       band.hoverRegion = tr
                       band.hoverIndex = idx
+                      }
                     }
                   }
                 }
@@ -1507,7 +1521,9 @@ Scope {
                         centerFlick.interactive = false
                         rightFlick.interactive = false
                       } else {
-                        if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
+                        if (band.hoverRegion === "") {
+                          AequalynSettings.removeBarPlugin(band.dragRegion, band.dragIndex)
+                        } else if (band.hoverRegion !== "" && !(band.hoverRegion === band.dragRegion && band.hoverIndex === band.dragIndex)) {
                           AequalynSettings.moveBarPlugin(band.dragRegion, band.dragIndex, band.hoverRegion, band.hoverIndex)
                         }
                         band.dragRegion = ""
@@ -1528,6 +1544,10 @@ Scope {
                       const bandPos = rightWrap.mapToItem(band, p.x, p.y)
                       barDragGhost.x = bandPos.x - barDragGhost.width / 2
                       barDragGhost.y = bandPos.y - barDragGhost.height / 2
+                      if (bandPos.y < -20 || bandPos.y > band.height + 20) {
+                        band.hoverRegion = ""
+                        band.hoverIndex = -1
+                      } else {
                       let tr = "left"
                       const third = band.width / 3
                       if (bandPos.x < third) tr = "left"
@@ -1546,6 +1566,7 @@ Scope {
                       idx = Math.max(0, Math.min(len, idx))
                       band.hoverRegion = tr
                       band.hoverIndex = idx
+                      }
                     }
                   }
                 }
