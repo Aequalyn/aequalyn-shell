@@ -480,7 +480,8 @@ Scope {
     }
   }
 
-  Component { id: cEmpty; Item { width: 0; height: 24 } }
+  // unknown widget id (a hand-edited settings.json): takes no room at all
+  Component { id: cEmpty; Item { readonly property bool wanted: false; width: 0; height: 24 } }
 
   // ---- plugin widgets ---------------------------------------------------
   Component {
@@ -1368,6 +1369,8 @@ Scope {
   Component {
     id: cTray
     Rectangle {
+      // no tray icons: the bar hides the whole slot
+      readonly property bool wanted: SystemTray.items.values.length > 0
       implicitHeight: 24
       implicitWidth: trayIcons.implicitWidth + 8
       radius: 12
