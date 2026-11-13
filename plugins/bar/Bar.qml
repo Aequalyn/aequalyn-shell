@@ -1482,6 +1482,8 @@ Scope {
                   id: leftWrap
                   required property string modelData
                   required property int index
+                  // BarDecor measures these slots and only counts the ones that say whether they're hovered
+                  readonly property bool hovered: hh.hovered
                   width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "left" && band.dragIndex === index)
@@ -1591,6 +1593,8 @@ Scope {
                   id: centerWrap
                   required property string modelData
                   required property int index
+                  // BarDecor measures these slots and only counts the ones that say whether they're hovered
+                  readonly property bool hovered: hh.hovered
                   width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "center" && band.dragIndex === index)
@@ -1696,6 +1700,8 @@ Scope {
                   id: rightWrap
                   required property string modelData
                   required property int index
+                  // BarDecor measures these slots and only counts the ones that say whether they're hovered
+                  readonly property bool hovered: hh.hovered
                   width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "right" && band.dragIndex === index)
