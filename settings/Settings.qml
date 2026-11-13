@@ -613,14 +613,14 @@ Scope {
                                     label: "Bar opacity"; settingKey: "barOpacity"
                                     minValue: 40; maxValue: 100; stepValue: 5
                                 }
-                                SubLabel { text: "How wide the left and right regions, and the center, may get before their widgets scroll sideways (mouse wheel). They never run into the next region. Auto: as wide as fits." }
+                                SubLabel { text: "How much of the bar's width the left and right regions, and the center, may take before their widgets scroll sideways (mouse wheel). 33% each: three equal thirds, on any screen. They never run into the next region. Auto: as wide as fits." }
                                 StepperRow {
-                                    label: "Sides scroll after (px)"; settingKey: "barSideWidth"
-                                    minValue: 0; maxValue: 1600; stepValue: 50; zeroText: "Auto"
+                                    label: "Sides scroll after (% of bar)"; settingKey: "barSidePercent"
+                                    minValue: 0; maxValue: 100; stepValue: 1; zeroText: "Auto"
                                 }
                                 StepperRow {
-                                    label: "Center scrolls after (px)"; settingKey: "barCenterWidth"
-                                    minValue: 0; maxValue: 1600; stepValue: 50; zeroText: "Auto"
+                                    label: "Center scrolls after (% of bar)"; settingKey: "barCenterPercent"
+                                    minValue: 0; maxValue: 100; stepValue: 1; zeroText: "Auto"
                                 }
                                 Divider {}
                                 SectionTitle { text: "Arrange plugins" }

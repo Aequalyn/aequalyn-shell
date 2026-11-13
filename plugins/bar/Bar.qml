@@ -296,7 +296,7 @@ Scope {
 
         // Three regions (left / center / right). Their order and contents come from
         // AequalynSettings (barLeft / barCenter / barRight). Each is as wide as its widgets,
-        // up to a limit: the width set in Settings -> Bar (0 = no limit of its own) and the room
+        // up to a limit: its share of the bar set in Settings -> Bar (0 = no limit of its own) and the room
         // left before it would run into the next region. Past that it scrolls sideways.
         Item {
           id: regions
@@ -306,8 +306,8 @@ Scope {
 
           // the room kept free between two regions
           readonly property int gap: 12
-          readonly property real sideMax: AequalynSettings.barSideWidth > 0 ? AequalynSettings.barSideWidth : width
-          readonly property real centerMax: AequalynSettings.barCenterWidth > 0 ? AequalynSettings.barCenterWidth : width
+          readonly property real sideMax: AequalynSettings.barSidePercent > 0 ? width * AequalynSettings.barSidePercent / 100 : width
+          readonly property real centerMax: AequalynSettings.barCenterPercent > 0 ? width * AequalynSettings.barCenterPercent / 100 : width
           readonly property real leftNeed: leftSec.row.width
           readonly property real centerNeed: centerSec.row.width
           readonly property real rightNeed: rightSec.row.width
