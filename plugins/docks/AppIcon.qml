@@ -16,19 +16,13 @@ Item {
   implicitWidth: size
   implicitHeight: size
 
-  // Desktop entry icon name, with the live window class as a fallback.
-  property string iconName: ""
+  // Desktop entry icon name, with the live window class as a fallback. A plain binding:
+  // setting it from onWinsChanged changed it while iconCandidates was being worked out
+  // (reading `wins` the first time fires that signal), a binding loop at every start.
+  readonly property string iconName: (entry && entry.icon) ? entry.icon
+      : ((wins || []).length > 0 ? (wins[0].appId || "") : "")
   property int iconTick: 0
   property int iconCandidateIndex: 0
-  function refreshIcon() {
-    const n = (entry && entry.icon) ? entry.icon : "";
-    if (n !== "") { iconName = n; return; }
-    const w = root.wins || [];
-    if (iconName === "" && w.length > 0) iconName = w[0].appId || "";
-  }
-  onEntryChanged: refreshIcon()
-  onWinsChanged: refreshIcon()
-  Component.onCompleted: refreshIcon()
 
   // Try desktop-entry icon names, then image files shipped outside the icon theme.
   // Some entries use a filename such as "tlauncher.png" even when that file is
