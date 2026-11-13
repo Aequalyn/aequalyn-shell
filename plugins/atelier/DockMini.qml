@@ -1,8 +1,8 @@
 // A dock with a few icons, painted like the real one: the preview on the
 // Docks tab.
 import QtQuick
-import "../style/Style.js" as Style
-import "../style/Paint.js" as Paint
+import  "../../style/Style.js" as Style
+import  "../../style/Paint.js" as Paint
 
 Item {
     id: mini

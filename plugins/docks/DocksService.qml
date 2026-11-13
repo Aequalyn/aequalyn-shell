@@ -10,12 +10,12 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import "../style/Style.js" as Style
-import "../style/Shapes.js" as Shapes
-import "../style/BarLooks.js" as BarLooks
-import "../style/Colors.js" as Colors
-import "../style/AequalynLooks.js" as AequalynLooks
-import "root:/atelier"
+import  "../../style/Style.js" as Style
+import  "../../style/Shapes.js" as Shapes
+import  "../../style/BarLooks.js" as BarLooks
+import  "../../style/Colors.js" as Colors
+import  "../../style/AequalynLooks.js" as AequalynLooks
+import "root:/plugins/atelier"
 import "root:/settings"
 
 Scope {

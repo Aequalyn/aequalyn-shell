@@ -10,9 +10,9 @@
 import QtQuick
 import QtQuick.Layouts
 import "controls"
-import "../style/BarLooks.js" as BarLooks
-import "../style/AequalynLooks.js" as Looks
-import "../style/Colors.js" as Colors
+import  "../../style/BarLooks.js" as BarLooks
+import  "../../style/AequalynLooks.js" as Looks
+import  "../../style/Colors.js" as Colors
 import "root:/settings"
 
 Flickable {

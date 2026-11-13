@@ -3,9 +3,10 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Widgets
-import "../style/Effects.js" as Fx
-import "../style/Style.js" as Style
-import "../style/Paint.js" as Paint
+import  "../../style/Effects.js" as Fx
+import  "../../style/Style.js" as Style
+import "root:/settings"
+import  "../../style/Paint.js" as Paint
 
 PanelWindow {
   id: win
@@ -16,7 +17,8 @@ PanelWindow {
   readonly property var cfg: svc.effective(idx)
   readonly property var pal: svc.palette(cfg)
   // pop-ups (menu, add app, previews) wear the shell's own theme, like the rest of Aequalyn
-  readonly property var ui: svc.shellTheme
+  AequalynDefaultTheme { id: defaultTheme }
+  readonly property var ui: svc.shellTheme ? svc.shellTheme : defaultTheme
   readonly property string uiFont: "JetBrainsMono Nerd Font"
 
   // by category: a steady hue per app from its first category (dot + hover). other modes use the accent
@@ -153,7 +155,10 @@ PanelWindow {
     Region { item: edgeHit }
   }
 
-  WlrLayershell.namespace: "aequalyn-dock"
+  // blur is dropped when the bar is hidden, blur is disabled, or the dock is
+  // hidden: a separate namespace keeps Hyprland from blurring that surface
+  readonly property bool dockBlur: AequalynSettings.blurEnabled && svc.barShown && win.open
+  WlrLayershell.namespace: dockBlur ? "aequalyn-dock" : "aequalyn-dock-plain"
   WlrLayershell.layer: WlrLayer.Top
   WlrLayershell.keyboardFocus: (addOpen || setOpen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
@@ -329,12 +334,12 @@ PanelWindow {
       z: -1
       opacity: bar.bgFade
       readonly property string key: JSON.stringify([Style.styleOf(win.cfg), win.cfg.opacity, win.cfg.radius,
-                                                    win.cfg.edge, win.pal, width, height])
+                                                    win.cfg.edge, win.pal, width, height, AequalynSettings.blurEnabled, svc.barShown])
       onKeyChanged: requestPaint()
       onVisibleChanged: if (visible) requestPaint()
       onPaint: {
         const ctx = getContext("2d");
-        Paint.paint(ctx, Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge }));
+        Paint.paint(ctx, Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge, blur: AequalynSettings.blurEnabled && svc.barShown, barHidden: !svc.barShown, blurEnabled: AequalynSettings.blurEnabled }));
       }
     }
     // an app asking for attention: the outline pulses in the attention color
@@ -353,7 +358,7 @@ PanelWindow {
       onPaint: {
         const ctx = getContext("2d");
         ctx.reset();
-        const p = Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge });
+        const p = Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge, blur: AequalynSettings.blurEnabled && svc.barShown, barHidden: !svc.barShown, blurEnabled: AequalynSettings.blurEnabled });
         p.surface = "clear"; p.lines = "solid"; p.ornament = "none"; p.line = String(win.pal.hot);
         p.lineGrad = []; p.lineWidth = 2; p.shadowBlur = 0; p.fill2 = ""; p.glass = false; p.pattern = ""; p.depth = "";
         Paint.paint(ctx, p);

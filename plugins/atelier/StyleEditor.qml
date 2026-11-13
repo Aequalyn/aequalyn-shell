@@ -5,7 +5,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "controls"
-import "../style/Style.js" as Style
+import  "../../style/Style.js" as Style
 
 ColumnLayout {
     id: ed

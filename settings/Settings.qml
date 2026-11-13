@@ -12,8 +12,8 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import "root:/settings"
-import "root:/bluetooth"
-import "root:/wifi"
+import "root:/plugins/bluetooth"
+import "root:/plugins/wifi"
 
 Scope {
     id: root
@@ -22,6 +22,10 @@ Scope {
     property string tab: "appearance"
     property string font: "JetBrainsMono Nerd Font"
     readonly property string version: "0.1.0"
+    property string currentCommit: ""
+    property string currentCommitDate: ""
+    property string latestCommit: ""
+    property string updateStatus: ""
     property string exportStatus: ""
     property bool hasExportFiles: false
     property string detectedExportFile: ""
@@ -30,7 +34,28 @@ Scope {
         if (!detectExportProc.running) detectExportProc.running = true
     }
 
-    Component.onCompleted: refreshExportFiles()
+    Component.onCompleted: { refreshExportFiles(); currentCommitProc.running = true; currentCommitDateProc.running = true }
+
+    property Process currentCommitProc: Process {
+        running: false
+        command: ["sh", "-c", "git -C /usr/share/aequalyn rev-parse --short HEAD 2>/dev/null || echo unknown"]
+        stdout: StdioCollector { onStreamFinished: root.currentCommit = text.trim() }
+    }
+    property Process currentCommitDateProc: Process {
+        running: false
+        command: ["sh", "-c", "git -C /usr/share/aequalyn log -1 --format=%ci 2>/dev/null || echo unknown"]
+        stdout: StdioCollector { onStreamFinished: root.currentCommitDate = text.trim() }
+    }
+    property Process checkUpdateProc: Process {
+        running: false
+        command: ["sh", "-c", "local=$(git -C /usr/share/aequalyn rev-parse HEAD 2>/dev/null); remote=$(curl -s https://api.github.com/repos/Aequalyn/aequalyn/commits/main | (command -v jq >/dev/null && jq -r .sha || sed -n 's/.*\"sha\": *\"\\([0-9a-f]*\\)\".*/\\1/p' | head -1)); if [ -z \"$remote\" ]; then echo check-failed; elif [ \"$local\" = \"$remote\" ]; then echo up-to-date; else root.latestCommit=\"$remote\"; echo update-available; fi"]
+        stdout: StdioCollector { onStreamFinished: root.updateStatus = text.trim() }
+    }
+    property Process runUpdateProc: Process {
+        running: false
+        command: ["aequalyn-update"]
+        onExited: root.updateStatus = "updated"
+    }
     onPanelVisibleChanged: if (panelVisible) refreshExportFiles()
 
     property var tabs: [
@@ -41,6 +66,8 @@ Scope {
         { key: "wifi",       label: "Wi-Fi" },
         { key: "displays",   label: "Displays" },
         { key: "dock",       label: "Dock" },
+        { key: "plugins",    label: "Plugins" },
+        { key: "updates",    label: "Updates" },
         { key: "power",      label: "Power" },
         { key: "about",      label: "About" }
     ]
@@ -57,6 +84,7 @@ Scope {
         function wifi(): void { root.tab = "wifi"; root.panelVisible = true }
         function hyprland(): void { root.tab = "hyprland"; root.panelVisible = true }
         function dock(): void { root.tab = "dock"; root.panelVisible = true }
+        function updates(): void { root.tab = "updates"; root.panelVisible = true }
         function power(): void { root.tab = "power"; root.panelVisible = true }
     }
 
@@ -1410,12 +1438,6 @@ Scope {
                                 spacing: 12
                                 SectionTitle { text: "Docks" }
                                 SubLabel { text: "Up to 16 docks on any edge of any screen, 4 per edge, each with its own apps, size, auto-hide effect and look, or the bar's look so they change together. Everything about them lives in Atelier -> Docks; right-click any dock to get there." }
-                                ToggleRow {
-                                    label: "Docks"
-                                    sublabel: "Show the docks."
-                                    checked: AequalynSettings.dockEnabled
-                                    settingKey: "dockEnabled"
-                                }
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: 12
@@ -1432,6 +1454,87 @@ Scope {
                                         onClicked: { qsIpc.command = ["qs", "ipc", "call", "dock", "add"]; qsIpc.running = true }
                                     }
                                 }
+                            }
+
+                            // ============ PLUGINS ============
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: root.tab === "plugins"
+                                spacing: 12
+                                SectionTitle { text: "Plugins" }
+                                SubLabel { text: "Enable or disable whole shell elements. Changes take effect after restarting the shell." }
+                                Repeater {
+                                    model: [
+                                        { id: "bar",            label: "Top bar" },
+                                        { id: "appLauncher",    label: "App launcher" },
+                                        { id: "notifications",  label: "Notifications" },
+                                        { id: "atelier",        label: "Atelier" },
+                                        { id: "osd",            label: "On-screen display" },
+                                        { id: "monitorManager", label: "Monitor manager" },
+                                        { id: "idleInhibitor",  label: "Idle inhibitor" },
+                                        { id: "clipboard",      label: "Clipboard history" },
+                                        { id: "powerMenu",      label: "Power menu" },
+                                        { id: "docks",          label: "Docks" },
+                                        { id: "settings",       label: "Settings panel" }
+                                    ]
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.label
+                                            color: root.theme.textPrimary
+                                            font.pixelSize: 12
+                                            font.family: root.font
+                                        }
+                                        ToggleSwitch {
+                                            checked: AequalynSettings.enabledPlugins.indexOf(modelData.id) >= 0
+                                            onToggled: AequalynSettings.togglePlugin(modelData.id, !checked)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ============ UPDATES ============
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: root.tab === "updates"
+                                spacing: 12
+                                SectionTitle { text: "Updates" }
+                                SubLabel { text: "Aequalyn system source and dotfiles." }
+                                Divider {}
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Text { text: "Current commit"; color: root.theme.textMuted; font.pixelSize: 11; font.family: root.font }
+                                    Text { text: root.currentCommit === "" ? "…" : root.currentCommit; color: root.theme.textPrimary; font.pixelSize: 11; font.family: root.font; font.bold: true }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Text { text: "Commit date"; color: root.theme.textMuted; font.pixelSize: 11; font.family: root.font }
+                                    Text { text: root.currentCommitDate === "" ? "…" : root.currentCommitDate; color: root.theme.textPrimary; font.pixelSize: 11; font.family: root.font }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    Text { text: "Status"; color: root.theme.textMuted; font.pixelSize: 11; font.family: root.font }
+                                    Text { text: root.updateStatus === "" ? "Not checked yet" : root.updateStatus; color: root.theme.textPrimary; font.pixelSize: 11; font.family: root.font }
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 12
+                                    ActionButton {
+                                        label: "Check for update"
+                                        onClicked: { root.updateStatus = "Checking…"; root.checkUpdateProc.running = true }
+                                    }
+                                    ActionButton {
+                                        label: "Update now"
+                                        onClicked: { root.updateStatus = "Updating…"; root.runUpdateProc.running = true }
+                                    }
+                                }
+                                SubLabel { text: "Update now pulls the latest Aequalyn, re-applies dotfiles and restarts the shell." }
                             }
 
                             // ============ ABOUT ============

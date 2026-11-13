@@ -11,7 +11,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import "root:/settings"
-import "root:/clipboard"
+import "root:/plugins/clipboard"
 
 Scope {
     id: root

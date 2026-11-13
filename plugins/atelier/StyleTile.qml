@@ -1,8 +1,8 @@
 // One look as a small painted sample: the same painter the docks and the bar
 // use, so what you see here is what you get.
 import QtQuick
-import "../style/Style.js" as Style
-import "../style/Paint.js" as Paint
+import  "../../style/Style.js" as Style
+import  "../../style/Paint.js" as Paint
 
 Rectangle {
     id: tile
@@ -19,9 +19,9 @@ Rectangle {
     implicitWidth: 112
     implicitHeight: showLabel ? 74 : 54
     radius: 10
-    color: selected ? theme.bgSelected : (area.containsMouse ? theme.bgHover : theme.bgSurface)
+    color: theme ? (selected ? theme.bgSelected : (area.containsMouse ? theme.bgHover : theme.bgSurface)) : "transparent"
     border.width: selected ? 2 : 1
-    border.color: selected ? theme.accentPrimary : theme.bgBorder
+    border.color: theme ? (selected ? theme.accentPrimary : theme.bgBorder) : "transparent"
 
     Canvas {
         id: canvas
@@ -51,7 +51,7 @@ Rectangle {
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         text: tile.label
-        color: tile.selected ? tile.theme.accentPrimary : tile.theme.textSecondary
+        color: tile.theme ? (tile.selected ? tile.theme.accentPrimary : tile.theme.textSecondary) : "white"
         font.family: tile.font
         font.pixelSize: 10
         font.bold: tile.selected

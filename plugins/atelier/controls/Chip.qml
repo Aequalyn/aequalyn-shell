@@ -14,8 +14,8 @@ Rectangle {
     implicitWidth: row.implicitWidth + (compact ? 16 : 22)
     implicitHeight: compact ? 24 : 30
     radius: height / 2
-    color: selected ? theme.accentPrimary : (area.containsMouse ? theme.bgHover : theme.bgSurface)
-    border.color: selected ? theme.accentPrimary : theme.bgBorder
+    color: theme ? (selected ? theme.accentPrimary : (area.containsMouse ? theme.bgHover : theme.bgSurface)) : "transparent"
+    border.color: theme ? (selected ? theme.accentPrimary : theme.bgBorder) : "transparent"
     border.width: 1
     Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -26,14 +26,14 @@ Rectangle {
         Text {
             visible: chip.icon !== ""
             text: chip.icon
-            color: chip.selected ? chip.theme.bgBase : chip.theme.textSecondary
+            color: chip.theme ? (chip.selected ? chip.theme.bgBase : chip.theme.textSecondary) : "white"
             font.family: chip.font
             font.pixelSize: chip.compact ? 11 : 13
             anchors.verticalCenter: parent.verticalCenter
         }
         Text {
             text: chip.text
-            color: chip.selected ? chip.theme.bgBase : chip.theme.textPrimary
+            color: chip.theme ? (chip.selected ? chip.theme.bgBase : chip.theme.textPrimary) : "white"
             font.family: chip.font
             font.pixelSize: chip.compact ? 10 : 12
             font.bold: chip.selected
