@@ -321,6 +321,23 @@ Item {
                     checked: LayoutService.status.notify !== false
                     onToggled: v => LayoutService.option("notify", v ? "true" : "false")
                 }
+                // the border of windows on Aequalyn's layouts ("As set": Settings -> Hyprland's)
+                ChoiceRow {
+                    theme: pane.theme; font: pane.font
+                    label: "Outline"
+                    options: ["theme", "0", "1", "2", "3", "4", "6", "8", "10"]
+                    labels: ({ theme: "As set", "0": "None" })
+                    value: String(LayoutService.status.outline === undefined ? "theme" : LayoutService.status.outline)
+                    onPicked: v => LayoutService.option("outline", v)
+                }
+                ChoiceRow {
+                    theme: pane.theme; font: pane.font
+                    label: "Other windows"
+                    options: ["theme", "same", "hidden"]
+                    labels: ({ theme: "Theme's inactive", same: "Same as focused", hidden: "No outline" })
+                    value: LayoutService.status.others || "theme"
+                    onPicked: v => LayoutService.option("others", v)
+                }
             }
         }
     }
