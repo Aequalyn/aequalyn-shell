@@ -289,6 +289,8 @@ Scope {
           look: root.look
           barSize: root.barSize
           sections: [leftSec.row, centerSec.row, rightSec.row]
+          // a widget scrolled out of its region gets no shape
+          viewports: [leftSec, centerSec, rightSec]
           regionNames: ["left", "center", "right"]
         }
 

@@ -18,6 +18,9 @@ Item {
     property int barSize: 32
     property var sections: []          // the three Rows of widgets
     property var regionNames: []
+    // optional, one per section: the item the section's widgets are seen through (a region
+    // that scrolls). Widgets outside it get no shape, and ones half out are cut at its edge.
+    property var viewports: []
     // previews (Atelier): made up widgets instead of measured ones,
     // [{ a, len, region, hovered }]
     property var fakeSlots: null
@@ -65,11 +68,16 @@ Item {
         for (let s = 0; s < deco.sections.length; s++) {
             const row = deco.sections[s];
             if (!row) continue;
+            const view = deco.viewports[s];
+            const v0 = view ? view.mapToItem(deco, 0, 0).x : -Infinity;
+            const v1 = view ? v0 + view.width : Infinity;
             for (let i = 0; i < row.children.length; i++) {
                 const it = row.children[i];
                 if (!it || !it.visible || it.width < 2 || it.hovered === undefined) continue;
                 const p = it.mapToItem(deco, 0, 0);
-                out.push({ a: Math.round(p.x), len: Math.round(it.width), region: deco.regionNames[s],
+                const a = Math.max(p.x, v0), b = Math.min(p.x + it.width, v1);
+                if (b - a < 2) continue;
+                out.push({ a: Math.round(a), len: Math.round(b - a), region: deco.regionNames[s],
                            hovered: it.hovered === true, open: false });
             }
         }
