@@ -122,14 +122,18 @@ Scope {
   Process { id: powerProc; running: false }
   Process { id: recorderProc; running: false }
   Process { id: screenshotProc; running: false }
+  Timer { id: shotTimer; interval: 100; repeat: false; onTriggered: screenshotProc.running = true }
   property bool recordingActive: false
   function toggleRecording() {
     recorderToggleProc.command = ["aequalyn-record", "toggle"];
     recorderToggleProc.running = true;
   }
   function takeScreenshot() {
+    if (screenshotProc.running) {
+      screenshotProc.running = false
+    }
     screenshotProc.command = ["aequalyn-screenshot", "region-clip"];
-    screenshotProc.running = true;
+    shotTimer.restart()
   }
   Process {
     id: recorderToggleProc
