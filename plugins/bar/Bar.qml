@@ -565,7 +565,9 @@ Scope {
       width: nowPlayingContent.width + 16
       radius: 12
       color: root.chipColor
-      visible: root.activePlayer !== null
+      // nothing playing: the bar hides the whole slot (see `wanted` on the slots)
+      readonly property bool wanted: root.activePlayer !== null
+      visible: wanted
       Row {
         id: nowPlayingContent
         anchors.verticalCenter: parent.verticalCenter
@@ -688,7 +690,9 @@ Scope {
       width: brightContent.width + 12
       radius: 12
       color: root.chipColor
-      visible: brightnessFile.path !== ""
+      // no backlight: the bar hides the whole slot
+      readonly property bool wanted: brightnessFile.path !== ""
+      visible: wanted
       Row {
         id: brightContent
         anchors.centerIn: parent
@@ -1488,7 +1492,9 @@ Scope {
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "left" && band.dragIndex === index)
                            ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
-                  visible: AequalynSettings.pluginVisible(modelData) || (band.dragging && band.dragRegion === "left" && band.dragIndex === index)
+                  // a widget with nothing to show (`wanted: false`) takes no room and gets no shape
+                  visible: (AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
+                           || (band.dragging && band.dragRegion === "left" && band.dragIndex === index)
 
                   Loader {
                     id: loader
@@ -1599,7 +1605,9 @@ Scope {
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "center" && band.dragIndex === index)
                            ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
-                  visible: AequalynSettings.pluginVisible(modelData) || (band.dragging && band.dragRegion === "center" && band.dragIndex === index)
+                  // a widget with nothing to show (`wanted: false`) takes no room and gets no shape
+                  visible: (AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
+                           || (band.dragging && band.dragRegion === "center" && band.dragIndex === index)
 
                   Loader {
                     id: loader
@@ -1706,7 +1714,9 @@ Scope {
                   height: band.height
                   opacity: (band.dragging && band.dragRegion === "right" && band.dragIndex === index)
                            ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
-                  visible: AequalynSettings.pluginVisible(modelData) || (band.dragging && band.dragRegion === "right" && band.dragIndex === index)
+                  // a widget with nothing to show (`wanted: false`) takes no room and gets no shape
+                  visible: (AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
+                           || (band.dragging && band.dragRegion === "right" && band.dragIndex === index)
 
                   Loader {
                     id: loader
