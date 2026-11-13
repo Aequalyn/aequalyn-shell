@@ -12,6 +12,7 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import Quickshell.Widgets
 import Quickshell.Services.SystemTray
 import Quickshell.Io
@@ -613,7 +614,10 @@ Scope {
       Text {
         id: titleText
         anchors.fill: parent
-        text: Hyprland.activeToplevel ? Hyprland.activeToplevel.title : ""
+        // Hyprland.activeToplevel only fills in on the first focus change, so right after the
+        // shell starts (login, aequalyn-update) it's empty; the Wayland toplevel list knows already
+        text: Hyprland.activeToplevel ? Hyprland.activeToplevel.title
+            : (ToplevelManager.activeToplevel ? ToplevelManager.activeToplevel.title : "")
         color: root.theme.textPrimary
         font.pixelSize: 12
         font.family: root.font
