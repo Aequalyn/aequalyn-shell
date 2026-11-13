@@ -205,12 +205,17 @@ Scope {
         property string hoverRegion: ""
         property int hoverIndex: -1
         property string dragGhostLabel: ""
-        readonly property bool dragging: dragRegion !== ""
+        // the slot being dragged. Dragging only counts while its handler is really active: if
+        // the slot goes away mid-drag (its widget list changed) or a popup takes the pointer and
+        // the release never arrives, the bar can't get stuck showing a drag
+        property var dragSlot: null
+        readonly property bool dragging: dragRegion !== "" && dragSlot !== null && dragSlot.dragActive === true
 
         // Dragging a widget: drop it in another place or region, or off the bar to remove it.
         // The drop reorders the Repeater models, which destroys the dragged slot, so everything
         // here lives on the band and the state is cleared before the move is applied.
-        function startDrag(region, index, plugin) {
+        function startDrag(slot, region, index, plugin) {
+          dragSlot = slot
           dragRegion = region
           dragIndex = index
           dragPlugin = plugin
@@ -241,6 +246,7 @@ Scope {
         }
         function finishDrag() {
           const from = dragRegion, fromIndex = dragIndex, to = hoverRegion, toIndex = hoverIndex
+          dragSlot = null
           dragRegion = ""
           dragIndex = -1
           dragPlugin = ""
