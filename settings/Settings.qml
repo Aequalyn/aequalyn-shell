@@ -26,7 +26,6 @@ Scope {
     readonly property string version: "0.1.0"
     property string currentCommit: ""
     property string currentCommitDate: ""
-    property string latestCommit: ""
     property string updateStatus: ""
     property string exportStatus: ""
     property bool hasExportFiles: false
@@ -102,27 +101,66 @@ Scope {
         if (!detectExportProc.running) detectExportProc.running = true
     }
 
-    Component.onCompleted: { refreshExportFiles(); currentCommitProc.running = true; currentCommitDateProc.running = true }
+    Component.onCompleted: { refreshExportFiles(); refreshCommits() }
 
+    // ---- updates ---------------------------------------------------------
+    // Aequalyn on this machine is two git clones, both owned by root: the system tree
+    // (/usr/share/aequalyn, from Aequalyn/aequalyn) and the shell inside it (shell/, from
+    // Aequalyn/aequalyn-shell). Reading them as the user needs git's safe.directory, given
+    // per command so nothing has to be set up first.
+    readonly property var updateRepos: [
+        { key: "system", dir: "/usr/share/aequalyn",       url: "https://github.com/Aequalyn/aequalyn.git" },
+        { key: "shell",  dir: "/usr/share/aequalyn/shell", url: "https://github.com/Aequalyn/aequalyn-shell.git" }
+    ]
+    property string currentShellCommit: ""
+    function refreshCommits() { if (!currentCommitProc.running) currentCommitProc.running = true }
     property Process currentCommitProc: Process {
         running: false
-        command: ["sh", "-c", "git -C /usr/share/aequalyn rev-parse --short HEAD 2>/dev/null || echo unknown"]
-        stdout: StdioCollector { onStreamFinished: root.currentCommit = text.trim() }
+        // one line per clone: short hash | commit date
+        command: ["sh", "-c", 'for d in /usr/share/aequalyn /usr/share/aequalyn/shell; do '
+            + 'git -c safe.directory="$d" -C "$d" log -1 --format="%h|%ci" 2>/dev/null || echo "unknown|"; done']
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n")
+                const sys = (lines[0] || "unknown|").split("|"), sh = (lines[1] || "unknown|").split("|")
+                root.currentCommit = sys[0]
+                root.currentCommitDate = sys[1] || ""
+                root.currentShellCommit = sh[0]
+            }
+        }
     }
-    property Process currentCommitDateProc: Process {
-        running: false
-        command: ["sh", "-c", "git -C /usr/share/aequalyn log -1 --format=%ci 2>/dev/null || echo unknown"]
-        stdout: StdioCollector { onStreamFinished: root.currentCommitDate = text.trim() }
-    }
+    // Compares each clone with GitHub's main (git ls-remote: no API rate limit).
     property Process checkUpdateProc: Process {
         running: false
-        command: ["sh", "-c", "local=$(git -C /usr/share/aequalyn rev-parse HEAD 2>/dev/null); remote=$(curl -s https://api.github.com/repos/Aequalyn/aequalyn/commits/main | (command -v jq >/dev/null && jq -r .sha || sed -n 's/.*\"sha\": *\"\\([0-9a-f]*\\)\".*/\\1/p' | head -1)); if [ -z \"$remote\" ]; then echo check-failed; elif [ \"$local\" = \"$remote\" ]; then echo up-to-date; else root.latestCommit=\"$remote\"; echo update-available; fi"]
-        stdout: StdioCollector { onStreamFinished: root.updateStatus = text.trim() }
+        command: ["sh", "-c", 'check() { l=$(git -c safe.directory="$1" -C "$1" rev-parse HEAD 2>/dev/null); '
+            + 'r=$(git ls-remote "$2" refs/heads/main 2>/dev/null | cut -f1); '
+            + 'if [ -z "$r" ]; then echo "$3 failed"; elif [ "$l" = "$r" ]; then echo "$3 same"; else echo "$3 behind"; fi; }; '
+            + 'check /usr/share/aequalyn https://github.com/Aequalyn/aequalyn.git system; '
+            + 'check /usr/share/aequalyn/shell https://github.com/Aequalyn/aequalyn-shell.git shell']
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const behind = [], failed = []
+                for (const line of text.trim().split("\n")) {
+                    const [what, state] = line.split(" ")
+                    if (state === "behind") behind.push(what)
+                    else if (state !== "same") failed.push(what)
+                }
+                root.updateStatus = failed.length > 0 ? "Couldn't reach GitHub"
+                    : behind.length > 0 ? "Update available (" + behind.join(", ") + ")"
+                    : "Up to date"
+            }
+        }
     }
-    property Process runUpdateProc: Process {
-        running: false
-        command: ["aequalyn-update"]
-        onExited: root.updateStatus = "updated"
+    // The update needs your password (the clones belong to root), so it runs in a terminal
+    // you can type it into. Started detached: aequalyn-update restarts this shell at the
+    // end, which would take a terminal started as its child down with it.
+    function runUpdate() {
+        root.updateStatus = "Updating in the terminal…"
+        Quickshell.execDetached(["sh", "-c",
+            't=kitty; command -v kitty >/dev/null 2>&1 || t=foot; '
+            + 'exec "$t" --title "Aequalyn update" sh -c \'aequalyn-update; s=$?; echo; '
+            + 'if [ $s -eq 0 ]; then echo "Aequalyn is up to date."; else echo "The update failed (exit $s)."; fi; '
+            + 'printf "Press Enter to close. "; read _\''])
     }
 
     property Process defaultAppsProc: Process {
@@ -1625,6 +1663,8 @@ Scope {
                                     spacing: 8
                                     Text { text: "Current commit"; color: root.theme.textMuted; font.pixelSize: 11; font.family: root.font }
                                     Text { text: root.currentCommit === "" ? "…" : root.currentCommit; color: root.theme.textPrimary; font.pixelSize: 11; font.family: root.font; font.bold: true }
+                                    Text { text: "shell"; color: root.theme.textMuted; font.pixelSize: 11; font.family: root.font }
+                                    Text { text: root.currentShellCommit === "" ? "…" : root.currentShellCommit; color: root.theme.textPrimary; font.pixelSize: 11; font.family: root.font; font.bold: true }
                                 }
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -1643,14 +1683,14 @@ Scope {
                                     spacing: 12
                                     ActionButton {
                                         label: "Check for update"
-                                        onClicked: { root.updateStatus = "Checking…"; root.checkUpdateProc.running = true }
+                                        onClicked: { root.updateStatus = "Checking…"; root.refreshCommits(); root.checkUpdateProc.running = true }
                                     }
                                     ActionButton {
                                         label: "Update now"
-                                        onClicked: { root.updateStatus = "Updating…"; root.runUpdateProc.running = true }
+                                        onClicked: root.runUpdate()
                                     }
                                 }
-                                SubLabel { text: "Update now pulls the latest Aequalyn, re-applies dotfiles and restarts the shell." }
+                                SubLabel { text: "Update now opens a terminal (it asks for your password), pulls the latest Aequalyn and its shell from GitHub, re-applies the dotfiles and restarts the shell." }
                             }
 
                             // ============ ABOUT ============
