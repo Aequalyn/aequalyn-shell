@@ -33,7 +33,11 @@ Item {
             onLoaded: {
                 const it = loader.item;
                 if (!it) return;
-                try { if (it.theme !== undefined) it.theme = Qt.binding(() => pm.theme); } catch (e) {}
+                // Bind the shared theme to every plugin that exposes a `theme`
+                // property, including ones (like Atelier) whose property has no
+                // default value. The previous `it.theme !== undefined` guard
+                // skipped those, so they never inherited ts.theme as plugins.
+                try { it.theme = Qt.binding(() => pm.theme); } catch (e) {}
                 if (modelData.id === "docks" && it.shellTheme !== undefined) it.shellTheme = Qt.binding(() => pm.theme);
                 if (modelData.id === "atelier" && pm.themeSwitcher) {
                     pm.themeSwitcher.onOpenRequested.connect((collection) => { if (it.open) it.open(collection); });
