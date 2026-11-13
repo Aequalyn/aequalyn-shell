@@ -10,6 +10,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import "../Plugins.js" as PluginRegistry
 import "root:/settings"
@@ -30,6 +31,67 @@ Scope {
     property string exportStatus: ""
     property bool hasExportFiles: false
     property string detectedExportFile: ""
+
+    property var defaultAppsData: ({})
+    property var currentDefaults: ({})
+
+    ListModel { id: textEditorApps }
+    ListModel { id: browserApps }
+    ListModel { id: videoPlayerApps }
+    ListModel { id: terminalApps }
+
+    function refreshDefaultApps() {
+        if (!defaultAppsProc.running) defaultAppsProc.running = true
+    }
+
+    function applyDefault(category, appId) {
+        if (!appId || appId === "") return
+        setDefaultProc.command = ["sh", "-c", buildSetCommand(category, appId)]
+        setDefaultProc.running = true
+        // update current display optimistically
+        const c = Object.assign({}, root.currentDefaults)
+        c[category] = appId
+        root.currentDefaults = c
+    }
+
+    function buildSetCommand(category, appId) {
+        if (category === "textEditor") {
+            return "xdg-mime default " + appId + " text/plain"
+        } else if (category === "browser") {
+            return "xdg-mime default " + appId + " text/html x-scheme-handler/http x-scheme-handler/https"
+        } else if (category === "videoPlayer") {
+            return "xdg-mime default " + appId + " video/mp4 video/x-matroska video/webm video/avi video/quicktime"
+        } else if (category === "terminal") {
+            return "mkdir -p ~/.config && printf '%s\\n' '" + appId + "' > ~/.config/xdg-terminals.list"
+        }
+        return "true"
+    }
+
+    function populateDefaultApps(text) {
+        try {
+            const j = JSON.parse(text.trim())
+            root.defaultAppsData = j.apps || {}
+            root.currentDefaults = j.current || {}
+            const fill = (model, arr, currentId) => {
+                model.clear()
+                const list = arr || []
+                let found = false
+                for (let i = 0; i < list.length; i++) {
+                    model.append({ id: list[i].id, name: list[i].name })
+                    if (list[i].id === currentId) found = true
+                }
+                if (currentId && !found) {
+                    model.append({ id: currentId, name: currentId })
+                }
+            }
+            fill(textEditorApps, (root.defaultAppsData.textEditor || []), root.currentDefaults.textEditor)
+            fill(browserApps, (root.defaultAppsData.browser || []), root.currentDefaults.browser)
+            fill(videoPlayerApps, (root.defaultAppsData.videoPlayer || []), root.currentDefaults.videoPlayer)
+            fill(terminalApps, (root.defaultAppsData.terminal || []), root.currentDefaults.terminal)
+        } catch (e) {
+            console.log("default apps parse error: " + e)
+        }
+    }
 
     function refreshExportFiles() {
         if (!detectExportProc.running) detectExportProc.running = true
@@ -57,10 +119,22 @@ Scope {
         command: ["aequalyn-update"]
         onExited: root.updateStatus = "updated"
     }
+
+    property Process defaultAppsProc: Process {
+        running: false
+        command: ["aequalyn-default-apps"]
+        stdout: StdioCollector { onStreamFinished: root.populateDefaultApps(text) }
+    }
+
+    property Process setDefaultProc: Process {
+        running: false
+        onExited: root.refreshDefaultApps()
+    }
     onPanelVisibleChanged: if (panelVisible) refreshExportFiles()
 
     property var tabs: [
         { key: "appearance", label: "Appearance" },
+        { key: "defaultApps", label: "Default apps" },
         { key: "hyprland",   label: "Hyprland" },
         { key: "bluetooth",  label: "Bluetooth" },
         { key: "wifi",       label: "Wi-Fi" },
@@ -79,6 +153,7 @@ Scope {
         function openSettings(): void { root.panelVisible = true }
         function closeSettings(): void { root.panelVisible = false }
         function appearance(): void { root.tab = "appearance"; root.panelVisible = true }
+        function defaultApps(): void { root.tab = "defaultApps"; root.panelVisible = true }
         function displays(): void { root.tab = "displays"; root.panelVisible = true }
         function bluetooth(): void { root.tab = "bluetooth"; root.panelVisible = true }
         function wifi(): void { root.tab = "wifi"; root.panelVisible = true }
@@ -118,6 +193,7 @@ Scope {
 
     onTabChanged: {
         if (root.tab === "bluetooth") root.refreshAudio()
+        if (root.tab === "defaultApps") root.refreshDefaultApps()
         if (root.tab === "wifi") { WifiService.scan(); wifiScanTimer.restart() }
     }
 
@@ -1461,6 +1537,67 @@ Scope {
                                         }
                                     }
                                 }
+                            }
+
+                            // ============ DEFAULT APPS ============
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: root.tab === "defaultApps"
+                                spacing: 12
+                                SectionTitle { text: "Default applications" }
+                                SubLabel { text: "Choose the apps used for common file types and links. Changes apply via xdg-mime." }
+
+                                Repeater {
+                                    model: [
+                                        { key: "textEditor", label: "Text editor", model: textEditorApps },
+                                        { key: "browser", label: "Web browser", model: browserApps },
+                                        { key: "videoPlayer", label: "Video player", model: videoPlayerApps },
+                                        { key: "terminal", label: "Terminal", model: terminalApps }
+                                    ]
+                                    ColumnLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            Text {
+                                                text: modelData.label
+                                                color: root.theme.textPrimary
+                                                font.pixelSize: 12
+                                                font.family: root.font
+                                                Layout.preferredWidth: 120
+                                            }
+                                            ComboBox {
+                                                id: combo
+                                                Layout.fillWidth: true
+                                                model: modelData.model
+                                                textRole: "name"
+                                                valueRole: "id"
+                                                currentIndex: {
+                                                    const cur = root.currentDefaults[modelData.key] || ""
+                                                    for (let i = 0; i < modelData.model.count; i++) {
+                                                        if (modelData.model.get(i).id === cur) return i
+                                                    }
+                                                    return 0
+                                                }
+                                            }
+                                            ActionButton {
+                                                label: "Apply"
+                                                onClicked: root.applyDefault(modelData.key, combo.currentValue)
+                                            }
+                                        }
+                                        Text {
+                                            text: "Current: " + (root.currentDefaults[modelData.key] || "—")
+                                            color: root.theme.textMuted
+                                            font.pixelSize: 10
+                                            font.family: root.font
+                                        }
+                                        Divider {}
+                                    }
+                                }
+
+                                SubLabel { text: "Terminal default is stored in ~/.config/xdg-terminals.list (used by xdg-terminal-exec)." }
                             }
 
                             // ============ UPDATES ============
