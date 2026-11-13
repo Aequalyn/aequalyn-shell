@@ -1038,28 +1038,37 @@ Scope {
         anchors.margins: 3
       }
 
-      // Hover tooltip with the full state / connected device name.
-      Rectangle {
+      // Hover tooltip with the full state / connected device name. Its own popup window:
+      // drawn inside the bar it would be cut off at the bar's bottom edge.
+      PopupWindow {
         visible: btHover.containsMouse
-        anchors.top: parent.bottom
-        anchors.topMargin: 6
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: btTip.implicitWidth + 16
-        height: 24
-        radius: 6
-        color: root.theme.bgBase
-        border.color: root.theme.bgBorder
-        border.width: 1
-        z: 50
-        Text {
-          id: btTip
-          anchors.centerIn: parent
-          text: !BluetoothService.available ? "No Bluetooth adapter"
-              : BluetoothService.connectedName !== "" ? BluetoothService.connectedName
-              : BluetoothService.powered ? "Bluetooth on" : "Bluetooth off"
-          color: root.theme.textPrimary
-          font.pixelSize: 10
-          font.family: root.font
+        color: "transparent"
+        implicitWidth: btTip.implicitWidth + 16
+        implicitHeight: 24
+        anchor.item: btPill
+        anchor.rect.x: 0
+        anchor.rect.y: 0
+        anchor.rect.width: btPill.width
+        anchor.rect.height: btPill.height + 6
+        anchor.edges: Edges.Bottom
+        anchor.gravity: Edges.Bottom
+        anchor.adjustment: PopupAdjustment.Slide
+        Rectangle {
+          anchors.fill: parent
+          radius: 6
+          color: root.theme.bgBase
+          border.color: root.theme.bgBorder
+          border.width: 1
+          Text {
+            id: btTip
+            anchors.centerIn: parent
+            text: !BluetoothService.available ? "No Bluetooth adapter"
+                : BluetoothService.connectedName !== "" ? BluetoothService.connectedName
+                : BluetoothService.powered ? "Bluetooth on" : "Bluetooth off"
+            color: root.theme.textPrimary
+            font.pixelSize: 10
+            font.family: root.font
+          }
         }
       }
 
