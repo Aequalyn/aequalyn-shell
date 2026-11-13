@@ -88,9 +88,12 @@ Scope {
     if (styles.indexOf(d.style) < 0) d.style = defaults.style;
     for (const c of ["customBg", "customFg", "accentColor"]) d[c] = validHex(d[c], defaults[c]);
     if (!Array.isArray(d.apps)) d.apps = [];
-    // app ids only: plain strings, no control chars, no dupes
-    d.apps = d.apps.filter((a, i, all) => typeof a === "string" && a.length > 0 && a.length <= 255
-                                         && !/[\u0000-\u001f\u007f]/.test(a) && all.indexOf(a) === i).slice(0, 64);
+    // app ids only: plain strings, no control chars, no dupes; DesktopEntries.byId wants
+    // "kitty", not "kitty.desktop", so older docks get their ids fixed here
+    d.apps = d.apps.filter(a => typeof a === "string" && a.length > 0 && a.length <= 255
+                                && !/[\u0000-\u001f\u007f]/.test(a))
+      .map(a => a.replace(/\.desktop$/, ""))
+      .filter((a, i, all) => a.length > 0 && all.indexOf(a) === i).slice(0, 64);
     for (const b of ["stretch", "autohide", "reserve", "edgeHint"]) d[b] = d[b] === true;
     d.followBar = d.followBar !== false;
     d.monitor = typeof d.monitor === "string" && d.monitor.length <= 64 ? d.monitor : "";
@@ -347,7 +350,8 @@ Scope {
   }
 
   function addApp(i, id) {
-    if (docks[i].apps.indexOf(id) >= 0) return;
+    id = String(id || "").replace(/\.desktop$/, "");
+    if (!id || docks[i].apps.indexOf(id) >= 0) return;
     const n = docks.slice();
     n[i] = Object.assign({}, n[i], { apps: n[i].apps.concat([id]) });
     if (!layoutOk(n)) { warn("This dock is full. Use a smaller icon size or fewer docks on this edge."); return; }
@@ -501,7 +505,7 @@ Scope {
     const S = AequalynSettings;
     const edge = ["bottom", "top", "left", "right"].indexOf(S.dockPosition) >= 0 ? S.dockPosition : "bottom";
     docks = [cleanDock(Object.assign({}, defaults, {
-      apps: (S.dockPinned || []).map(a => /\.desktop$/.test(a) ? a : a + ".desktop"),
+      apps: (S.dockPinned || []).map(a => String(a).replace(/\.desktop$/, "")),
       edge: edge,
       autohide: S.dockAutohide === true,
       size: Math.max(24, Math.min(64, S.dockIconSize || 44)),
