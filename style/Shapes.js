@@ -1,5 +1,6 @@
 .pragma library
 .import "parts/Ends.js" as Ends
+.import "Style.js" as Style
 
 // Where the bar draws its shapes. Plain functions, no QML, so they can be tested.
 //
@@ -67,6 +68,19 @@ function curlRoom(cfg, w) {
     return typeof k === "number" ? share({ thick: k }, w) : 0;
 }
 
+// islands and fitted pills: room between the first or last widget and the shape's end.
+// The share-based estimate (endPad) is too small for ends that cut in, like Arrows'
+// notch or Slanted: there the end's real outline is measured (Style.endRoom, the same
+// measure the docks use) across the band the widgets sit in, 24px tall.
+function islandPad(cfg, w) {
+    const base = clamp(cfg.padding, 0, 40) + Math.max(endPad(cfg.ends, w), curlRoom(cfg, w));
+    const band = Math.max(0, (w - 24) / 2);
+    let cut = 0;
+    for (const p of ["right", "both"])
+        cut = Math.max(cut, Style.endRoom(Object.assign({}, cfg, { pointing: p }), w, band));
+    return Math.max(base, cut);
+}
+
 // widget pills: how far each pill reaches past its widget on both sides, so
 // neither its ends nor its outline ever touch what's inside
 function pillRoom(cfg, barSize) {
@@ -124,7 +138,8 @@ function sectionMargin(cfg, normal, barSize) {
     // pointed and slanted ends, and curls, need a little more room
     const e = Ends.byKey[cfg.ends];
     if ((e && e.extraMargin) || curlRoom(cfg, thick) > 0) extra += 6;
-    return side + extra;
+    // never less than the island's own padding, or the end is clamped onto the first widget
+    return side + Math.max(extra, islandPad(cfg, thick));
 }
 
 // roundness for a shape that is w thick
@@ -206,7 +221,7 @@ function layout(view, slotsIn, cfg) {
     const x = across(view, cfg);
     const r = radiusFor(cfg, x.w);
     const side = floating(cfg) ? clamp(cfg.sideGap, 0, view.length / 3) : 0;
-    const pad = clamp(cfg.padding, 0, 40) + Math.max(endPad(cfg.ends, x.w), curlRoom(cfg, x.w));
+    const pad = islandPad(cfg, x.w);
     const lo = side, hi = view.length - side;
     let count = 0;
 
