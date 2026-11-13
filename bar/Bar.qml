@@ -31,6 +31,7 @@ Scope {
   property var theme: DefaultTheme {}
   property string font: "JetBrainsMono Nerd Font"
   property bool barVisible: true
+  property bool wifiPopupVisible: false
 
   // ---- the bar's look (Atelier -> Bar) ------------------------------------
   // Shapes painted behind the widgets (BarDecor): one band, a pill, an island
@@ -794,14 +795,14 @@ Scope {
               wifiPopup.anchor.rect.width = netPill.width;
               wifiPopup.anchor.rect.height = 1;
             }
-            wifiPopup.visible = !wifiPopup.visible
+            root.wifiPopupVisible = !root.wifiPopupVisible
           }
         }
       }
 
       PopupWindow {
         id: wifiPopup
-        visible: false
+        visible: root.wifiPopupVisible
         implicitWidth: 320
         implicitHeight: wifiContent.implicitHeight + 24
         color: "transparent"
@@ -815,7 +816,7 @@ Scope {
         anchor.gravity: Edges.Bottom
         anchor.adjustment: PopupAdjustment.Slide
 
-        onVisibleChanged: if (visible) WifiService.scan()
+        onVisibleChanged: if (root.wifiPopupVisible) WifiService.scan()
 
         Rectangle {
           id: wifiPopupBg
@@ -889,7 +890,7 @@ Scope {
               border.color: root.theme.bgBorder
               border.width: 1
               Text { anchors.centerIn: parent; text: "✕"; color: root.theme.textPrimary; font.pixelSize: 10; font.family: root.font }
-              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: wifiPopup.visible = false }
+              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.wifiPopupVisible = false }
             }
           }
 
