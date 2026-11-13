@@ -34,6 +34,15 @@ Scope {
   property bool barVisible: true
   property bool wifiPopupVisible: false
   property bool powerProfileVisible: false
+  // every screen has its own bar, but the popups above share one switch: they open only on
+  // the screen they were opened from
+  property var popupScreen: null
+  // toggle a popup from screen `scr`; open on another screen, it moves there instead
+  function togglePopup(open, scr) {
+    const moving = open && root.popupScreen !== scr;
+    root.popupScreen = scr;
+    return moving ? true : !open;
+  }
   property string currentPowerProfile: ""
   property var powerProfiles: []
 
@@ -809,14 +818,14 @@ Scope {
               wifiPopup.anchor.rect.width = netPill.width;
               wifiPopup.anchor.rect.height = 1;
             }
-            root.wifiPopupVisible = !root.wifiPopupVisible
+            root.wifiPopupVisible = root.togglePopup(root.wifiPopupVisible, w ? w.screen : null)
           }
         }
       }
 
       PopupWindow {
         id: wifiPopup
-        visible: root.wifiPopupVisible
+        visible: root.wifiPopupVisible && !!netPill.QsWindow.window && netPill.QsWindow.window.screen === root.popupScreen
         Shortcut {
           sequence: "Escape"
           onActivated: root.wifiPopupVisible = false
@@ -834,7 +843,7 @@ Scope {
         anchor.gravity: Edges.Bottom
         anchor.adjustment: PopupAdjustment.Slide
 
-        onVisibleChanged: if (root.wifiPopupVisible) WifiService.scan()
+        onVisibleChanged: if (visible) WifiService.scan()
 
         Rectangle {
           id: wifiPopupBg
@@ -1138,7 +1147,7 @@ Scope {
             powerProfilePopup.anchor.rect.width = battPill.width;
             powerProfilePopup.anchor.rect.height = 1;
           }
-          root.powerProfileVisible = !root.powerProfileVisible;
+          root.powerProfileVisible = root.togglePopup(root.powerProfileVisible, w ? w.screen : null);
           if (root.powerProfileVisible) {
             powerProfileListProc.running = true;
             powerProfileGetProc.running = true;
@@ -1187,7 +1196,7 @@ Scope {
 
       PopupWindow {
         id: powerProfilePopup
-        visible: root.powerProfileVisible
+        visible: root.powerProfileVisible && !!battPill.QsWindow.window && battPill.QsWindow.window.screen === root.popupScreen
         Shortcut {
           sequence: "Escape"
           onActivated: root.powerProfileVisible = false
@@ -1206,7 +1215,7 @@ Scope {
         anchor.adjustment: PopupAdjustment.Slide
 
         onVisibleChanged: {
-          if (root.powerProfileVisible) {
+          if (visible) {
             powerProfileListProc.running = true;
             powerProfileGetProc.running = true;
           }
