@@ -191,6 +191,26 @@ Item {
       // Divider
       Divider { color: panel.theme.bgBorder }
 
+      // Brightness: built-in screens (laptop panels) have a backlight; external monitors
+      // would need DDC/CI (ddcutil), which isn't supported here yet
+      readonly property bool builtIn: /^(eDP|LVDS|DSI)/.test(panel.monitor?.name ?? "")
+      BrightnessControl {
+        Layout.fillWidth: true
+        visible: parent.builtIn
+        theme: panel.theme
+        font: panel.font
+      }
+      Text {
+        visible: !parent.builtIn
+        Layout.fillWidth: true
+        wrapMode: Text.WordWrap
+        text: "Brightness: only built-in screens for now (external monitors need DDC/CI)."
+        color: panel.theme.textMuted
+        font { pixelSize: 10; family: panel.font }
+      }
+
+      Divider { color: panel.theme.bgBorder }
+
       // Resolution section
       Text {
         text: "Resolution"
