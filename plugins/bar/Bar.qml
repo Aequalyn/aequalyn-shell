@@ -292,20 +292,39 @@ Scope {
           regionNames: ["left", "center", "right"]
         }
 
-        // Three regions (left / center / right), a third of the bar each, so widgets don't
-        // spread across the whole width. Each scrolls sideways when its widgets don't fit.
-        // Their order and contents come from AequalynSettings (barLeft / barCenter / barRight).
+        // Three regions (left / center / right). Their order and contents come from
+        // AequalynSettings (barLeft / barCenter / barRight). Each is as wide as its widgets,
+        // up to a limit: the width set in Settings -> Bar (0 = no limit of its own) and the room
+        // left before it would run into the next region. Past that it scrolls sideways.
         Item {
+          id: regions
           anchors.fill: parent
           anchors.leftMargin: root.sectionMargin
           anchors.rightMargin: root.sectionMargin
+
+          // the room kept free between two regions
+          readonly property int gap: 12
+          readonly property real sideMax: AequalynSettings.barSideWidth > 0 ? AequalynSettings.barSideWidth : width
+          readonly property real centerMax: AequalynSettings.barCenterWidth > 0 ? AequalynSettings.barCenterWidth : width
+          readonly property real leftNeed: leftSec.row.width
+          readonly property real centerNeed: centerSec.row.width
+          readonly property real rightNeed: rightSec.row.width
+          // the center comes first and stays centered on the bar
+          readonly property real centerW: centerNeed > 0 ? Math.max(0, Math.min(centerNeed, centerMax, width - 2 * gap)) : 0
+          // with a center, each side gets the room on its half; without one, what the other side leaves
+          function sideRoom(otherNeed) {
+            if (centerW > 0) return Math.max(0, (width - centerW) / 2 - gap);
+            return Math.max(0, width - gap - Math.min(otherNeed, sideMax, (width - gap) / 2));
+          }
+          readonly property real leftW: Math.min(leftNeed, sideMax, sideRoom(rightNeed))
+          readonly property real rightW: Math.min(rightNeed, sideMax, sideRoom(leftNeed))
 
           BarSection {
             id: leftSec
             region: "left"; bar: root; band: band
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width / 3
+            width: regions.leftW
             height: parent.height
           }
           BarSection {
@@ -313,7 +332,7 @@ Scope {
             region: "center"; bar: root; band: band
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width / 3
+            width: regions.centerW
             height: parent.height
           }
           BarSection {
@@ -321,7 +340,7 @@ Scope {
             region: "right"; bar: root; band: band
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width / 3
+            width: regions.rightW
             height: parent.height
           }
         }
