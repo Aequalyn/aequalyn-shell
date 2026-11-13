@@ -33,6 +33,12 @@ Scope {
   property bool barVisible: true
   property bool wifiPopupVisible: false
 
+  Shortcut {
+    sequence: "Escape"
+    enabled: root.wifiPopupVisible
+    onActivated: root.wifiPopupVisible = false
+  }
+
   // ---- the bar's look (Atelier -> Bar) ------------------------------------
   // Shapes painted behind the widgets (BarDecor): one band, a pill, an island
   // per group or a pill per widget, floating or stuck to the edge.
@@ -803,6 +809,10 @@ Scope {
       PopupWindow {
         id: wifiPopup
         visible: root.wifiPopupVisible
+        Shortcut {
+          sequence: "Escape"
+          onActivated: root.wifiPopupVisible = false
+        }
         implicitWidth: 320
         implicitHeight: wifiContent.implicitHeight + 24
         color: "transparent"
