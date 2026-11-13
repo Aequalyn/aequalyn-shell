@@ -21,6 +21,7 @@ Scope {
   property bool barVisible: true
   property bool wifiPopupVisible: false
   property bool powerProfileVisible: false
+  property bool bluetoothPopupVisible: false
   // every screen has its own bar, but the popups above share one switch: they open only on
   // the screen they were opened from
   property var popupScreen: null
