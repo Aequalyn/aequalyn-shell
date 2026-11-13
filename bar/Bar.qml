@@ -788,7 +788,11 @@ Scope {
             const w = netPill.QsWindow.window;
             if (w) {
               wifiPopup.anchor.window = w;
-              wifiPopup.anchor.rect.y = w.height;
+              const r = netPill.mapToItem(null, 0, netPill.height);
+              wifiPopup.anchor.rect.x = r.x;
+              wifiPopup.anchor.rect.y = r.y;
+              wifiPopup.anchor.rect.width = netPill.width;
+              wifiPopup.anchor.rect.height = 1;
             }
             wifiPopup.visible = !wifiPopup.visible
           }
@@ -812,12 +816,6 @@ Scope {
         anchor.adjustment: PopupAdjustment.Slide
 
         onVisibleChanged: if (visible) WifiService.scan()
-
-        HyprlandFocusGrab {
-          windows: [wifiPopup]
-          active: wifiPopup.visible
-          onCleared: wifiPopup.visible = false
-        }
 
         Rectangle {
           id: wifiPopupBg
@@ -882,6 +880,16 @@ Scope {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: WifiService.scan()
               }
+            }
+            Rectangle {
+              implicitWidth: 24
+              implicitHeight: 24
+              radius: 6
+              color: root.theme.bgSelected
+              border.color: root.theme.bgBorder
+              border.width: 1
+              Text { anchors.centerIn: parent; text: "✕"; color: root.theme.textPrimary; font.pixelSize: 10; font.family: root.font }
+              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: wifiPopup.visible = false }
             }
           }
 
