@@ -23,6 +23,7 @@ Scope {
   property bool wifiPopupVisible: false
   property bool powerProfileVisible: false
   property bool bluetoothPopupVisible: false
+  property bool quickPanelVisible: false
   // every screen has its own bar, but the popups above share one switch: they open only on
   // the screen they were opened from
   property var popupScreen: null
@@ -74,6 +75,12 @@ Scope {
       const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
       root.bluetoothPopupVisible = root.togglePopup(root.bluetoothPopupVisible, scr);
     }
+    // the quick panel on the focused screen (`qs ipc call bar quick`)
+    function quick(): void {
+      const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+      const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
+      root.quickPanelVisible = root.togglePopup(root.quickPanelVisible, scr);
+    }
   }
 
   // Track default audio sink for volume state in bar audio widgets.
@@ -103,8 +110,22 @@ Scope {
     }
   }
 
-  Process { id: brightnessSetProc; running: false }
+  Process {
+    id: brightnessSetProc
+    running: false
+    onExited: if (root.brightnessPending >= 0) { const v = root.brightnessPending; root.brightnessPending = -1; root.setBrightness(v); }
+  }
   readonly property bool hasBacklight: brightnessFile.path !== ""
+  // the quick panel's slider: a level asked for while the last is still being set waits,
+  // so only the newest is set next
+  property int brightnessPending: -1
+  function setBrightness(percent) {
+    const v = Math.max(1, Math.min(100, Math.round(percent)));
+    root.brightnessValue = v / 100;
+    if (brightnessSetProc.running) { root.brightnessPending = v; return; }
+    brightnessSetProc.command = ["brightnessctl", "-q", "set", v + "%"];
+    brightnessSetProc.running = true;
+  }
   // the Brightness widget's scroll wheel
   function stepBrightness(up) {
     brightnessSetProc.command = ["brightnessctl", "set", up ? "5%+" : "5%-"];
@@ -176,6 +197,11 @@ Scope {
   // a page of the Aequalyn settings (wifi, bluetooth, ...): widgets' right click
   function openSettingsPage(page) {
     settingsProc.command = ["qs", "ipc", "call", "aequalyn", page];
+    settingsProc.running = true;
+  }
+  // a page of the control center by its name (center/Pages.js)
+  function openPage(name) {
+    settingsProc.command = ["qs", "ipc", "call", "aequalyn", "page", name];
     settingsProc.running = true;
   }
   function openPowerMenu() {
