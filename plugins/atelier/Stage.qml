@@ -15,7 +15,10 @@ Item {
     property int marked: -1         // a dock to point out
     property string caption: ""
 
-    Desk { anchors.fill: parent; theme: stage.theme; radius: 12 }
+    // the wallpaper to show (empty: the theme's colours)
+    property string wallpaper: ""
+
+    Desk { anchors.fill: parent; theme: stage.theme; radius: 12; source: stage.wallpaper }
 
     // two windows, tiled
     Repeater {
