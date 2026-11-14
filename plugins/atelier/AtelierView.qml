@@ -42,6 +42,11 @@ FocusScope {
         const shift = event.modifiers & Qt.ShiftModifier;
         const alt = event.modifiers & Qt.AltModifier;
         const cols = layoutLoader.item && layoutLoader.item.columns !== undefined ? layoutLoader.item.columns : 0;
+        // a layout can take keys of its own first (Showcase: its backgrounds row)
+        if (host.browsing && layoutLoader.item && layoutLoader.item.handleKey
+            && !(event.modifiers & (Qt.AltModifier)) && event.key !== Qt.Key_Escape && event.key !== Qt.Key_Tab
+            && event.key !== Qt.Key_Backtab && layoutLoader.item.handleKey(event))
+            return true;
 
         if (event.key === Qt.Key_Escape) {
             if (host.searchText !== "") { host.searchText = ""; searchInput.text = ""; }
@@ -50,7 +55,7 @@ FocusScope {
             host.cycleCollection(1);
         } else if (event.key === Qt.Key_Backtab || (alt && event.key === Qt.Key_Left)) {
             host.cycleCollection(-1);
-        } else if (ctrl && event.key >= Qt.Key_1 && event.key <= Qt.Key_6) {
+        } else if (ctrl && event.key >= Qt.Key_1 && event.key <= Qt.Key_7) {
             host.setLayout(host.layoutKeys[event.key - Qt.Key_1]);
         } else if (ctrl && event.key === Qt.Key_L) {
             host.setLayout(host.layoutKeys[(host.layoutKeys.indexOf(host.layout) + 1) % host.layoutKeys.length]);
@@ -147,6 +152,7 @@ FocusScope {
                     case "radial": return radialC;
                     case "list": return listC;
                     case "spotlight": return spotlightC;
+                    case "showcase": return showcaseC;
                     default: return gridC;
                     }
                 }
@@ -519,6 +525,15 @@ FocusScope {
         id: listC
         LayoutList {
             theme: view.theme; font: view.font; items: view.host.items; currentIndex: view.host.currentIndex
+            onHovered: i => view.host.currentIndex = i
+            onPicked: i => view.host.apply(i, false)
+        }
+    }
+    Component {
+        id: showcaseC
+        LayoutShowcase {
+            theme: view.theme; font: view.font; items: view.host.items; currentIndex: view.host.currentIndex
+            host: view.host
             onHovered: i => view.host.currentIndex = i
             onPicked: i => view.host.apply(i, false)
         }

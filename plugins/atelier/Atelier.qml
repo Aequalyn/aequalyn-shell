@@ -69,7 +69,7 @@ Scope {
         { key: "docks", icon: "󱂬", name: "Docks" },
         { key: "panel", icon: "󰕮", name: "Panel" }
     ]
-    readonly property var layoutKeys: ["grid", "carousel", "filmstrip", "radial", "list", "spotlight"]
+    readonly property var layoutKeys: ["grid", "carousel", "filmstrip", "radial", "list", "spotlight", "showcase"]
     readonly property bool browsing: collection === "themes" || collection === "wallpapers"
     readonly property bool searchable: browsing || collection === "layouts"
     readonly property string layout: {
@@ -103,8 +103,9 @@ Scope {
                 title: f.name,
                 subtitle: f.family + (n ? " · " + n + (n === 1 ? " background" : " backgrounds") : ""),
                 detail: f.dir + (f.author ? "\nby " + f.author : ""),
-                image: f.preview || "",
+                image: f.preview || ((f.backgrounds || [])[0] || ""),
                 palette: f.hasPalette ? f : null,
+                backgrounds: f.backgrounds || [], dir: f.dir || "",
                 active: t.currentFolderId === f.id && (f.hasPalette ? !t.wallpaperMode : true),
                 badge: f.kind === "pack" ? "PACK" : (f.family && f.family !== "Aequalyn" ? f.family.toUpperCase() : ""),
                 group: f.kind === "pack" ? "pack" : "theme",
