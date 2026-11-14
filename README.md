@@ -102,6 +102,25 @@ app-launcher/ notifications/ osd/ clipboard/ power-menu/
 monitor-manager/ bluetooth/ idle-inhibitor/
 ```
 
+## Web apps
+
+Settings → **Web apps** turns a website into a window of its own: it appears in the
+launcher, gets an icon, and has a `Super + Shift + <letter>` shortcut.
+
+- The chosen browser opens them. Chromium-based browsers use `--app=URL`, so each
+  one is a clean window with the site's own title bar. Firefox-based browsers use
+  a separate profile per app with the navigation and tab bars hidden, so the
+  window reads as an app too. Pick the browser in the same page; it can be
+  changed at any time and the shortcuts keep working.
+- Add or remove apps from the same page, or with the `aequalyn-webapp` command
+  (`list`, `add`, `remove`, `set-browser`, `seed`). State lives in
+  `~/.config/aequalyn/webapps.json`; launchers are written to
+  `~/.local/share/applications/aequalyn-webapp-<slug>.desktop` and the shortcuts
+  to `~/.config/hypr/webapps.lua`.
+- The installer seeds Reddit, ChatGPT and YouTube Music (shortcuts D, G and Y)
+  when the *Seed web apps* option is on, using the browser chosen at install
+  time.
+
 ## Tests
 
 ```sh

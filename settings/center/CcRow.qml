@@ -6,6 +6,7 @@ import QtQuick.Layouts
 Rectangle {
     id: r
     property string icon: ""
+    property string iconSource: ""
     property string title: ""
     property string sub: ""
     property string action: ""
@@ -41,16 +42,27 @@ Rectangle {
         anchors.rightMargin: 12
         spacing: 12
         Rectangle {
-            visible: r.icon !== ""
+            visible: r.icon !== "" || r.iconSource !== ""
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
             radius: 10
             color: r.highlight ? Cc.theme.accentPrimary : Cc.theme.bgSelected
+            Image {
+                id: pic
+                anchors.fill: parent
+                anchors.margins: r.iconSource !== "" ? 2 : 0
+                visible: r.iconSource !== ""
+                source: r.iconSource
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+                smooth: true
+            }
             Text {
                 anchors.centerIn: parent
-                text: r.icon
+                visible: r.icon !== "" || (r.iconSource !== "" && pic.status === Image.Error)
+                text: r.icon !== "" ? r.icon : r.title.slice(0, 1).toUpperCase()
                 color: r.highlight ? Cc.theme.bgBase : Cc.theme.accentPrimary
-                font.family: Cc.mono
+                font.family: r.icon !== "" ? Cc.mono : Cc.sans
                 font.pixelSize: 17
             }
         }
