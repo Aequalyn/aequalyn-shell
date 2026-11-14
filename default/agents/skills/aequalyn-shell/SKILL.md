@@ -33,3 +33,14 @@ The QuickShell desktop runs as a single long-running process. Hyprland autostart
 
 - Quickshell config load check: `timeout 8 quickshell -p /home/mihai/Projects/aequalyn-shell/shell.qml`.
 - Dry-run webapp commands: `AEQUALYN_WEBAPP_DRY_RUN=1 aequalyn-webapp ...`.
+
+## References
+
+- Aequalyn: https://github.com/Aequalyn/aequalyn
+- Aequalyn shell: https://github.com/Aequalyn/aequalyn-shell
+- Aequalyn installer: https://github.com/Aequalyn/aequalyn-installer
+- Aequalyn packages: https://github.com/Aequalyn/aequalyn-pkgs
+- Hyprland wiki: https://wiki.hypr.land
+- Hyprland Lua API: https://alejandrominaya.github.io/hyprland-lua-docs/
+- Qt QML reference: https://doc.qt.io/qt-6/qmlreference.html
+- Quickshell docs: https://quickshell.org/
