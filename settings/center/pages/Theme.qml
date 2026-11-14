@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import "root:/settings"
 import "../../../plugins/atelier"
+import "../../../style/BarLooks.js" as BarLooks
 import ".."
 
 CcPage {
@@ -12,7 +13,22 @@ CcPage {
     title: "Theme and colours"
     sub: "A ready-made look, or colours made from your wallpaper."
     tabs: ["Theme", "How colours are made"]
-    fills: [1]
+
+    // your desktop in these colours: the bar, docks and windows as they are
+    readonly property var svc: AtelierHost.docks
+    stageHeight: 190
+    stage: Stage {
+        anchors.fill: parent
+        theme: Cc.theme
+        font: Cc.mono
+        wallpaper: Cc.wallpaper
+        barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+        barSize: Math.round(AequalynSettings.barHeight * 0.75)
+        docks: page.svc && AequalynSettings.dockEnabled ? page.svc.docks.map((d, i) => {
+            const e = page.svc.effective(i);
+            return { look: e, pal: page.svc.palette(e), edge: d.edge, icons: Math.max(3, Math.min(6, d.apps.length)) };
+        }) : []
+    }
 
     actions: [
         CcButton {
@@ -85,8 +101,9 @@ CcPage {
 
     PalettePane {
         visible: page.tab === 1
+        interactive: false
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.preferredHeight: contentHeight
         theme: Cc.theme
         font: Cc.mono
     }
