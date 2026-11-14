@@ -13,6 +13,7 @@ Item {
   required property string region   // "left", "center" or "right"
   required property var bar         // Bar.qml
   required property var band        // the strip the bar's shapes and regions live in
+  property var screen               // the screen this bar is on
   // the widget slots, for BarDecor (where to draw) and drag and drop (where to drop)
   readonly property alias row: row
 
@@ -64,6 +65,7 @@ Item {
           region: section.region
           bar: section.bar
           band: section.band
+          screen: section.screen
         }
       }
     }

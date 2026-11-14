@@ -13,6 +13,7 @@ Item {
   required property string region      // "left", "center" or "right"
   required property var bar            // Bar.qml
   required property var band           // the strip the bar's shapes and regions live in
+  property var screen                  // the screen this bar is on
 
   readonly property string file: Widgets.fileFor(modelData)
   readonly property bool beingDragged: band.dragging && band.dragRegion === region && band.dragIndex === index
@@ -32,7 +33,11 @@ Item {
     visible: AequalynSettings.pluginVisible(slot.modelData)
     HoverHandler { id: hh }
     // setSource hands the widget its bar before its bindings first run
-    Component.onCompleted: if (slot.file !== "") setSource(Qt.resolvedUrl("widgets/" + slot.file), { bar: slot.bar })
+    Component.onCompleted: if (slot.file !== "") {
+      const props = { bar: slot.bar };
+      if (slot.file === "Workspaces.qml") props.screen = slot.screen;
+      setSource(Qt.resolvedUrl("widgets/" + slot.file), props);
+    }
   }
 
   readonly property bool dragActive: drag.active
