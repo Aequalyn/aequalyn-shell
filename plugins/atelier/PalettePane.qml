@@ -72,16 +72,16 @@ Flickable {
                             Text {
                                 text: srcCard.modelData.title
                                 color: pane.theme.textPrimary
-                                font.family: pane.font
-                                font.pixelSize: 13
+                                font.family: "sans-serif"
+                                font.pixelSize: 14
                                 font.bold: true
                             }
                             Text {
                                 Layout.fillWidth: true
                                 text: srcCard.modelData.text
                                 color: pane.theme.textMuted
-                                font.family: pane.font
-                                font.pixelSize: 10
+                                font.family: "sans-serif"
+                                font.pixelSize: 11
                                 wrapMode: Text.WordWrap
                             }
                         }
@@ -169,16 +169,16 @@ Flickable {
                         Text {
                             text: sc.modelData[1]
                             color: pane.theme.textPrimary
-                            font.family: pane.font
-                            font.pixelSize: 12
+                            font.family: "sans-serif"
+                            font.pixelSize: 13
                             font.bold: true
                         }
                         Text {
                             Layout.fillWidth: true
                             text: sc.modelData[2]
                             color: pane.theme.textMuted
-                            font.family: pane.font
-                            font.pixelSize: 9
+                            font.family: "sans-serif"
+                            font.pixelSize: 11
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
                             elide: Text.ElideRight
@@ -255,15 +255,15 @@ Flickable {
                             Text {
                                 text: modelData[1]
                                 color: pane.theme.textPrimary
-                                font.family: pane.font
-                                font.pixelSize: 11
+                                font.family: "sans-serif"
+                                font.pixelSize: 12
                                 font.bold: true
                             }
                             Text {
                                 text: String(pane.theme[modelData[0]]).toUpperCase()
                                 color: pane.theme.textMuted
                                 font.family: pane.font
-                                font.pixelSize: 9
+                                font.pixelSize: 10
                             }
                         }
                     }

@@ -18,10 +18,12 @@ Rectangle {
 
     implicitWidth: 112
     implicitHeight: showLabel ? 74 : 54
-    radius: 10
-    color: theme ? (selected ? theme.bgSelected : (area.containsMouse ? theme.bgHover : theme.bgSurface)) : "transparent"
-    border.width: selected ? 2 : 1
-    border.color: theme ? (selected ? theme.accentPrimary : theme.bgBorder) : "transparent"
+    radius: 12
+    color: !theme ? "transparent"
+         : selected ? Qt.rgba(theme.accentPrimary.r, theme.accentPrimary.g, theme.accentPrimary.b, 0.14)
+         : Qt.rgba(theme.textPrimary.r, theme.textPrimary.g, theme.textPrimary.b, area.containsMouse ? 0.10 : 0.05)
+    border.width: 2
+    border.color: theme && selected ? theme.accentPrimary : "transparent"
 
     Canvas {
         id: canvas
@@ -51,10 +53,10 @@ Rectangle {
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         text: tile.label
-        color: tile.theme ? (tile.selected ? tile.theme.accentPrimary : tile.theme.textSecondary) : "white"
-        font.family: tile.font
-        font.pixelSize: 10
-        font.bold: tile.selected
+        color: tile.theme ? (tile.selected ? tile.theme.textPrimary : tile.theme.textSecondary) : "white"
+        font.family: "sans-serif"
+        font.pixelSize: 11
+        font.weight: tile.selected ? Font.DemiBold : Font.Normal
     }
 
     MouseArea {

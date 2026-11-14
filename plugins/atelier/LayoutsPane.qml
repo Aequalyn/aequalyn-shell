@@ -62,8 +62,8 @@ Item {
             Text {
                 text: "WORKSPACE"
                 color: pane.theme.textMuted
-                font.family: pane.font
-                font.pixelSize: 10
+                font.family: "sans-serif"
+                font.pixelSize: 11
                 font.bold: true
                 font.letterSpacing: 1.4
                 Layout.rightMargin: 6
@@ -97,8 +97,8 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: wsChip.ws
                         color: wsChip.on ? pane.theme.textPrimary : pane.theme.textSecondary
-                        font.family: pane.font
-                        font.pixelSize: 12
+                        font.family: "sans-serif"
+                        font.pixelSize: 13
                         font.bold: true
                     }
                     Rectangle {
@@ -122,8 +122,8 @@ Item {
             Text {
                 text: (pane.current ? pane.current.name : "") + "  ·  " + pane.items.length + " layouts"
                 color: pane.theme.textMuted
-                font.family: pane.font
-                font.pixelSize: 11
+                font.family: "sans-serif"
+                font.pixelSize: 12
             }
         }
 
@@ -199,8 +199,8 @@ Item {
                             width: parent.width
                             text: cell.modelData.name
                             color: pane.theme.textPrimary
-                            font.family: pane.font
-                            font.pixelSize: 12
+                            font.family: "sans-serif"
+                            font.pixelSize: 13
                             font.bold: cell.active
                             elide: Text.ElideRight
                         }
@@ -208,8 +208,8 @@ Item {
                             width: parent.width
                             text: cell.modelData.group
                             color: pane.theme.textMuted
-                            font.family: pane.font
-                            font.pixelSize: 9
+                            font.family: "sans-serif"
+                            font.pixelSize: 11
                         }
                     }
 
@@ -273,8 +273,8 @@ Item {
                     Layout.fillWidth: true
                     text: pane.current ? pane.current.hint : ""
                     color: pane.theme.textSecondary
-                    font.family: pane.font
-                    font.pixelSize: 11
+                    font.family: "sans-serif"
+                    font.pixelSize: 12
                     elide: Text.ElideRight
                 }
                 Stepper {

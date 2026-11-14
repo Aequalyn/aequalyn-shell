@@ -20,16 +20,16 @@ RowLayout {
     Text {
         text: row.label
         color: row.theme.textSecondary
-        font.family: row.font
-        font.pixelSize: 11
-        Layout.preferredWidth: 96
+        font.family: "sans-serif"
+        font.pixelSize: 12
+        Layout.preferredWidth: 110
         Layout.alignment: Qt.AlignTop
-        Layout.topMargin: 5
+        Layout.topMargin: 7
         elide: Text.ElideRight
     }
     Flow {
         Layout.fillWidth: true
-        spacing: 6
+        spacing: 8
         Repeater {
             model: row.options
             delegate: Chip {

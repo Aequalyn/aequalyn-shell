@@ -175,7 +175,7 @@ Flickable {
                                     text: shapeCard.modelData[1]
                                     color: shapeCard.on ? pane.theme.bgBase : pane.theme.accentPrimary
                                     font.family: pane.font
-                                    font.pixelSize: 15
+                                    font.pixelSize: 12
                                 }
                             }
                             ColumnLayout {
@@ -185,16 +185,16 @@ Flickable {
                                     Layout.fillWidth: true
                                     text: shapeCard.modelData[2]
                                     color: pane.theme.textPrimary
-                                    font.family: pane.font
-                                    font.pixelSize: 12
+                                    font.family: "sans-serif"
+                                    font.pixelSize: 13
                                     font.bold: true
                                 }
                                 Text {
                                     Layout.fillWidth: true
                                     text: shapeCard.modelData[3]
                                     color: pane.theme.textMuted
-                                    font.family: pane.font
-                                    font.pixelSize: 10
+                                    font.family: "sans-serif"
+                                    font.pixelSize: 11
                                 }
                             }
                         }

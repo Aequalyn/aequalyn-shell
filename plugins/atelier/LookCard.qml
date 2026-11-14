@@ -16,16 +16,17 @@ Rectangle {
     signal clicked()
 
     implicitHeight: previewHeight + 54
-    radius: 12
-    color: theme.bgSurface
-    border.width: selected ? 2 : 1
-    border.color: selected ? theme.accentPrimary : (area.containsMouse ? theme.textMuted : theme.bgBorder)
+    radius: 14
+    color: selected ? Qt.rgba(theme.accentPrimary.r, theme.accentPrimary.g, theme.accentPrimary.b, 0.12)
+         : Qt.rgba(theme.textPrimary.r, theme.textPrimary.g, theme.textPrimary.b, area.containsMouse ? 0.09 : 0.04)
+    border.width: 2
+    border.color: selected ? theme.accentPrimary : "transparent"
     Behavior on border.color { ColorAnimation { duration: 120 } }
 
     Item {
         id: stageArea
-        x: 4; y: 4
-        width: parent.width - 8
+        x: 6; y: 6
+        width: parent.width - 12
         height: card.previewHeight
         clip: true
     }
@@ -40,10 +41,10 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: card.title
-                color: card.selected ? card.theme.accentPrimary : card.theme.textPrimary
-                font.family: card.font
-                font.pixelSize: 12
-                font.bold: true
+                color: card.theme.textPrimary
+                font.family: "sans-serif"
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
             Rectangle {
@@ -68,8 +69,8 @@ Rectangle {
             Layout.fillWidth: true
             text: card.subtitle
             color: card.theme.textMuted
-            font.family: card.font
-            font.pixelSize: 10
+            font.family: "sans-serif"
+            font.pixelSize: 11
             elide: Text.ElideRight
         }
     }
