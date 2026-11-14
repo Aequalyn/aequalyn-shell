@@ -15,6 +15,23 @@ PanelWindow {
   property int idx: 0
 
   readonly property var cfg: svc.effective(idx)
+  // pinned apps plus web apps that are currently open but not pinned, so an
+  // opened web app shows up in the dock even without being pinned
+  readonly property var shownApps: {
+    const pinned = Array.isArray(cfg.apps) ? cfg.apps.slice() : [];
+    const pinnedSet = new Set(pinned.map(x => String(x).toLowerCase()));
+    const out = pinned.slice();
+    try {
+      for (const e of DesktopEntries.applications.values) {
+        if (!e || !e.id) continue;
+        if (String(e.id).toLowerCase().indexOf("aequalyn-webapp-") !== 0) continue;
+        if (pinnedSet.has(String(e.id).toLowerCase())) continue;
+        const ws = win.windowsOf(e);
+        if (ws && ws.length > 0 && out.indexOf(e.id) < 0) out.push(e.id);
+      }
+    } catch (err) {}
+    return out;
+  }
   readonly property var pal: svc.palette(cfg)
   // pop-ups (menu, add app, previews) wear the shell's own theme, like the rest of Aequalyn
   AequalynDefaultTheme { id: defaultTheme }
@@ -41,7 +58,7 @@ PanelWindow {
   // pointed or curled ends reach in: the icons start this much further along
   readonly property int endRoom: svc.endRoom(cfg)
   readonly property int padAlong: pad + endRoom
-  readonly property int along: (cfg.apps.length + 1) * step - 6 + padAlong * 2
+  readonly property int along: (shownApps.length + 1) * step - 6 + padAlong * 2
   // room past the dock's inner side for its shadow, glow and ornaments
   readonly property int glow: Style.marginFor(cfg)
 
@@ -64,7 +81,7 @@ PanelWindow {
   readonly property int slotW: Math.max(thick, svc.slotLen(svc.docks, idx))
 
   readonly property int maxApps: svc.capacity(svc.docks, idx)
-  readonly property bool full: cfg.apps.length >= maxApps
+  readonly property bool full: shownApps.length >= maxApps
   readonly property int popEdge: ({ bottom: Edges.Top, top: Edges.Bottom, left: Edges.Right, right: Edges.Left })[cfg.edge]
 
   // margin lives inside the window: window = thickness + margin, dock inset by the margin.
@@ -194,8 +211,8 @@ PanelWindow {
   // all windows asking for attention, across all docks
   readonly property bool anyUrgent: {
     if (cfg.attention === "off") return false;
-    for (let k = 0; k < cfg.apps.length; k++) {
-      const ws = windowsOf((DesktopEntries.applications.values, DesktopEntries.byId(cfg.apps[k])));
+    for (let k = 0; k < shownApps.length; k++) {
+      const ws = windowsOf((DesktopEntries.applications.values, DesktopEntries.byId(shownApps[k])));
       for (let j = 0; j < ws.length; j++) if (isUrgent(ws[j])) return true;
     }
     return false;
@@ -388,7 +405,7 @@ PanelWindow {
       y: win.hz ? win.pad : (win.cfg.stretch ? place(bar.height - height) : win.padAlong)
 
       Repeater {
-        model: win.cfg.apps
+        model: win.shownApps
 
         delegate: Item {
           id: slot
@@ -414,7 +431,7 @@ PanelWindow {
           readonly property real waveT: win.effect === "wave" ? Math.max(0, Math.min(1, pt)) : 0
           Connections {
             target: win
-            function onOpenChanged() { waveAnim.run(slot.index, win.cfg.apps.length + 1); }
+            function onOpenChanged() { waveAnim.run(slot.index, win.shownApps.length + 1); }
           }
           Component.onCompleted: pt = win.open ? 0 : 1
           SequentialAnimation {
@@ -535,6 +552,8 @@ PanelWindow {
 
             onPositionChanged: m => {
               if (!(pressedButtons & Qt.LeftButton)) return;
+              // only pinned apps can be reordered; open-but-unpinned web apps just activate
+              if (win.cfg.apps.indexOf(slot.modelData) < 0) return;
               const d = along(m) - startPos;
               if (!moved && Math.abs(d) < 10) return;
               moved = true;
@@ -542,7 +561,7 @@ PanelWindow {
               slot.dragging = true;
               slot.off = d;
               win.dragFrom = slot.index;
-              win.dragTo = Math.max(0, Math.min(win.cfg.apps.length - 1, slot.index + Math.round(d / win.step)));
+              win.dragTo = Math.max(0, Math.min(win.shownApps.length - 1, slot.index + Math.round(d / win.step)));
             }
 
             onReleased: m => {
@@ -575,7 +594,7 @@ PanelWindow {
           function onOpenChanged() {
             addWave.stop();
             if (win.effect !== "wave") { addBtn.pt = win.open ? 0 : 1; return; }
-            addPause.duration = win.open ? win.cfg.apps.length * win.waveStep : 0;
+            addPause.duration = win.open ? win.shownApps.length * win.waveStep : 0;
             addGrow.to = win.open ? 0 : 1;
             addGrow.duration = win.speed;
             addGrow.easing.type = win.open ? Easing.OutBack : Easing.InCubic;
@@ -771,7 +790,7 @@ PanelWindow {
   PopupWindow {
     id: addPop
     readonly property var choices: DesktopEntries.applications.values
-      .filter(e => !e.noDisplay && win.cfg.apps.indexOf(e.id) < 0
+      .filter(e => !e.noDisplay && win.shownApps.indexOf(e.id) < 0
         && e.name.toLowerCase().indexOf(search.text.toLowerCase()) >= 0)
       .sort((a, b) => a.name.localeCompare(b.name))
     visible: win.addOpen
