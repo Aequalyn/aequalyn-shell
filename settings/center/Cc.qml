@@ -25,6 +25,9 @@ Singleton {
     property var backup: null
     property var webapps: null
 
+    // the sub page a page opens on (set by the window before it makes the page)
+    property int startTab: 0
+
     // pages ask the window for these
     signal goRequested(string page)
     signal closeRequested()

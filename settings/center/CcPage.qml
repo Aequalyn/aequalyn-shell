@@ -19,6 +19,7 @@ Item {
 
     readonly property bool fill: fills.indexOf(tab) >= 0
     onTabChanged: flick.contentY = 0
+    Component.onCompleted: if (Cc.startTab > 0 && Cc.startTab < tabs.length) tab = Cc.startTab
 
     ColumnLayout {
         id: header

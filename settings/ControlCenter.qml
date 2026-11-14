@@ -53,13 +53,21 @@ Scope {
         onLoaded: Cc.wallpaper = text().trim()
     }
 
+    // a page by name ("wifi"), alias ("rotation") or with its sub page ("wallpaper:1")
     function open(name) {
-        const p = Pages.resolve(name || "home");
-        if (p !== "") root.page = p;
+        const r = Pages.resolve(name || "home");
+        if (r.page !== "") {
+            Cc.startTab = r.tab;
+            const same = root.page === r.page;
+            root.page = r.page;
+            // already showing: the page isn't made again, so switch its sub page here
+            if (same && pageLoader.item && pageLoader.item.tabs !== undefined) pageLoader.item.tab = r.tab;
+        }
         root.panelVisible = true;
     }
     function step(delta) {
         const i = Pages.order.indexOf(root.page);
+        Cc.startTab = 0;
         root.page = Pages.order[Math.max(0, Math.min(Pages.order.length - 1, i + delta))];
     }
 
@@ -493,6 +501,7 @@ Scope {
 
     // open a page from the window itself: the search is done with
     function goTo(p) {
+        Cc.startTab = 0;
         root.page = p;
         search.text = "";
         keys.forceActiveFocus();

@@ -83,13 +83,20 @@ var pages = {
 var order = [];
 for (var g = 0; g < groups.length; g++) order = order.concat(groups[g].pages);
 
-// the names older parts of the shell open pages by (IPC methods, bar buttons)
+// the names older parts of the shell open pages by (IPC methods, bar buttons, and
+// Atelier's former tabs), with the sub page to show: "page" or "page:tab"
 var aliases = { appearance: "theme", defaultApps: "apps", hyprland: "windows",
-                displays: "screens", power: "sleep", docks: "dock" };
+                displays: "screens", power: "sleep", docks: "dock",
+                themes: "theme", wallpapers: "wallpaper", layouts: "arrange",
+                rotation: "wallpaper:1", palette: "theme:1", panel: "picker" };
 
+// "wifi", "rotation" or "wallpaper:1" -> { page, tab }; page "" when there is none
 function resolve(name) {
-    if (pages[name]) return name;
-    return aliases[name] || "";
+    var n = String(name || "");
+    if (!pages[n] && aliases[n]) n = aliases[n];
+    var parts = n.split(":");
+    var tab = parts.length > 1 ? parseInt(parts[1]) : 0;
+    return { page: pages[parts[0]] ? parts[0] : "", tab: isNaN(tab) ? 0 : tab };
 }
 
 // what matches what you typed: settings first, then pages
