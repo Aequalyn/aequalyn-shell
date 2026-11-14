@@ -31,6 +31,17 @@ CcPage {
     }
 
     CcSection {
+        title: "Dock"
+        hint: "Show open web apps in the dock even when they are not pinned."
+
+        CcToggle {
+            title: "Show web apps in the dock"
+            sub: "Open web apps appear in the dock with a running indicator; turn off to keep the dock to pinned apps only."
+            setting: "showWebappsInDock"
+        }
+    }
+
+    CcSection {
         title: "Browser"
         hint: "Chromium-based browsers open a web app as its own app window. Firefox-based browsers use a separate profile with the navigation and tab bars hidden, so the window reads as an app too."
 

@@ -152,6 +152,7 @@ QtObject {
     property var dockPinned: [
         "org.gnome.Nautilus", "firefox", "chromium", "kitty"
     ]
+    property bool showWebappsInDock: true
 
     // Bar plugins split into three regions (left / center / right) so the
     // layout doesn't spread icons across the full width. Drag plugins between
@@ -369,7 +370,8 @@ QtObject {
                 autohide: root.dockAutohide,
                 iconSize: root.dockIconSize,
                 screen: root.dockScreen,
-                pinned: root.dockPinned
+                pinned: root.dockPinned,
+                showWebappsInDock: root.showWebappsInDock
             },
             hyprland: {
                 gapsIn: root.gapsIn,
@@ -557,6 +559,7 @@ QtObject {
         root.dockIconSize = pick(dk.iconSize, root.dockIconSize)
         root.dockScreen = pick(dk.screen, root.dockScreen)
         root.dockPinned = pick(dk.pinned, root.dockPinned)
+        root.showWebappsInDock = pick(dk.showWebappsInDock, root.showWebappsInDock)
 
         root.gapsIn = pick(h.gapsIn, root.gapsIn)
         root.gapsOut = pick(h.gapsOut, root.gapsOut)
