@@ -137,8 +137,8 @@ Scope {
     }))
 
     readonly property var filters: collection === "themes"
-        ? [["all", "All"], ["theme", "With backgrounds"], ["palette", "Palettes"], ["dark", "Dark"], ["light", "Light"]]
-        : [["all", "All"], ["image", "Images"], ["live", "Live"], ["theme", "Theme"], ["painted", "Painted"]]
+        ? [["all", "All"], ["fav", "★ Favourites"], ["recent", "Recent"], ["theme", "With backgrounds"], ["palette", "Palettes"], ["dark", "Dark"], ["light", "Light"]]
+        : [["all", "All"], ["fav", "★ Favourites"], ["recent", "Recent"], ["image", "Images"], ["live", "Live"], ["theme", "Theme"], ["painted", "Painted"]]
 
     readonly property var items: {
         const src = collection === "themes" ? themeItems : collection === "wallpapers" ? wallpaperItems : [];
@@ -149,6 +149,8 @@ Scope {
             case "all": return true;
             case "theme": return collection === "themes" ? (it.group === "theme" || it.group === "pack") : it.group === "theme";
             case "dark": return it.group === "dynamic" || (it.palette && !it.light);
+            case "fav": return root.isFavorite(it);
+            case "recent": return root.recentKeys.indexOf(it.key) >= 0;
             case "light": return !!it.light;
             default: return it.group === root.filter;
             }
@@ -156,6 +158,26 @@ Scope {
     }
 
     readonly property var currentItem: items[currentIndex] || null
+
+    // ---- favourites and recently used (per collection, kept in settings) ----
+    readonly property var favorites: (AequalynSettings.atelierCfg.favorites || {})[collection] || []
+    readonly property var recentKeys: (AequalynSettings.atelierCfg.recent || {})[collection] || []
+    function isFavorite(it) { return !!it && !!it.key && favorites.indexOf(it.key) >= 0; }
+    function toggleFavorite(it) {
+        if (!it || !it.key) return;
+        const all = Object.assign({}, AequalynSettings.atelierCfg.favorites || {});
+        const list = (all[collection] || []).slice();
+        const at = list.indexOf(it.key);
+        if (at >= 0) list.splice(at, 1); else list.push(it.key);
+        all[collection] = list;
+        AequalynSettings.setIn("atelier", "favorites", all);
+    }
+    function noteRecent(it) {
+        if (!it || !it.key) return;
+        const all = Object.assign({}, AequalynSettings.atelierCfg.recent || {});
+        all[collection] = [it.key].concat((all[collection] || []).filter(k => k !== it.key)).slice(0, 12);
+        AequalynSettings.setIn("atelier", "recent", all);
+    }
 
     // One line under the title: where you are and what is running.
     readonly property string statusLine: {
@@ -299,6 +321,7 @@ Scope {
         const it = items[index];
         if (!it) return;
         currentIndex = index;
+        noteRecent(it);
         const t = root.theme;
         switch (it.kind) {
         case "wallpaper":
