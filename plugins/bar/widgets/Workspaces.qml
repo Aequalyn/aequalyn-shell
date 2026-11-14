@@ -11,12 +11,22 @@ Item {
   Process { id: wsScrollProc; running: false }
   readonly property var visibleWorkspaces: {
     const list = (Hyprland.workspaces && Hyprland.workspaces.values) ? Hyprland.workspaces.values : Hyprland.workspaces;
+    const monName = (bar.screen && bar.screen.name) ? bar.screen.name : "";
     const out = [];
     for (let i = 0; i < list.length; i++) {
       const w = list[i];
+      const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
+      if (monName && wm && wm !== monName) continue;
       if (w.focused || w.urgent || (w.windows && w.windows > 0)) out.push(w);
     }
-    if (out.length === 0 && list.length > 0) out.push(list[0]);
+    if (out.length === 0 && list.length > 0) {
+      // fall back to the first workspace on this monitor, if any
+      for (let i = 0; i < list.length; i++) {
+        const w = list[i];
+        const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
+        if (!monName || !wm || wm === monName) { out.push(w); break; }
+      }
+    }
     return out;
   }
   Row {
