@@ -1,0 +1,15 @@
+singleton Cc 1.0 Cc.qml
+CcPage 1.0 CcPage.qml
+CcSection 1.0 CcSection.qml
+CcSwitch 1.0 CcSwitch.qml
+CcToggle 1.0 CcToggle.qml
+CcChoice 1.0 CcChoice.qml
+CcSlider 1.0 CcSlider.qml
+CcRow 1.0 CcRow.qml
+CcButton 1.0 CcButton.qml
+CcMore 1.0 CcMore.qml
+CcCard 1.0 CcCard.qml
+CcNote 1.0 CcNote.qml
+AppsService 1.0 AppsService.qml
+UpdatesService 1.0 UpdatesService.qml
+BackupService 1.0 BackupService.qml
