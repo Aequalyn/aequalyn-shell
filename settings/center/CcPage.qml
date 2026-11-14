@@ -16,6 +16,13 @@ Item {
     property var fills: []          // the sub pages that fill the page
     default property alias content: body.data
     property alias actions: actionRow.data
+    // A live picture pinned under the title: it stays put while the choices below scroll,
+    // and changes as they do. `stageHeight` 0 means none; `stageTabs` limits it to some
+    // sub pages (empty: all of them).
+    property alias stage: stageHolder.data
+    property int stageHeight: 0
+    property var stageTabs: []
+    readonly property bool hasStage: stageHeight > 0 && (stageTabs.length === 0 || stageTabs.indexOf(tab) >= 0)
 
     readonly property bool fill: fills.indexOf(tab) >= 0
     onTabChanged: flick.contentY = 0
@@ -104,10 +111,21 @@ Item {
         }
     }
 
+    Item {
+        id: stageHolder
+        anchors.top: header.bottom
+        anchors.topMargin: page.hasStage ? 18 : 0
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.rightMargin: 14
+        height: page.hasStage ? page.stageHeight : 0
+        visible: page.hasStage
+    }
+
     Flickable {
         id: flick
-        anchors.top: header.bottom
-        anchors.topMargin: 20
+        anchors.top: stageHolder.bottom
+        anchors.topMargin: page.hasStage ? 16 : 20
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
