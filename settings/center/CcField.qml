@@ -7,6 +7,7 @@ Rectangle {
     property alias text: input.text
     property string placeholder: ""
     property int inputWidth: 0
+    property int echoMode: TextInput.Normal
     signal accepted()
 
     function forceInput() { input.forceActiveFocus(); }
@@ -23,6 +24,7 @@ Rectangle {
     }
     TextInput {
         id: input
+        echoMode: f.echoMode
         anchors.left: parent.left
         anchors.leftMargin: 12
         anchors.right: parent.right

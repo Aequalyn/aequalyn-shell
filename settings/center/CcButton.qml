@@ -7,12 +7,14 @@ Rectangle {
     property string icon: ""
     property bool primary: false
     property bool danger: false
+    property bool warning: false
     signal clicked()
 
     implicitWidth: row.implicitWidth + 28
     implicitHeight: 34
     radius: 10
-    color: primary ? (area.containsMouse ? Qt.lighter(Cc.theme.accentPrimary, 1.12) : Cc.theme.accentPrimary)
+    color: warning ? Cc.theme.accentRed
+         : primary ? (area.containsMouse ? Qt.lighter(Cc.theme.accentPrimary, 1.12) : Cc.theme.accentPrimary)
          : danger && area.containsMouse ? Cc.theme.accentRed
          : area.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSelected
     opacity: enabled ? 1 : 0.45
@@ -21,7 +23,7 @@ Rectangle {
     Accessible.role: Accessible.Button
     Accessible.name: text
 
-    readonly property color ink: primary || (danger && area.containsMouse) ? Cc.theme.bgBase : Cc.theme.textPrimary
+    readonly property color ink: primary || warning || (danger && area.containsMouse) ? Cc.theme.bgBase : Cc.theme.textPrimary
     Row {
         id: row
         anchors.centerIn: parent

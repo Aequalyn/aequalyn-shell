@@ -8,7 +8,7 @@ var groups = [
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
     { title: "Windows", pages: ["arrange", "windows", "screens", "input"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
-    { title: "System",  pages: ["apps", "webapps", "clock", "sleep", "updates", "backup", "plugins", "about"] }
+    { title: "System",  pages: ["apps", "webapps", "store", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
 
 var pages = {
@@ -56,6 +56,9 @@ var pages = {
     webapps:   { label: "Web apps", icon: "\u{F0595}", file: "Webapps",
                  words: ["Add a web app", "Remove a web app", "Web app browser", "Web app shortcuts"],
                  also: "webapp web app website site reddit chatgpt youtube music shortcut launcher app window" },
+    store:     { label: "Store", icon: "\u{F034A}", file: "Store",
+                  words: ["Install a package", "Install from the AUR", "Arch packages", "AUR packages"],
+                  also: "store install software package aur pacman yay app application" },
     clock:     { label: "Clock", icon: "\u{F0954}", file: "Clock",
                  words: ["24-hour clock", "Show seconds"],
                  also: "time date am pm" },
