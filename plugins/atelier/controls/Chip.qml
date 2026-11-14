@@ -1,4 +1,5 @@
-// A pill button; `selected` draws it in the accent colour.
+// A choice button, drawn like the control center's: a soft fill, and the accent
+// outline when `selected`. Words in sans, the icon in the icon font.
 import QtQuick
 
 Rectangle {
@@ -11,12 +12,14 @@ Rectangle {
     property bool compact: false
     signal clicked()
 
-    implicitWidth: row.implicitWidth + (compact ? 16 : 22)
-    implicitHeight: compact ? 24 : 30
-    radius: height / 2
-    color: theme ? (selected ? theme.accentPrimary : (area.containsMouse ? theme.bgHover : theme.bgSurface)) : "transparent"
-    border.color: theme ? (selected ? theme.accentPrimary : theme.bgBorder) : "transparent"
-    border.width: 1
+    implicitWidth: row.implicitWidth + (compact ? 22 : 28)
+    implicitHeight: compact ? 30 : 34
+    radius: 10
+    color: !theme ? "transparent"
+         : selected ? Qt.rgba(theme.accentPrimary.r, theme.accentPrimary.g, theme.accentPrimary.b, 0.16)
+         : Qt.rgba(theme.textPrimary.r, theme.textPrimary.g, theme.textPrimary.b, area.containsMouse ? 0.11 : 0.06)
+    border.color: theme && selected ? theme.accentPrimary : "transparent"
+    border.width: 2
     Behavior on color { ColorAnimation { duration: 120 } }
 
     Row {
@@ -26,17 +29,17 @@ Rectangle {
         Text {
             visible: chip.icon !== ""
             text: chip.icon
-            color: chip.theme ? (chip.selected ? chip.theme.bgBase : chip.theme.textSecondary) : "white"
+            color: chip.theme ? (chip.selected ? chip.theme.accentPrimary : chip.theme.textSecondary) : "white"
             font.family: chip.font
-            font.pixelSize: chip.compact ? 11 : 13
+            font.pixelSize: 13
             anchors.verticalCenter: parent.verticalCenter
         }
         Text {
             text: chip.text
-            color: chip.theme ? (chip.selected ? chip.theme.bgBase : chip.theme.textPrimary) : "white"
-            font.family: chip.font
-            font.pixelSize: chip.compact ? 10 : 12
-            font.bold: chip.selected
+            color: chip.theme ? (chip.selected ? chip.theme.textPrimary : chip.theme.textSecondary) : "white"
+            font.family: "sans-serif"
+            font.pixelSize: 12
+            font.weight: chip.selected ? Font.DemiBold : Font.Normal
             anchors.verticalCenter: parent.verticalCenter
         }
     }

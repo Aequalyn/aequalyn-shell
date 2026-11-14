@@ -1,4 +1,4 @@
-// Small caps title with an optional explanation underneath.
+// A short title with an optional explanation underneath, in the control center's words.
 import QtQuick
 import QtQuick.Layouts
 
@@ -10,23 +10,22 @@ ColumnLayout {
     property string sub: ""
 
     Layout.fillWidth: true
-    Layout.topMargin: 6
+    Layout.topMargin: 10
     spacing: 3
 
     Text {
-        text: header.text.toUpperCase()
-        color: header.theme.textMuted
-        font.family: header.font
-        font.pixelSize: 10
-        font.bold: true
-        font.letterSpacing: 1.4
+        text: header.text
+        color: header.theme.textSecondary
+        font.family: "sans-serif"
+        font.pixelSize: 14
+        font.weight: Font.DemiBold
     }
     Text {
         visible: header.sub !== ""
         text: header.sub
-        color: header.theme.textSecondary
-        font.family: header.font
-        font.pixelSize: 11
+        color: header.theme.textMuted
+        font.family: "sans-serif"
+        font.pixelSize: 12
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
     }

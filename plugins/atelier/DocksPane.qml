@@ -101,8 +101,8 @@ Flickable {
                                 anchors.centerIn: parent
                                 text: dcard.index + 1
                                 color: dcard.on ? pane.theme.bgBase : pane.theme.accentPrimary
-                                font.family: pane.font
-                                font.pixelSize: 13
+                                font.family: "sans-serif"
+                                font.pixelSize: 14
                                 font.bold: true
                             }
                         }
@@ -123,8 +123,8 @@ Flickable {
                                 Layout.fillWidth: true
                                 text: pane.lookName(dcard.modelData, dcard.index)
                                 color: pane.theme.textMuted
-                                font.family: pane.font
-                                font.pixelSize: 10
+                                font.family: "sans-serif"
+                                font.pixelSize: 11
                                 elide: Text.ElideRight
                             }
                         }
@@ -167,15 +167,15 @@ Flickable {
             wrapMode: Text.WordWrap
             text: pane.svc ? pane.svc.notice : ""
             color: pane.theme.accentOrange
-            font.family: pane.font
-            font.pixelSize: 11
+            font.family: "sans-serif"
+            font.pixelSize: 12
         }
         Text {
             visible: !pane.svc
             text: "Turn the docks on to set them up."
             color: pane.theme.textMuted
-            font.family: pane.font
-            font.pixelSize: 12
+            font.family: "sans-serif"
+            font.pixelSize: 13
         }
 
         // ---- place and hiding ---------------------------------------------------------
@@ -377,7 +377,7 @@ Flickable {
                                     text: followCard.modelData[1]
                                     color: followCard.on ? pane.theme.bgBase : pane.theme.accentPrimary
                                     font.family: pane.font
-                                    font.pixelSize: 15
+                                    font.pixelSize: 12
                                 }
                             }
                             ColumnLayout {
@@ -387,16 +387,16 @@ Flickable {
                                     Layout.fillWidth: true
                                     text: followCard.modelData[2]
                                     color: pane.theme.textPrimary
-                                    font.family: pane.font
-                                    font.pixelSize: 12
+                                    font.family: "sans-serif"
+                                    font.pixelSize: 13
                                     font.bold: true
                                 }
                                 Text {
                                     Layout.fillWidth: true
                                     text: followCard.modelData[3]
                                     color: pane.theme.textMuted
-                                    font.family: pane.font
-                                    font.pixelSize: 10
+                                    font.family: "sans-serif"
+                                    font.pixelSize: 11
                                 }
                             }
                         }

@@ -1,4 +1,5 @@
-// A titled card that holds a few related settings, Atelier's way of grouping.
+// A titled card that holds a few related settings. Words are set in the sans the
+// control center uses; icons stay in the shell's icon font (`font`).
 import QtQuick
 import QtQuick.Layouts
 
@@ -12,25 +13,24 @@ Rectangle {
     default property alias content: body.data
 
     Layout.fillWidth: true
-    implicitHeight: col.implicitHeight + 28
-    radius: 12
-    color: Qt.rgba(theme.textPrimary.r, theme.textPrimary.g, theme.textPrimary.b, 0.03)
-    border.color: theme.bgBorder
+    implicitHeight: col.implicitHeight + 32
+    radius: 14
+    color: theme.bgSurface
 
     ColumnLayout {
         id: col
-        x: 14; y: 14
-        width: parent.width - 28
-        spacing: 10
+        x: 16; y: 16
+        width: parent.width - 32
+        spacing: 12
         RowLayout {
             spacing: 10
             Layout.fillWidth: true
             Rectangle {
                 visible: group.icon !== ""
-                Layout.preferredWidth: 30
-                Layout.preferredHeight: 30
-                radius: 9
-                color: group.theme.bgBase
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+                radius: 10
+                color: group.theme.bgSelected
                 Text {
                     anchors.centerIn: parent
                     text: group.icon
@@ -45,16 +45,16 @@ Rectangle {
                 Text {
                     text: group.title
                     color: group.theme.textPrimary
-                    font.family: group.font
-                    font.pixelSize: 13
-                    font.bold: true
+                    font.family: "sans-serif"
+                    font.pixelSize: 14
+                    font.weight: Font.DemiBold
                 }
                 Text {
                     visible: group.sub !== ""
                     text: group.sub
                     color: group.theme.textMuted
-                    font.family: group.font
-                    font.pixelSize: 10
+                    font.family: "sans-serif"
+                    font.pixelSize: 12
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
@@ -63,7 +63,7 @@ Rectangle {
         ColumnLayout {
             id: body
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 10
         }
     }
 }

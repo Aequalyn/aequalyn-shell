@@ -74,8 +74,8 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         text: ed.current && ed.current[2] ? (ed.current[2].abouts[ed.look[ed.part]] || "") : ""
         color: ed.theme.textMuted
-        font.family: ed.font
-        font.pixelSize: 10
+        font.family: "sans-serif"
+        font.pixelSize: 11
     }
     ChoiceRow {
         visible: ed.part === "ends"

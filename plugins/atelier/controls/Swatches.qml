@@ -17,8 +17,8 @@ RowLayout {
     Text {
         text: sw.label
         color: sw.theme.textSecondary
-        font.family: sw.font
-        font.pixelSize: 11
+        font.family: "sans-serif"
+        font.pixelSize: 12
         Layout.preferredWidth: 96
     }
     Flow {

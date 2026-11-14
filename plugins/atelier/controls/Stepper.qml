@@ -19,26 +19,27 @@ RowLayout {
     Text {
         text: stepper.label
         color: stepper.theme.textSecondary
-        font.family: stepper.font
-        font.pixelSize: 11
-        Layout.preferredWidth: 64
+        font.family: "sans-serif"
+        font.pixelSize: 12
+        Layout.preferredWidth: 90
     }
 
     Repeater {
         model: [{ glyph: "‹", delta: -1 }, { glyph: "", delta: 0 }, { glyph: "›", delta: 1 }]
         delegate: Rectangle {
             required property var modelData
-            implicitWidth: modelData.delta === 0 ? 54 : 24
-            implicitHeight: 24
-            radius: 6
-            color: modelData.delta === 0 ? stepper.theme.bgSurface : (btn.containsMouse ? stepper.theme.bgHover : "transparent")
-            border.color: modelData.delta === 0 ? stepper.theme.bgBorder : "transparent"
+            implicitWidth: modelData.delta === 0 ? 62 : 30
+            implicitHeight: 30
+            radius: 9
+            color: modelData.delta === 0 ? "transparent"
+                 : Qt.rgba(stepper.theme.textPrimary.r, stepper.theme.textPrimary.g, stepper.theme.textPrimary.b, btn.containsMouse ? 0.11 : 0.06)
             Text {
                 anchors.centerIn: parent
                 text: modelData.delta === 0 ? (stepper.value + stepper.suffix) : modelData.glyph
-                color: stepper.theme.textPrimary
+                color: modelData.delta === 0 ? stepper.theme.accentPrimary : stepper.theme.textPrimary
                 font.family: stepper.font
-                font.pixelSize: 12
+                font.pixelSize: modelData.delta === 0 ? 12 : 15
+                font.bold: modelData.delta === 0
             }
             MouseArea {
                 id: btn

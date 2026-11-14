@@ -73,16 +73,16 @@ Flickable {
                             Text {
                                 text: modeCard.modelData.name
                                 color: pane.theme.textPrimary
-                                font.family: pane.font
-                                font.pixelSize: 13
+                                font.family: "sans-serif"
+                                font.pixelSize: 14
                                 font.bold: true
                             }
                             Text {
                                 Layout.fillWidth: true
                                 text: modeCard.modelData.text
                                 color: pane.theme.textMuted
-                                font.family: pane.font
-                                font.pixelSize: 10
+                                font.family: "sans-serif"
+                                font.pixelSize: 11
                                 wrapMode: Text.WordWrap
                                 maximumLineCount: 2
                                 elide: Text.ElideRight
