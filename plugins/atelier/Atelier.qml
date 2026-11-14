@@ -74,7 +74,7 @@ Scope {
     readonly property bool searchable: browsing || collection === "layouts"
     readonly property string layout: {
         const l = (AequalynSettings.atelierCfg.layouts || {})[collection];
-        return layoutKeys.indexOf(l) >= 0 ? l : "grid";
+        return layoutKeys.indexOf(l) >= 0 ? l : "showcase";
     }
     readonly property bool spotlight: browsing && layout === "spotlight"
     readonly property bool livePreview: AequalynSettings.atelierCfg.livePreview !== false

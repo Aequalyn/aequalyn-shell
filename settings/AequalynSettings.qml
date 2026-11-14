@@ -71,7 +71,7 @@ QtObject {
         scheme: "scheme-tonal-spot", contrast: 0
     })
     readonly property var atelierDefaults: ({
-        layouts: { themes: "grid", wallpapers: "carousel" }, livePreview: true,
+        layouts: { themes: "showcase", wallpapers: "showcase" }, livePreview: true,
         // the Showcase picker (Atelier -> Panel): where, how large, the cards' shape
         // ("bar" = the bar's own ends) and which parts it shows
         showcase: { position: "center", size: 100, shape: "bar",
@@ -532,6 +532,18 @@ QtObject {
         root.wallpaperCfg = root._merge(root.wallpaperDefaults, d.wallpaper)
         root.paletteCfg = root._merge(root.paletteDefaults, d.palette)
         root.atelierCfg = root._merge(root.atelierDefaults, d.atelier)
+        // Showcase arrived as the default picker: settings saved before it existed
+        // carry the old defaults (grid / carousel), so switch those over once
+        if (d.atelier && d.atelier.showcase === undefined) {
+            const was = d.atelier.layouts || {}
+            const next = Object.assign({}, was)
+            if (!was.themes || was.themes === "grid") next.themes = "showcase"
+            if (!was.wallpapers || was.wallpapers === "carousel") next.wallpapers = "showcase"
+            root.atelierCfg = Object.assign({}, root.atelierCfg, { layouts: next })
+            // saved straight away, so it happens once (and an edit of the file
+            // that adds Showcase settings can't bring the old layouts back)
+            Qt.callLater(root.save)
+        }
         if (Array.isArray(d.plugins)) root.enabledPlugins = d.plugins.slice()
         if (dk.enabled === false) root.enabledPlugins = (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).filter(x => x !== "docks")
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
