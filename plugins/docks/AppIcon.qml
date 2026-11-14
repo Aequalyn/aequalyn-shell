@@ -72,7 +72,12 @@ Item {
 
     // Some desktop icons live in a different installed theme than the active one.
     // Search the usual shared icon sizes, including AdwaitaLegacy's legacy category.
+    const dataHome = Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share");
     const iconDirs = [
+      dataHome + "/icons/hicolor/256x256/apps/",
+      dataHome + "/icons/hicolor/48x48/apps/",
+      dataHome + "/icons/hicolor/scalable/apps/",
+      dataHome + "/icons/hicolor/128x128/apps/",
       "/usr/share/icons/AdwaitaLegacy/48x48/legacy/",
       "/usr/share/icons/AdwaitaLegacy/32x32/legacy/",
       "/usr/share/icons/AdwaitaLegacy/24x24/legacy/",
