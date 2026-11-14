@@ -176,7 +176,7 @@ QtObject {
         appsmenu: "Apps menu (Arch)",
         settingsbutton: "Settings button",
         caffeine: "Caffeine (idle inhibit)",
-        atelier: "Atelier (themes & wallpapers)",
+        atelier: "Themes and wallpapers",
         layouts: "Window layout"
     })
 

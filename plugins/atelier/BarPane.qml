@@ -464,7 +464,7 @@ Flickable {
                     theme: pane.theme; font: pane.font
                     icon: "󰏘"
                     title: "Colors"
-                    sub: "Theme follows Atelier's palette"
+                    sub: "Theme follows your colours"
                     ChoiceRow {
                         theme: pane.theme; font: pane.font
                         label: "From"
