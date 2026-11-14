@@ -72,6 +72,12 @@ QtObject {
     })
     readonly property var atelierDefaults: ({
         layouts: { themes: "grid", wallpapers: "carousel" }, livePreview: true,
+        // the Showcase picker (Atelier -> Panel): where, how large, the cards' shape
+        // ("bar" = the bar's own ends) and which parts it shows
+        showcase: { position: "center", size: 100, shape: "bar",
+                    parts: { palette: true, backgrounds: true, three: true, live: true,
+                             tabs: true, badges: true, actions: true } },
+        favorites: {}, recent: {},
         openAs: "panel", panelWidth: 1180, panelHeight: 780,
         atelierShowName: true, atelierRightClick: "next-wallpaper", atelierMiddleClick: "random-wallpaper",
         layoutsShowName: true, layoutsRightClick: "next-layout", layoutsMiddleClick: "prev-layout"

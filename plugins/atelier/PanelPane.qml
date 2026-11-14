@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import "controls"
 import "root:/settings"
+import  "../../style/parts/Ends.js" as Ends
 
 Flickable {
     id: pane
@@ -12,6 +13,12 @@ Flickable {
 
     readonly property var cfg: AequalynSettings.atelierCfg
     function set(key, value) { AequalynSettings.setIn("atelier", key, value); }
+    readonly property var showcase: cfg.showcase || ({})
+    function setShowcase(key, value) {
+        const next = Object.assign({}, showcase);
+        next[key] = value;
+        set("showcase", next);
+    }
 
     readonly property var actions: [
         ["next-layout", "Next layout"], ["prev-layout", "Previous layout"],
@@ -193,6 +200,61 @@ Flickable {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // ---- the Showcase picker ------------------------------------------------
+        SectionHeader {
+            theme: pane.theme; font: pane.font
+            text: "Showcase"
+            sub: "The theme and wallpaper picker: a large card between smaller ones. On the left or right it runs top to bottom."
+        }
+        ChoiceRow {
+            theme: pane.theme; font: pane.font
+            label: "Position"
+            options: ["center", "top", "bottom", "left", "right"]
+            labels: ({ center: "Middle", top: "Top", bottom: "Bottom", left: "Left", right: "Right" })
+            value: pane.showcase.position || "center"
+            onPicked: v => pane.setShowcase("position", v)
+        }
+        Stepper {
+            theme: pane.theme; font: pane.font
+            label: "Size"; suffix: "%"
+            from: 60; to: 140; step: 10
+            value: Number(pane.showcase.size) || 100
+            onStepped: v => pane.setShowcase("size", v)
+        }
+        ChoiceRow {
+            theme: pane.theme; font: pane.font
+            label: "Shape"
+            options: ["bar"].concat(Ends.list.map(e => e.key))
+            labels: {
+                const out = { bar: "Same as the bar" };
+                for (const e of Ends.list) out[e.key] = e.label;
+                return out;
+            }
+            value: pane.showcase.shape || "bar"
+            onPicked: v => pane.setShowcase("shape", v)
+        }
+        Repeater {
+            model: [
+                ["palette", "Theme colours on the large card"],
+                ["backgrounds", "The theme's backgrounds in a second row, to pick one with it"],
+                ["three", "Neighbours as cards, not slices"],
+                ["live", "A small desktop drawn in the theme's colours"],
+                ["badges", "Badges: favourite, video, light or dark"],
+                ["actions", "Shuffle, favourite, folder and add buttons"]
+            ]
+            delegate: Toggle {
+                required property var modelData
+                theme: pane.theme; font: pane.font
+                label: modelData[1]
+                checked: !pane.showcase.parts || pane.showcase.parts[modelData[0]] !== false
+                onToggled: v => {
+                    const parts = Object.assign({}, pane.showcase.parts || {});
+                    parts[modelData[0]] = v;
+                    pane.setShowcase("parts", parts);
                 }
             }
         }
