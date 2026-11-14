@@ -14,5 +14,5 @@ var list = [
     { id: "clipboard",      label: "Clipboard history", source: "plugins/clipboard/ClipboardPanel.qml" },
     { id: "powerMenu",      label: "Power menu",     source: "plugins/powerMenu/PowerMenu.qml" },
     { id: "docks",          label: "Docks",          source: "plugins/docks/DocksService.qml" },
-    { id: "settings",       label: "Settings panel", source: "settings/Settings.qml" }
+    { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
