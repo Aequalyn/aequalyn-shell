@@ -210,6 +210,13 @@ Flickable {
             text: "Showcase"
             sub: "The theme and wallpaper picker: a large card between smaller ones. On the left or right it runs top to bottom."
         }
+        Toggle {
+            theme: pane.theme; font: pane.font
+            label: "Themes and wallpapers open in the switcher"
+            sublabel: "Super + T, Super + W and the bar button show only the picker over the blurred desktop. Off: they open here in Atelier."
+            checked: pane.cfg.switcher !== false
+            onToggled: v => pane.set("switcher", v)
+        }
         ChoiceRow {
             theme: pane.theme; font: pane.font
             label: "Position"
