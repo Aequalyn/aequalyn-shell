@@ -14,20 +14,28 @@ Item {
     anchors.fill: parent
     spacing: 4
     Repeater {
-      model: Hyprland.workspaces
+      model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
       Rectangle {
         id: wsPill
-        required property var modelData
+        required property int modelData
+        readonly property int wsId: modelData
+        readonly property var ws: {
+          const list = Hyprland.workspaces.values || Hyprland.workspaces;
+          for (let i = 0; i < list.length; i++) if (list[i].id === wsId) return list[i];
+          return null;
+        }
         property bool urgentBlink: false
-        width: modelData.focused ? 32 : 24
+        readonly property bool focused: ws !== null && ws.focused
+        readonly property bool urgent: ws !== null && ws.urgent
+        width: focused ? 32 : 24
         height: 24
         radius: 12
-        color: modelData.focused ? bar.theme.accentPrimary :
-               modelData.urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
+        color: focused ? bar.theme.accentPrimary :
+               urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
         Behavior on color { ColorAnimation { duration: 150 } }
         SequentialAnimation {
           loops: Animation.Infinite
-          running: wsPill.modelData.urgent && !wsPill.modelData.focused
+          running: urgent && !focused
           PropertyAction { target: wsPill; property: "urgentBlink"; value: true }
           PauseAnimation { duration: 500 }
           PropertyAction { target: wsPill; property: "urgentBlink"; value: false }
@@ -36,15 +44,18 @@ Item {
         }
         Text {
           anchors.centerIn: parent
-          text: wsPill.modelData.id
-          color: wsPill.modelData.focused ? bar.theme.bgBase : bar.theme.textPrimary
+          text: wsPill.wsId === 0 ? "10" : String(wsPill.wsId)
+          color: focused ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
-          font.bold: wsPill.modelData.focused
+          font.bold: focused
         }
         MouseArea {
           anchors.fill: parent
-          onClicked: wsPill.modelData.activate()
+          onClicked: {
+            if (wsPill.ws) wsPill.ws.activate();
+            else Hyprland.dispatch("workspace " + wsPill.wsId);
+          }
           onWheel: (wheel) => {
             const dir = wheel.angleDelta.y > 0 ? "e-1" : "e+1";
             wsScrollProc.command = ["hyprctl", "dispatch",
