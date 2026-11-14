@@ -40,7 +40,12 @@ CcPage {
                 label: b.available ? b.label : b.label + " (not installed)"
             }))
             current: page.w ? page.w.browser : "auto"
-            onChosen: key => { if (page.w) page.w.setBrowser(key); }
+            onChosen: key => {
+                if (!page.w) return;
+                const b = (page.w.browsers || []).find(x => x.id === key);
+                if (b && !b.available) page.w.installBrowser(key);
+                else page.w.setBrowser(key);
+            }
         }
         CcNote {
             visible: text !== ""

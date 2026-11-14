@@ -10,6 +10,7 @@ import Quickshell.Widgets
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "root:/plugins/docks"
 
 Scope {
   id: root
@@ -254,10 +255,11 @@ Scope {
                 height: 28
                 Layout.alignment: Qt.AlignVCenter
 
-                IconImage {
+                AppIcon {
                   anchors.fill: parent
-                  source: Quickshell.iconPath(delegateRoot.modelData.icon ?? "", true)
-                  visible: (delegateRoot.modelData.icon ?? "") !== ""
+                  entry: delegateRoot.modelData
+                  wins: []
+                  size: 28
                 }
 
                 // Fallback icon

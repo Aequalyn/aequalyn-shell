@@ -117,7 +117,7 @@ launcher, gets an icon, and has a `Super + Shift + <letter>` shortcut.
   `~/.config/aequalyn/webapps.json`; launchers are written to
   `~/.local/share/applications/aequalyn-webapp-<slug>.desktop` and the shortcuts
   to `~/.config/hypr/webapps.lua`.
-- The installer seeds Reddit, ChatGPT, YouTube, YouTube Music, WhatsApp and Gmail
+- The installer seeds Reddit, ChatGPT, YouTube, YouTube Music, WhatsApp, Gmail and GitHub
   (shortcuts D, G, T, Y, H and E) when the *Seed web apps* option is on, using the
   browser chosen at install time.
 

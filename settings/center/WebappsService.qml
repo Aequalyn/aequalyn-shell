@@ -13,6 +13,7 @@ QtObject {
     property string browser: "auto"
     property string resolved: ""
     property string resolvedLabel: ""
+    property string pendingInstall: ""
     property bool busy: false
     property string error: ""
     property string note: ""
@@ -23,6 +24,20 @@ QtObject {
     function setBrowser(id) {
         if (!id || id === browser) return;
         run("browser", ["set-browser", id], "")
+    }
+
+    function installBrowser(id) {
+        const b = (svc.browsers || []).find(x => x.id === id);
+        if (!b || b.available) return;
+        const pkg = b.package || "";
+        if (!pkg) return;
+        const cmd = (b.aur ? "yay -S --noconfirm " : "sudo pacman -S --noconfirm ") + pkg;
+        svc.pendingInstall = id;
+        svc.error = "";
+        svc.note = "Installing " + b.label + " in a terminal...";
+        terminalProc.command = ["xdg-terminal-exec", "bash", "-c",
+            cmd + "; echo; read -n1 -s -r -p 'Press any key to close...'"];
+        terminalProc.running = true;
     }
 
     function add(name, url) {
@@ -67,6 +82,17 @@ QtObject {
                     svc.browser = j.browser || "auto";
                     svc.resolved = j.resolved || "";
                     svc.resolvedLabel = j.resolvedLabel || "";
+                    if (svc.pendingInstall !== "") {
+                        const bid = svc.pendingInstall;
+                        const bb = (j.browsers || []).find(x => x.id === bid);
+                        if (bb && bb.available) {
+                            svc.note = "Installed " + bb.label + ".";
+                            svc.setBrowser(bid);
+                        } else {
+                            svc.note = "Install did not complete.";
+                        }
+                        svc.pendingInstall = "";
+                    }
                 } catch (e) {
                     console.log("web apps: " + e);
                 }
@@ -92,5 +118,11 @@ QtObject {
             }
         }
         onRunningChanged: svc.busy = running
+    }
+
+    property Process terminalProc: Process {
+        onExited: (code) => {
+            svc.refresh();
+        }
     }
 }
