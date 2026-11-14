@@ -13,7 +13,6 @@ CcPage {
     title: "Wallpaper"
     sub: "The picture behind everything. Your colours can follow it."
     tabs: ["Pick one", "Change it over time"]
-    fills: [1]
     readonly property string folder: AequalynSettings.wallpaperCfg.folder || (Quickshell.env("HOME") + "/Pictures/Wallpapers")
 
     actions: [
@@ -23,16 +22,14 @@ CcPage {
         }
     ]
 
-    Stage {
-        visible: page.tab === 0
-        Layout.fillWidth: true
-        Layout.maximumWidth: 640
-        Layout.preferredHeight: width * 9 / 16
+    stageHeight: 210
+    stage: Stage {
+        anchors.fill: parent
         theme: Cc.theme
         font: Cc.mono
         wallpaper: Cc.wallpaper
         barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
-        barSize: 22
+        barSize: Math.round(AequalynSettings.barHeight * 0.75)
     }
     CcSection {
         visible: page.tab === 0
@@ -58,8 +55,9 @@ CcPage {
 
     RotationPane {
         visible: page.tab === 1
+        interactive: false
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        Layout.preferredHeight: contentHeight
         theme: Cc.theme
         font: Cc.mono
     }

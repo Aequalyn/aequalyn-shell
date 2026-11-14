@@ -12,12 +12,11 @@ CcPage {
     title: "Window look"
     sub: "Space, corners and effects around every window."
 
-    // two windows as they will look
-    Item {
+    // two windows as they will look, pinned on top while the settings scroll
+    stageHeight: 230
+    stage: Item {
         id: pic
-        Layout.fillWidth: true
-        Layout.maximumWidth: 560
-        Layout.preferredHeight: 230
+        anchors.fill: parent
         readonly property int go: AequalynSettings.gapsOut
         readonly property int gi: AequalynSettings.gapsIn
         Desk { anchors.fill: parent; theme: Cc.theme; source: Cc.wallpaper; radius: 14 }
@@ -51,6 +50,7 @@ CcPage {
             }
         }
     }
+
 
     CcSlider { setting: "gapsIn"; title: "Space between windows"; from: 0; to: 20; step: 1; unit: " px" }
     CcSlider { setting: "gapsOut"; title: "Space at the screen's edges"; from: 0; to: 30; step: 1; unit: " px" }
