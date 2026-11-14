@@ -1,5 +1,5 @@
-// Six layout buttons, each a small drawing of the layout itself.
-// Ctrl+1..6 picks one, Ctrl+L cycles.
+// The layout buttons, each a small drawing of the layout itself.
+// Ctrl+1..7 picks one, Ctrl+L cycles.
 import QtQuick
 
 Row {
@@ -16,7 +16,8 @@ Row {
         { key: "filmstrip", name: "Filmstrip" },
         { key: "radial", name: "Radial" },
         { key: "list", name: "List" },
-        { key: "spotlight", name: "Spotlight" }
+        { key: "spotlight", name: "Spotlight" },
+        { key: "showcase", name: "Showcase" }
     ]
 
     spacing: 4
@@ -95,6 +96,15 @@ Row {
                     anchors.fill: parent
                     Rectangle { anchors.fill: parent; radius: 2; color: btn.ink; opacity: 0.55 }
                     Rectangle { x: 5; y: 11; width: 16; height: 3; radius: 1.5; color: btn.ink }
+                }
+                // showcase: a large slanted card between slanted slices
+                Item {
+                    visible: btn.modelData.key === "showcase"
+                    anchors.fill: parent
+                    transform: Matrix4x4 { matrix: Qt.matrix4x4(1, -0.3, 0, 2.5, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1) }
+                    Rectangle { x: 0; y: 2; width: 4; height: 12; color: btn.ink; opacity: 0.45 }
+                    Rectangle { x: 5; y: 0; width: 15; height: 16; color: btn.ink; opacity: 0.85 }
+                    Rectangle { x: 21; y: 2; width: 4; height: 12; color: btn.ink; opacity: 0.45 }
                 }
             }
 
