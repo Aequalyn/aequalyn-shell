@@ -354,6 +354,32 @@ Scope {
           }
 
           Item { Layout.fillWidth: true }
+
+          Rectangle {
+            id: installAppsButton
+            width: installAppsLabel.implicitWidth + 16
+            height: 20
+            radius: 6
+            color: installAppsArea.containsMouse ? root.theme.bgHover : root.theme.bgSurface
+            Text {
+              id: installAppsLabel
+              anchors.centerIn: parent
+              text: "Install apps…"
+              color: root.theme.accentPrimary
+              font.pixelSize: 10
+              font.family: root.font
+            }
+            MouseArea {
+              id: installAppsArea
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                launcherPanel.visible = false;
+                Quickshell.execDetached(["qs", "ipc", "call", "aequalyn", "page", "store"]);
+              }
+            }
+          }
         }
       }
     }

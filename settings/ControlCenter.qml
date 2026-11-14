@@ -74,6 +74,9 @@ Scope {
         function appearance(): void { root.open("theme") }
         function defaultApps(): void { root.open("apps") }
         function webapps(): void { root.open("webapps") }
+        function store(): void { root.open("store") }
+        function install(): void { root.open("store") }
+
         function displays(): void { root.open("screens") }
         function bluetooth(): void { root.open("bluetooth") }
         function wifi(): void { root.open("wifi") }
