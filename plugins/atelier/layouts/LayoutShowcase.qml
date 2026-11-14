@@ -160,7 +160,7 @@ Item {
         }
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             // full screen: apply and close (Shift keeps it open), as everywhere in Atelier
-            apply(currentIndex, !!host && host.surface === "overlay" && !(event.modifiers & Qt.ShiftModifier));
+            apply(currentIndex, !!host && (host.surface === "overlay" || host.surface === "switcher") && !(event.modifiers & Qt.ShiftModifier));
             return true;
         }
         return false;
@@ -203,7 +203,7 @@ Item {
             Behavior on y { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-            onClicked: modelData.d === 0 ? root.apply(itemIndex, false) : root.hovered(itemIndex)
+            onClicked: modelData.d === 0 ? root.apply(itemIndex, !!root.host && root.host.surface === "switcher") : root.hovered(itemIndex)
         }
     }
 

@@ -78,6 +78,9 @@ QtObject {
                     parts: { palette: true, backgrounds: true, three: true, live: true,
                              tabs: true, badges: true, actions: true } },
         favorites: {}, recent: {},
+        // themes and wallpapers open in the switcher (the picker alone, over the
+        // blurred desktop) instead of the full Atelier
+        switcher: true,
         openAs: "panel", panelWidth: 1180, panelHeight: 780,
         atelierShowName: true, atelierRightClick: "next-wallpaper", atelierMiddleClick: "random-wallpaper",
         layoutsShowName: true, layoutsRightClick: "next-layout", layoutsMiddleClick: "prev-layout"
