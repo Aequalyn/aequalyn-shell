@@ -10,11 +10,8 @@ Item {
   Process { id: wsScrollProc; running: false }
   readonly property var visibleWorkspaces: {
     const m = Hyprland.workspaces;
-    const n = (typeof m.rowCount === "function") ? m.rowCount() : 0;
-    const list = [];
-    for (let i = 0; i < n; i++) {
-      try { list.push(m.data(m.index(i, 0))); } catch (e) {}
-    }
+    let list = [];
+    try { list = Array.from(m.values || []); } catch (e) { console.log('ARRFROMERR', e); }
     const monName = (bar && bar.screen && bar.screen.name) ? bar.screen.name : "";
     const out = [];
     for (let i = 0; i < list.length; i++) {
@@ -22,7 +19,8 @@ Item {
       if (!w) continue;
       const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
       if (monName && wm && wm !== monName) continue;
-      if (w.focused || w.urgent || (w.windows && w.windows > 0)) out.push(w);
+    const hasWins = (w.toplevels && w.toplevels.values && w.toplevels.values.length > 0) || w.active;
+    if (w.focused || w.urgent || hasWins) out.push(w);
     }
     if (out.length === 0 && list.length > 0) {
       for (let i = 0; i < list.length; i++) {
