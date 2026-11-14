@@ -4,25 +4,30 @@ import Quickshell.Hyprland
 import Quickshell.Io
 
 Item {
-  // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
   implicitWidth: wsRow.implicitWidth
   implicitHeight: 24
   Process { id: wsScrollProc; running: false }
   readonly property var visibleWorkspaces: {
-    const list = (Hyprland.workspaces && Hyprland.workspaces.values) ? Hyprland.workspaces.values : Hyprland.workspaces;
-    const monName = (bar.screen && bar.screen.name) ? bar.screen.name : "";
+    const m = Hyprland.workspaces;
+    const n = (typeof m.rowCount === "function") ? m.rowCount() : 0;
+    const list = [];
+    for (let i = 0; i < n; i++) {
+      try { list.push(m.data(m.index(i, 0))); } catch (e) {}
+    }
+    const monName = (bar && bar.screen && bar.screen.name) ? bar.screen.name : "";
     const out = [];
     for (let i = 0; i < list.length; i++) {
       const w = list[i];
+      if (!w) continue;
       const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
       if (monName && wm && wm !== monName) continue;
       if (w.focused || w.urgent || (w.windows && w.windows > 0)) out.push(w);
     }
     if (out.length === 0 && list.length > 0) {
-      // fall back to the first workspace on this monitor, if any
       for (let i = 0; i < list.length; i++) {
         const w = list[i];
+        if (!w) continue;
         const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
         if (!monName || !wm || wm === monName) { out.push(w); break; }
       }
