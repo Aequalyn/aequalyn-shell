@@ -2,10 +2,9 @@ import QtQuick
 import Quickshell
 import "root:/plugins/atelier"
 
-// Atelier and Layouts buttons: left click opens Atelier on its tab, as a panel docked
-// under the button, a window, or full screen (Atelier -> Panel). Right / middle click do
-// what the Panel tab says. Every bar registers its button, so Super + T can dock the
-// panel under the button on the focused monitor.
+// Themes and Layouts buttons: a left click opens the theme picker over the blurred
+// desktop (Themes) or the control center's Arranging windows page (Layouts). Right and
+// middle click do what the control center's Theme picker page says.
 Rectangle {
   id: btn
   // the bar this button sits in (Bar.qml)

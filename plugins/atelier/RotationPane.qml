@@ -27,7 +27,7 @@ Flickable {
         SectionHeader {
             theme: pane.theme; font: pane.font
             text: "Mode"
-            sub: "Pick how wallpapers change. Each mode works from Atelier, a keybind or the aequalyn-wallpaper command."
+            sub: "Pick how wallpapers change. Each mode works from the picker, a keybind or the aequalyn-wallpaper command."
         }
 
         GridLayout {
