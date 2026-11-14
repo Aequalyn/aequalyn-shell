@@ -20,6 +20,13 @@ Flickable {
     property var theme
     property string font: "JetBrainsMono Nerd Font"
 
+    // The control center shows this pane in tabs: `section` picks the part to show
+    // ("" shows all of it), and `showStage` hides the picture on top when the page
+    // pins its own.
+    property string section: ""
+    property bool showStage: true
+    function shows(s) { return section === "" || section === s; }
+
     readonly property var raw: AequalynSettings.barStyleCfg
     readonly property var look: BarLooks.clean(raw)
     readonly property string lookKey: BarLooks.lookOf(look)
@@ -63,6 +70,7 @@ Flickable {
         spacing: 12
 
         Stage {
+            visible: pane.showStage
             Layout.fillWidth: true
             Layout.preferredHeight: 170
             theme: pane.theme; font: pane.font
@@ -75,6 +83,7 @@ Flickable {
 
         // ---- together -------------------------------------------------------------
         Group {
+            visible: pane.shows("looks")
             theme: pane.theme; font: pane.font
             icon: "󰕮"
             title: "Bar and docks together"
@@ -113,6 +122,7 @@ Flickable {
 
         // ---- shape ----------------------------------------------------------------
         Group {
+            visible: pane.shows("shape")
             theme: pane.theme; font: pane.font
             icon: "󰍜"
             title: "Shape"
@@ -212,6 +222,7 @@ Flickable {
 
         // ---- looks ----------------------------------------------------------------
         Group {
+            visible: pane.shows("looks")
             theme: pane.theme; font: pane.font
             icon: "󰏘"
             title: "Looks"
@@ -267,12 +278,14 @@ Flickable {
 
         // ---- fine tuning ------------------------------------------------------------
         GridLayout {
+            visible: (pane.shows("place") || pane.shows("shape"))
             Layout.fillWidth: true
-            columns: pane.width > 900 ? 2 : 1
+            columns: pane.section === "" && pane.width > 900 ? 2 : 1
             columnSpacing: 12
             rowSpacing: 12
 
             Group {
+                visible: pane.shows("place")
                 Layout.alignment: Qt.AlignTop
                 theme: pane.theme; font: pane.font
                 icon: "󰘞"
@@ -404,11 +417,13 @@ Flickable {
             }
 
             ColumnLayout {
+                visible: pane.shows("shape")
                 Layout.alignment: Qt.AlignTop
                 Layout.fillWidth: true
                 spacing: 12
 
                 Group {
+                    visible: pane.shows("shape")
                     theme: pane.theme; font: pane.font
                     icon: "󰳽"
                     title: "Widgets"
@@ -461,6 +476,7 @@ Flickable {
                 }
 
                 Group {
+                    visible: pane.shows("shape")
                     theme: pane.theme; font: pane.font
                     icon: "󰏘"
                     title: "Colors"
@@ -518,6 +534,7 @@ Flickable {
         }
 
         Group {
+            visible: pane.shows("shape")
             theme: pane.theme; font: pane.font
             icon: "󰙨"
             title: "Every part"
@@ -533,6 +550,7 @@ Flickable {
         }
 
         RowLayout {
+            visible: pane.shows("looks")
             spacing: 8
             Chip {
                 theme: pane.theme; font: pane.font
