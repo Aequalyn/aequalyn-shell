@@ -514,7 +514,7 @@ Scope {
     save();
   }
 
-  // settings for a dock: Atelier's Docks tab, on that dock
+  // settings for a dock: the control center's Dock page, on that dock
   function openSettings(i, screenName) {
     AtelierHost.dockFocus = i;
     AtelierHost.open("docks", screenName || "");

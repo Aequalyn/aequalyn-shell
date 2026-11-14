@@ -1,34 +1,21 @@
-// Atelier -- one place for everything that sets the look of the desktop.
+// Atelier -- the engine behind the look of the desktop: the theme and wallpaper picker,
+// and the panes the control center shows for wallpapers, colours, the bar, docks,
+// window layouts and the picker itself.
 //
-//   Themes      folder themes (palette + backgrounds), wallpaper colours and
-//               the curated palettes, with live preview while browsing
-//   Wallpapers  images, videos, theme backgrounds and painted wallpapers
-//   Layouts     33 window layouts plus Hyprland's own, per workspace, with
-//               the Super + L cycle (aequalyn-layout)
-//   Rotation    how wallpapers change (static, theme set, slideshow, time of
-//               day, per workspace, live) and the transition between them
-//   Palette     where colours come from and how they are generated
-//   Bar         the bar's shape and look: 32 ready made looks and every part
-//   Docks       up to 16 docks, styled with the bar or each on its own
-//   Panel       how Atelier opens and what its two bar buttons do
-//
-// It opens three ways, set in the Panel tab and switched live with the
-// header's Pop out / Dock / Full screen buttons:
-//   panel       docked under the Atelier or Layouts button on the bar
-//   window      a window of its own ("Atelier", for window rules)
-//   overlay     full screen over everything
-// All three show the same AtelierView; the state lives here, so switching
-// keeps the tab, search and selection.
+//   Super + T / Super + W (and the bar's Themes button) open the picker alone over the
+//   blurred desktop. Everything else that used to be a tab here is a page of the
+//   control center now; asking Atelier for one opens that page:
+//     layouts -> Arranging windows     rotation -> Wallpaper, over time
+//     palette -> Theme, colours        bar -> Bar      docks -> Dock
+//     panel   -> Theme picker
 //
 // IPC:  qs ipc call atelier toggle [themes|wallpapers|layouts|rotation|palette|bar|docks|panel]
-//       qs ipc call atelier open <tab> | close | layout <name>
-//       qs ipc call atelier popout | dock | fullscreen
+//       qs ipc call atelier open <tab> | close | layout <picker type>
 //       qs ipc call wallpaper next | prev | random | set <file> | mode <mode>
 
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import QtQuick
 import "root:/settings"
 
@@ -45,15 +32,9 @@ Scope {
     property string filter: "all"
     property int currentIndex: 0
 
-    // "" (closed), "panel", "window", "overlay" or "switcher" (themes and wallpapers
-    // alone over the blurred desktop)
+    // "" (closed) or "switcher": the picker over the blurred desktop
     property string surface: ""
     readonly property bool shown: surface !== ""
-    property var anchorButton: null
-    readonly property string openAs: AequalynSettings.atelierCfg.openAs || "panel"
-    // themes and wallpapers open in the switcher instead of the full Atelier
-    readonly property bool useSwitcher: AequalynSettings.atelierCfg.switcher !== false
-    readonly property bool canDock: anchorButton !== null || Object.keys(AtelierHost.buttons).length > 0
 
     onSurfaceChanged: {
         AtelierHost.shown = shown;
@@ -62,19 +43,13 @@ Scope {
     }
     onCollectionChanged: AtelierHost.shownCollection = shown ? collection : ""
 
+    // what the picker shows
     readonly property var collections: [
         { key: "themes", icon: "󰏘", name: "Themes" },
-        { key: "wallpapers", icon: "󰸉", name: "Wallpapers" },
-        { key: "layouts", icon: "󰕰", name: "Layouts" },
-        { key: "rotation", icon: "󰑓", name: "Rotation" },
-        { key: "palette", icon: "󰌁", name: "Palette" },
-        { key: "bar", icon: "󰍜", name: "Bar" },
-        { key: "docks", icon: "󱂬", name: "Docks" },
-        { key: "panel", icon: "󰕮", name: "Panel" }
+        { key: "wallpapers", icon: "󰸉", name: "Wallpapers" }
     ]
     readonly property var layoutKeys: ["grid", "carousel", "filmstrip", "radial", "list", "spotlight", "showcase"]
-    readonly property bool browsing: collection === "themes" || collection === "wallpapers"
-    readonly property bool searchable: browsing || collection === "layouts"
+    readonly property bool browsing: true
     readonly property string layout: {
         const l = (AequalynSettings.atelierCfg.layouts || {})[collection];
         return layoutKeys.indexOf(l) >= 0 ? l : "showcase";
@@ -183,90 +158,35 @@ Scope {
         AequalynSettings.setIn("atelier", "recent", all);
     }
 
-    // One line under the title: where you are and what is running.
-    readonly property string statusLine: {
-        const ws = LayoutService.focusedWorkspace;
-        const lay = LayoutService.find(LayoutService.layoutOf(ws));
-        const t = root.theme;
-        const look = !t ? "" : t.wallpaperMode ? "Wallpaper colours" : (t.committed ? t.committed.name : "");
-        const m = AtelierService.modeInfo(AtelierService.mode).name;
-        return "Workspace " + ws + " · " + (lay ? lay.name : "…") + " · " + look + " · " + m;
-    }
-
-    // Settings that differ from their defaults, for the footer and Reset all.
-    readonly property int changed: {
-        let n = 0;
-        const pairs = [
-            [AequalynSettings.wallpaperCfg, AequalynSettings.wallpaperDefaults],
-            [AequalynSettings.paletteCfg, AequalynSettings.paletteDefaults],
-            [AequalynSettings.atelierCfg, AequalynSettings.atelierDefaults]
-        ];
-        for (const [cur, def] of pairs)
-            for (const k in cur)
-                if (k in def && JSON.stringify(cur[k]) !== JSON.stringify(def[k])) n++;
-        return n;
-    }
-
-    property bool confirmReset: false
-    Timer { id: resetTimer; interval: 3000; onTriggered: root.confirmReset = false }
-    function resetAll() {
-        if (!confirmReset) { confirmReset = true; resetTimer.restart(); return; }
-        confirmReset = false;
-        AequalynSettings.resetSections(["wallpaper", "palette", "atelier", "barStyle"]);
-    }
-
     // ---- opening and closing -------------------------------------------
-    function focusedScreenName() {
-        const m = Hyprland.focusedMonitor;
-        return m ? m.name : "";
-    }
-
-    // Open on a tab, the way the Panel tab says (or `how`).
-    function open(which, anchor, how) {
-        if (which && which !== "") setCollection(which);
-        if (collection === "wallpapers" || AtelierService.wallpapers.length === 0) AtelierService.refresh();
-        LayoutService.refresh();
-        searchText = "";
-        filter = "all";
-        selectActive();
-        if (!how && useSwitcher && browsing) { surface = "switcher"; return; }
-        show(how || openAs, anchor || null);
-    }
-
-    // From the switcher: the full Atelier on the same tab, where its look is set.
-    function openSettings() {
-        const c = collection;
-        surface = "";
-        show(openAs, null);
-        collection = c;
-    }
-
-    function show(how, anchor) {
-        if (how === "panel") {
-            const btn = anchor || AtelierHost.buttonOn(focusedScreenName(), collection);
-            if (btn) {
-                anchorButton = btn;
-                surface = "panel";
-                return;
-            }
-            // No button on the bar to hang from: use the window instead.
-            how = "window";
+    // The picker for themes and wallpapers; a page of the control center for the rest
+    // (center/Pages.js maps Atelier's old tab names to its pages).
+    function open(which) {
+        const c = which && which !== "" ? which : "themes";
+        if (c === "themes" || c === "wallpapers") {
+            setCollection(c);
+            if (c === "wallpapers" || AtelierService.wallpapers.length === 0) AtelierService.refresh();
+            LayoutService.refresh();
+            surface = "switcher";
+            return;
         }
-        surface = how === "window" ? "window" : "overlay";
+        close();
+        openPage(c);
     }
-
+    function openPage(name) {
+        Quickshell.execDetached(["qs", "ipc", "call", "aequalyn", "page", name]);
+    }
+    // Ctrl + , in the picker: where its type, shape and place are set
+    function openSettings() {
+        close();
+        openPage("panel");
+    }
     function close() { surface = ""; }
-
-    function toggle(which, anchor) {
-        if (shown && (!which || which === "" || which === collection)) close();
-        else if (surface === "switcher" && which && which !== "themes" && which !== "wallpapers") open(which, anchor);
-        else if (shown && which) { setCollection(which); if (anchor && surface === "panel") anchorButton = anchor; }
-        else open(which, anchor);
+    function toggle(which) {
+        const c = which && which !== "" ? which : "themes";
+        if (shown && c === collection) close();
+        else open(c);
     }
-
-    function popOut() { show("window", null); }
-    function dock() { show("panel", anchorButton); }
-    function fullscreen() { show("overlay", null); }
 
     function setCollection(c) {
         if (collections.every(x => x.key !== c)) return;
@@ -276,25 +196,10 @@ Scope {
         filter = "all";
         selectActive();
         if (c === "wallpapers") AtelierService.refresh();
-        if (c === "layouts") { LayoutService.refresh(); collectionOpened(c); }
-    }
-    signal collectionOpened(string c)
-
-    function cycleCollection(d) {
-        const keys = collections.map(c => c.key);
-        setCollection(keys[(keys.indexOf(collection) + d + keys.length) % keys.length]);
     }
 
     function search(text) { searchText = text; currentIndex = 0; preview(); }
     function setFilter(f) { filter = f; currentIndex = 0; preview(); }
-
-    // ‹ › in the header: layouts on the Layouts tab, wallpapers elsewhere.
-    function step(d) {
-        if (collection === "layouts")
-            LayoutService.run(["aequalyn-layout", d > 0 ? "next" : "prev", "--workspace", LayoutService.focusedWorkspace]);
-        else if (d > 0) AtelierService.next();
-        else AtelierService.prev();
-    }
 
     function setLayout(l) {
         if (!browsing || layoutKeys.indexOf(l) < 0) return;
@@ -322,7 +227,7 @@ Scope {
     onItemsChanged: if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1)
 
     // Live preview: the whole shell takes the colours of the theme under the
-    // cursor until you pick one or close Atelier.
+    // cursor until you pick one or close the picker.
     function preview() {
         if (!shown || !root.theme || collection !== "themes" || !livePreview) return;
         // Read items directly: currentItem may not have re-evaluated yet
@@ -359,16 +264,11 @@ Scope {
         if (closeAfter) close();
     }
 
-    // ---- bar buttons ---------------------------------------------------
+    // ---- bar buttons and docks ---------------------------------------------
     Connections {
         target: AtelierHost
-        function onToggleRequested(collection, anchorItem, screenName) {
-            root.toggle(collection, anchorItem);
-        }
-        function onOpenRequested(collection, screenName) {
-            if (root.shown) root.setCollection(collection);
-            else root.open(collection, AtelierHost.buttonOn(screenName || root.focusedScreenName(), "bar"));
-        }
+        function onToggleRequested(collection, anchorItem, screenName) { root.toggle(collection); }
+        function onOpenRequested(collection, screenName) { root.open(collection); }
         function onActionRequested(action) {
             switch (action) {
             case "next-layout": LayoutService.run(["aequalyn-layout", "next"]); break;
@@ -387,9 +287,6 @@ Scope {
         function open(collection: string): void { root.open(collection); }
         function close(): void { root.close(); }
         function layout(name: string): void { root.setLayout(name); }
-        function popout(): void { root.shown ? root.popOut() : root.open("", null, "window"); }
-        function dock(): void { root.shown ? root.dock() : root.open("", null, "panel"); }
-        function fullscreen(): void { root.shown ? root.fullscreen() : root.open("", null, "overlay"); }
     }
 
     IpcHandler {
@@ -400,95 +297,6 @@ Scope {
         function random(): void { AtelierService.random(); }
         function set(path: string): void { AtelierService.setWallpaper(path); }
         function mode(name: string): void { AtelierService.setMode(name); }
-    }
-
-    // ---- surface 1: docked panel under the bar button ----------------------
-    // Anchored to the bar window's bottom edge right under the button, sliding
-    // along the bar only. A click outside or Esc closes it.
-    PopupWindow {
-        id: popup
-        visible: root.surface === "panel" && root.anchorButton !== null
-        color: "transparent"
-
-        readonly property var barWin: root.anchorButton ? root.anchorButton.QsWindow.window : null
-        readonly property var scr: barWin ? barWin.screen : null
-        implicitWidth: Math.min(AequalynSettings.atelierCfg.panelWidth || 1180, (scr ? scr.width : 1920) - 16)
-        implicitHeight: Math.min(AequalynSettings.atelierCfg.panelHeight || 780, (scr ? scr.height : 1080) - (barWin ? barWin.height : 32) - 16)
-
-        anchor.window: barWin
-        anchor.rect.x: root.anchorButton ? root.anchorButton.mapToItem(null, 0, 0).x : 0
-        anchor.rect.y: barWin ? barWin.height - 1 : 0
-        anchor.rect.width: root.anchorButton ? root.anchorButton.width : 1
-        anchor.rect.height: 1
-        anchor.edges: Edges.Bottom
-        anchor.gravity: Edges.Bottom
-        anchor.adjustment: PopupAdjustment.SlideX
-
-        Loader {
-            id: panelView
-            anchors.fill: parent
-            anchors.topMargin: 6
-            active: popup.visible
-            sourceComponent: AtelierView { host: root; surface: "panel" }
-            onLoaded: Qt.callLater(() => item.focusInput())
-        }
-    }
-
-    HyprlandFocusGrab {
-        windows: [popup]
-        active: popup.visible
-        onCleared: if (root.surface === "panel") root.close()
-    }
-
-    // ---- surface 2: a window of its own -------------------------------------
-    FloatingWindow {
-        id: win
-        title: "Atelier"
-        visible: root.surface === "window"
-        color: "transparent"
-        implicitWidth: AequalynSettings.atelierCfg.panelWidth || 1180
-        implicitHeight: AequalynSettings.atelierCfg.panelHeight || 780
-        // closed by the compositor (Super + Q): forget it
-        onVisibleChanged: if (!visible && root.surface === "window") root.close()
-
-        Loader {
-            anchors.fill: parent
-            active: win.visible
-            sourceComponent: AtelierView { host: root; surface: "window" }
-            onLoaded: Qt.callLater(() => item.focusInput())
-        }
-    }
-
-    // ---- surface 3: full screen ------------------------------------------
-    PanelWindow {
-        id: overlay
-        visible: root.surface === "overlay"
-        focusable: true
-        color: "transparent"
-        WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        WlrLayershell.namespace: "aequalyn-atelier"
-        exclusionMode: ExclusionMode.Ignore
-        anchors { top: true; bottom: true; left: true; right: true }
-
-        Rectangle {
-            anchors.fill: parent
-            color: root.theme ? root.theme.bgOverlay : "#88000000"
-            opacity: root.spotlight ? 0 : 1
-            MouseArea { anchors.fill: parent; onClicked: root.close() }
-        }
-
-        Loader {
-            id: overlayView
-            anchors.centerIn: parent
-            width: root.spotlight ? parent.width : Math.min(parent.width * 0.84, 1520)
-            height: root.spotlight ? parent.height : Math.min(parent.height * 0.82, 940)
-            active: overlay.visible
-            sourceComponent: AtelierView { host: root; surface: "overlay" }
-            onLoaded: Qt.callLater(() => item.focusInput())
-            Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-            Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-        }
     }
 
     // The switcher: the picker alone over the whole screen. Hyprland blurs every
