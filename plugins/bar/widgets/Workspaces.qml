@@ -9,33 +9,35 @@ Item {
   implicitWidth: wsRow.implicitWidth
   implicitHeight: 24
   Process { id: wsScrollProc; running: false }
+  readonly property var visibleWorkspaces: {
+    const list = (Hyprland.workspaces && Hyprland.workspaces.values) ? Hyprland.workspaces.values : Hyprland.workspaces;
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const w = list[i];
+      if (w.focused || w.urgent || (w.windows && w.windows > 0)) out.push(w);
+    }
+    if (out.length === 0 && list.length > 0) out.push(list[0]);
+    return out;
+  }
   Row {
     id: wsRow
     anchors.fill: parent
     spacing: 4
     Repeater {
-      model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+      model: visibleWorkspaces
       Rectangle {
         id: wsPill
-        required property int modelData
-        readonly property int wsId: modelData
-        readonly property var ws: {
-          const list = Hyprland.workspaces.values || Hyprland.workspaces;
-          for (let i = 0; i < list.length; i++) if (list[i].id === wsId) return list[i];
-          return null;
-        }
+        required property var modelData
         property bool urgentBlink: false
-        readonly property bool focused: ws !== null && ws.focused
-        readonly property bool urgent: ws !== null && ws.urgent
-        width: focused ? 32 : 24
+        width: modelData.focused ? 32 : 24
         height: 24
         radius: 12
-        color: focused ? bar.theme.accentPrimary :
-               urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
+        color: modelData.focused ? bar.theme.accentPrimary :
+               modelData.urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
         Behavior on color { ColorAnimation { duration: 150 } }
         SequentialAnimation {
           loops: Animation.Infinite
-          running: urgent && !focused
+          running: wsPill.modelData.urgent && !wsPill.modelData.focused
           PropertyAction { target: wsPill; property: "urgentBlink"; value: true }
           PauseAnimation { duration: 500 }
           PropertyAction { target: wsPill; property: "urgentBlink"; value: false }
@@ -44,18 +46,15 @@ Item {
         }
         Text {
           anchors.centerIn: parent
-          text: wsPill.wsId === 0 ? "10" : String(wsPill.wsId)
-          color: focused ? bar.theme.bgBase : bar.theme.textPrimary
+          text: wsPill.modelData.id
+          color: wsPill.modelData.focused ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
-          font.bold: focused
+          font.bold: wsPill.modelData.focused
         }
         MouseArea {
           anchors.fill: parent
-          onClicked: {
-            if (wsPill.ws) wsPill.ws.activate();
-            else Hyprland.dispatch("workspace " + wsPill.wsId);
-          }
+          onClicked: wsPill.modelData.activate()
           onWheel: (wheel) => {
             const dir = wheel.angleDelta.y > 0 ? "e-1" : "e+1";
             wsScrollProc.command = ["hyprctl", "dispatch",
