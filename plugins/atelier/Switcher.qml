@@ -1,11 +1,12 @@
 // The theme and wallpaper switcher: just the picker, over the blurred desktop. No
-// header, tabs or settings around it: Atelier is where its shape, type and behaviour
-// are set (Panel tab), and Ctrl+, opens it from here.
+// header, tabs or settings around it: its type, shape and place are set on the control
+// center's Theme picker page, and Ctrl+, opens it from here.
 //
 //   ← → (↑ ↓ when vertical)  move        ↑ ↓ (← → when vertical)  pick a background
 //   Enter  apply and close (Shift+Enter keeps it open)       Esc  close
 //   type   filter            Tab  themes ⇄ wallpapers        Ctrl+F  favourite
-//   Ctrl+, open Atelier on this tab                          click outside  close
+//   Ctrl+1..7  another type of picker                        click outside  close
+//   Ctrl+, the Theme picker page of the control center
 import QtQuick
 import Quickshell
 import "layouts"
@@ -81,6 +82,11 @@ FocusScope {
             return true;
         }
         if (ctrl && event.key === Qt.Key_Comma) { host.openSettings(); return true; }
+        // Ctrl + 1..7: another type of picker for this collection
+        if (ctrl && event.key >= Qt.Key_1 && event.key <= Qt.Key_7) {
+            host.setLayout(host.layoutKeys[event.key - Qt.Key_1]);
+            return true;
+        }
         if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
             host.setCollection(host.collection === "themes" ? "wallpapers" : "themes");
             return true;
