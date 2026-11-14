@@ -8,7 +8,7 @@ var groups = [
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
     { title: "Windows", pages: ["arrange", "windows", "screens", "input"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
-    { title: "System",  pages: ["apps", "clock", "sleep", "updates", "backup", "plugins", "about"] }
+    { title: "System",  pages: ["apps", "webapps", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
 
 var pages = {
@@ -53,6 +53,9 @@ var pages = {
     apps:      { label: "Apps", icon: "\u{F003B}", file: "Apps",
                  words: ["Default browser", "Default terminal", "Default file manager", "Default text editor", "Default video player"],
                  also: "default applications open with" },
+    webapps:   { label: "Web apps", icon: "\u{F0595}", file: "Webapps",
+                 words: ["Add a web app", "Remove a web app", "Web app browser", "Web app shortcuts"],
+                 also: "webapp web app website site reddit chatgpt youtube music shortcut launcher app window" },
     clock:     { label: "Clock", icon: "\u{F0954}", file: "Clock",
                  words: ["24-hour clock", "Show seconds"],
                  also: "time date am pm" },

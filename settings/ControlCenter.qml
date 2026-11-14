@@ -29,6 +29,7 @@ Scope {
     // pages and the controls read the palette from here
     Binding { target: Cc; property: "theme"; value: root.theme }
     Binding { target: Cc; property: "apps"; value: apps }
+    Binding { target: Cc; property: "webapps"; value: webapps }
     Binding { target: Cc; property: "updates"; value: updates }
     Binding { target: Cc; property: "backup"; value: backup }
     Connections {
@@ -38,6 +39,7 @@ Scope {
     }
 
     AppsService { id: apps }
+    WebappsService { id: webapps }
     UpdatesService { id: updates }
     BackupService { id: backup }
     Component.onCompleted: updates.refresh()
@@ -71,6 +73,7 @@ Scope {
         // the page names older parts of the shell use
         function appearance(): void { root.open("theme") }
         function defaultApps(): void { root.open("apps") }
+        function webapps(): void { root.open("webapps") }
         function displays(): void { root.open("screens") }
         function bluetooth(): void { root.open("bluetooth") }
         function wifi(): void { root.open("wifi") }

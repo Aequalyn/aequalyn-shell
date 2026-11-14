@@ -23,6 +23,7 @@ Singleton {
     property var apps: null
     property var updates: null
     property var backup: null
+    property var webapps: null
 
     // pages ask the window for these
     signal goRequested(string page)
