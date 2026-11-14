@@ -59,7 +59,7 @@ Item {
         }
         Text {
           anchors.centerIn: parent
-          text: wsPill.modelData.id
+          text: (wsPill.modelData.id % 10 === 0) ? "10" : String(wsPill.modelData.id % 10)
           color: wsPill.modelData.focused ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
