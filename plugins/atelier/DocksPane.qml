@@ -16,6 +16,13 @@ Flickable {
     property var theme
     property string font: "JetBrainsMono Nerd Font"
 
+    // The control center shows this pane in tabs: `section` picks the part to show
+    // ("" shows all of it), and `showStage` hides the picture on top when the page
+    // pins its own.
+    property string section: ""
+    property bool showStage: true
+    function shows(s) { return section === "" || section === s; }
+
     readonly property var svc: AtelierHost.docks
     readonly property var list: svc ? svc.docks : []
     readonly property int sel: Math.max(0, Math.min(list.length - 1, AtelierHost.dockFocus))
@@ -53,6 +60,7 @@ Flickable {
         spacing: 12
 
         Stage {
+            visible: pane.showStage
             Layout.fillWidth: true
             Layout.preferredHeight: 170
             theme: pane.theme; font: pane.font
@@ -63,6 +71,7 @@ Flickable {
         }
 
         Toggle {
+            visible: pane.shows("docks")
             theme: pane.theme; font: pane.font
             label: "Docks"
             sublabel: "Up to 16, 4 on each edge of each screen. Right-click a dock to come back here."
@@ -182,11 +191,12 @@ Flickable {
         GridLayout {
             visible: !!pane.dock
             Layout.fillWidth: true
-            columns: pane.width > 900 ? 2 : 1
+            columns: pane.section === "" && pane.width > 900 ? 2 : 1
             columnSpacing: 12
             rowSpacing: 12
 
             Group {
+                visible: pane.shows("docks")
                 Layout.alignment: Qt.AlignTop
                 theme: pane.theme; font: pane.font
                 icon: pane.dock ? pane.edgeGlyphs[pane.dock.edge] : ""
@@ -266,6 +276,7 @@ Flickable {
             }
 
             Group {
+                visible: pane.shows("hiding")
                 Layout.alignment: Qt.AlignTop
                 theme: pane.theme; font: pane.font
                 icon: "󰘕"
@@ -342,7 +353,7 @@ Flickable {
 
         // ---- look ------------------------------------------------------------------
         Group {
-            visible: !!pane.dock
+            visible: (!!pane.dock) && pane.shows("look")
             theme: pane.theme; font: pane.font
             icon: "󰏘"
             title: "Look"
@@ -501,6 +512,7 @@ Flickable {
             rowSpacing: 12
 
             Group {
+                visible: pane.shows("look")
                 Layout.alignment: Qt.AlignTop
                 theme: pane.theme; font: pane.font
                 icon: "󰏘"
@@ -557,6 +569,7 @@ Flickable {
             }
 
             Group {
+                visible: pane.shows("look")
                 Layout.alignment: Qt.AlignTop
                 theme: pane.theme; font: pane.font
                 icon: "󰙨"
