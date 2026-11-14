@@ -41,6 +41,7 @@ Item {
       Rectangle {
         id: wsPill
         required property var modelData
+        required property int index
         property bool urgentBlink: false
         width: modelData.focused ? 32 : 24
         height: 24
@@ -59,7 +60,7 @@ Item {
         }
         Text {
           anchors.centerIn: parent
-          text: String(wsPill.index + 1)
+          text: String(index + 1)
           color: wsPill.modelData.focused ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
