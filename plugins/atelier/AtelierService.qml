@@ -38,10 +38,11 @@ Singleton {
     // being dropped while an earlier one is still running.
     property var _queue: []
 
-    // run(args, relist): relist = also re-read the wallpaper list afterwards
-    // (for commands that create files, like generate).
-    function run(args, relist) {
-        _queue = _queue.concat([{ args: args, relist: relist === true }]);
+    // run(args, relist, then): relist = also re-read the wallpaper list afterwards
+    // (for commands that create files, like generate); then = a function to call
+    // once the command has finished (a theme applied after its background is set).
+    function run(args, relist, then) {
+        _queue = _queue.concat([{ args: args, relist: relist === true, then: then || null }]);
         _next();
     }
 
@@ -50,6 +51,7 @@ Singleton {
         const job = _queue[0];
         _queue = _queue.slice(1);
         worker.relist = job.relist;
+        worker.then = job.then;
         worker.command = job.args;
         worker.running = true;
     }
@@ -57,10 +59,14 @@ Singleton {
     Process {
         id: worker
         property bool relist: false
+        property var then: null
         running: false
         onExited: {
             if (relist) root.refresh();
             else statusProc.running = true;
+            const after = then;
+            then = null;
+            if (after) { try { after(); } catch (e) { console.error("atelier:", e); } }
             root._next();
         }
     }
