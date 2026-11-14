@@ -21,6 +21,7 @@ PanelWindow {
     const pinned = Array.isArray(cfg.apps) ? cfg.apps.slice() : [];
     const pinnedSet = new Set(pinned.map(x => String(x).toLowerCase()));
     const out = pinned.slice();
+    if (!AequalynSettings.showWebappsInDock) return out;
     try {
       for (const e of DesktopEntries.applications.values) {
         if (!e || !e.id) continue;
