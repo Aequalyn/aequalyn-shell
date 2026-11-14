@@ -1,3 +1,4 @@
 singleton AequalynSettings 1.0 AequalynSettings.qml
 Settings 1.0 Settings.qml
 AequalynDefaultTheme 1.0 AequalynDefaultTheme.qml
+ControlCenter 1.0 ControlCenter.qml
