@@ -5,6 +5,7 @@ import Quickshell.Io
 
 Item {
   required property var bar
+  property var screen
   implicitWidth: wsRow.implicitWidth
   implicitHeight: 24
   Process { id: wsScrollProc; running: false }
@@ -12,7 +13,7 @@ Item {
     const m = Hyprland.workspaces;
     let list = [];
     try { list = Array.from(m.values || []); } catch (e) { console.log('ARRFROMERR', e); }
-    const monName = (bar && bar.screen && bar.screen.name) ? bar.screen.name : "";
+    const monName = (screen && screen.name) ? screen.name : ((bar && bar.screen && bar.screen.name) ? bar.screen.name : "");
     const out = [];
     for (let i = 0; i < list.length; i++) {
       const w = list[i];

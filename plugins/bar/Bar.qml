@@ -357,7 +357,7 @@ Scope {
 
           BarSection {
             id: leftSec
-            region: "left"; bar: root; band: band
+            region: "left"; bar: root; band: band; screen: barWindow.screen
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             width: regions.leftW
@@ -365,7 +365,7 @@ Scope {
           }
           BarSection {
             id: centerSec
-            region: "center"; bar: root; band: band
+            region: "center"; bar: root; band: band; screen: barWindow.screen
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             width: regions.centerW
@@ -373,7 +373,7 @@ Scope {
           }
           BarSection {
             id: rightSec
-            region: "right"; bar: root; band: band
+            region: "right"; bar: root; band: band; screen: barWindow.screen
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             width: regions.rightW
