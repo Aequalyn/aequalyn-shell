@@ -1738,9 +1738,9 @@ Scope {
                                         { k: "SUPER + Z",       v: "Make the focused window the main one" },
                                         { k: "SUPER + - / =",   v: "Main pane larger / smaller (ALT finer, CTRL coarser)" },
                                         { k: "ALT + TAB",       v: "Step through windows; let go to bring forward" },
-                                        { k: "SUPER + Print",   v: "Screenshot to clipboard" },
-                                        { k: "Print",           v: "Region screenshot to clipboard" },
-                                        { k: "SUPER + SHIFT + Print", v: "Region screenshot to file (~/Pictures/Screenshots)" },
+                                        { k: "SUPER + Print",   v: "Screenshot to clipboard and ~/Pictures/Screenshots" },
+                                        { k: "Print",           v: "Region screenshot to clipboard and file" },
+                                        { k: "SUPER + SHIFT + Print", v: "Region screenshot to file only (~/Pictures/Screenshots)" },
                                         { k: "SUPER + SHIFT + M", v: "Power menu" },
                                         { k: "SUPER + SHIFT + R", v: "Toggle screen recording" }
                                     ]

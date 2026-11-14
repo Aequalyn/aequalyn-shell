@@ -45,9 +45,9 @@ CcPage {
         { k: "Alt  Tab", v: "Step through windows; let go to bring one forward" },
         { k: "Super  N", v: "Dismiss notifications" },
         { k: "Super  Shift  N", v: "Do not disturb" },
-        { k: "Super  Print", v: "Screenshot to the clipboard" },
-        { k: "Print", v: "Screenshot of an area to the clipboard" },
-        { k: "Super  Shift  Print", v: "Screenshot of an area to Pictures/Screenshots" },
+        { k: "Super  Print", v: "Screenshot to the clipboard and Pictures/Screenshots" },
+        { k: "Print", v: "Screenshot of an area to the clipboard and a file" },
+        { k: "Super  Shift  Print", v: "Screenshot of an area to a file only (Pictures/Screenshots)" },
         { k: "Super  Shift  R", v: "Record the screen" },
         { k: "Super  Shift  M", v: "Power menu" },
         { k: "Super  I", v: "Installer (live USB)" }
