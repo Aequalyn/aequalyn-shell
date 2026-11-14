@@ -45,11 +45,14 @@ Scope {
     property string filter: "all"
     property int currentIndex: 0
 
-    // "" (closed), "panel", "window" or "overlay"
+    // "" (closed), "panel", "window", "overlay" or "switcher" (themes and wallpapers
+    // alone over the blurred desktop)
     property string surface: ""
     readonly property bool shown: surface !== ""
     property var anchorButton: null
     readonly property string openAs: AequalynSettings.atelierCfg.openAs || "panel"
+    // themes and wallpapers open in the switcher instead of the full Atelier
+    readonly property bool useSwitcher: AequalynSettings.atelierCfg.switcher !== false
     readonly property bool canDock: anchorButton !== null || Object.keys(AtelierHost.buttons).length > 0
 
     onSurfaceChanged: {
@@ -226,7 +229,16 @@ Scope {
         searchText = "";
         filter = "all";
         selectActive();
+        if (!how && useSwitcher && browsing) { surface = "switcher"; return; }
         show(how || openAs, anchor || null);
+    }
+
+    // From the switcher: the full Atelier on the same tab, where its look is set.
+    function openSettings() {
+        const c = collection;
+        surface = "";
+        show(openAs, null);
+        collection = c;
     }
 
     function show(how, anchor) {
@@ -247,6 +259,7 @@ Scope {
 
     function toggle(which, anchor) {
         if (shown && (!which || which === "" || which === collection)) close();
+        else if (surface === "switcher" && which && which !== "themes" && which !== "wallpapers") open(which, anchor);
         else if (shown && which) { setCollection(which); if (anchor && surface === "panel") anchorButton = anchor; }
         else open(which, anchor);
     }
@@ -475,6 +488,32 @@ Scope {
             onLoaded: Qt.callLater(() => item.focusInput())
             Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        }
+    }
+
+    // The switcher: the picker alone over the whole screen. Hyprland blurs every
+    // aequalyn-* layer, so the desktop shows through blurred and dimmed.
+    PanelWindow {
+        id: switcherWin
+        visible: root.surface === "switcher"
+        focusable: true
+        color: "transparent"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+        WlrLayershell.namespace: "aequalyn-switcher"
+        exclusionMode: ExclusionMode.Ignore
+        anchors { top: true; bottom: true; left: true; right: true }
+
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.rgba(0, 0, 0, root.spotlight ? 0 : 0.35)
+            MouseArea { anchors.fill: parent; onClicked: root.close() }
+        }
+        Loader {
+            anchors.fill: parent
+            active: switcherWin.visible
+            sourceComponent: Switcher { host: root }
+            onLoaded: item.forceActiveFocus()
         }
     }
 }
