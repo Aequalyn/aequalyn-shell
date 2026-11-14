@@ -7,7 +7,7 @@ var list = [
     { id: "bar",            label: "Top bar",        source: "plugins/bar/Bar.qml" },
     { id: "appLauncher",    label: "App launcher",   source: "plugins/appLauncher/AppLauncher.qml" },
     { id: "notifications",  label: "Notifications",  source: "plugins/notifications/NotificationPopup.qml" },
-    { id: "atelier",        label: "Atelier",       source: "plugins/atelier/Atelier.qml" },
+    { id: "atelier",        label: "Themes and wallpapers", source: "plugins/atelier/Atelier.qml" },
     { id: "osd",            label: "On-screen display", source: "plugins/osd/OSD.qml" },
     { id: "monitorManager", label: "Monitor manager", source: "plugins/monitorManager/MonitorManager.qml" },
     { id: "idleInhibitor",  label: "Idle inhibitor", source: "plugins/idleInhibitor/CaffeineToggle.qml" },

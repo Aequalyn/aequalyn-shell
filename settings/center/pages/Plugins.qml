@@ -15,7 +15,7 @@ CcPage {
         bar: "The strip along the top.",
         appLauncher: "Super + D: find and open apps.",
         notifications: "Messages from apps, in the corner.",
-        atelier: "Themes, wallpapers and window layouts.",
+        atelier: "The theme and wallpaper picker, and the look pages here.",
         osd: "Shows the volume and brightness as they change.",
         monitorManager: "The screen map, Super + O.",
         idleInhibitor: "Keep awake.",

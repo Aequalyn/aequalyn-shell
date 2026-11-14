@@ -505,7 +505,7 @@ Flickable {
                 theme: pane.theme; font: pane.font
                 icon: "󰏘"
                 title: "Colors"
-                sub: pane.dock && pane.dock.followBar ? "From the bar; a change here gives the dock its own look" : "Theme follows Atelier's palette"
+                sub: pane.dock && pane.dock.followBar ? "From the bar; a change here gives the dock its own look" : "Theme follows your colours"
                 ChoiceRow {
                     theme: pane.theme; font: pane.font
                     label: "From"

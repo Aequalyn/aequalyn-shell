@@ -12,7 +12,7 @@ QML file.
 | `bar` | `plugins/bar/Bar.qml` | Top status bar: left, center and right regions; each widget is a file in `plugins/bar/widgets/` (see `Widgets.js`). |
 | `appLauncher` | `plugins/appLauncher/AppLauncher.qml` | Application launcher overlay. |
 | `notifications` | `plugins/notifications/NotificationPopup.qml` | Notification daemon popups. |
-| `atelier` | `plugins/atelier/Atelier.qml` | Themes, wallpapers, layouts, bar and docks picker. |
+| `atelier` | `plugins/atelier/Atelier.qml` | Themes and wallpapers: the picker (Super + T / W) and the look panes the control center shows. |
 | `osd` | `plugins/osd/OSD.qml` | Volume/brightness on-screen display. |
 | `monitorManager` | `plugins/monitorManager/MonitorManager.qml` | Monitor layout manager. |
 | `idleInhibitor` | `plugins/idleInhibitor/CaffeineToggle.qml` | Idle inhibitor toggle. |
