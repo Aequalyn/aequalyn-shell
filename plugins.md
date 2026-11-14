@@ -19,7 +19,7 @@ QML file.
 | `clipboard` | `plugins/clipboard/ClipboardPanel.qml` | Clipboard history. |
 | `powerMenu` | `plugins/powerMenu/PowerMenu.qml` | Power/session menu. |
 | `docks` | `plugins/docks/DocksService.qml` | Up to 16 docks. |
-| `settings` | `settings/Settings.qml` | Settings panel. |
+| `settings` | `settings/ControlCenter.qml` | The control center (Super + comma). |
 
 `theme-switcher` (ThemeSwitcher) stays a core component because every plugin binds
 to its palette.
