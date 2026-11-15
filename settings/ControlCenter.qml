@@ -27,6 +27,29 @@ Scope {
     property string page: "home"
     readonly property string version: "0.1.0"
 
+    // Lock Screens page is only shown when the user opted into the (optional)
+    // SDDM theme pack during install/update. The marker is created by
+    // aequalyn-sddm / the installer when themes are actually installed.
+    property bool lockscreensInstalled: false
+    property Process lockscreensCheck: Process {
+        running: true
+        command: ["sh", "-c", "test -f /usr/share/aequalyn/lockscreens.enabled && echo 1 || (test -f \"$HOME/.config/aequalyn/lockscreens.enabled\" && echo 1 || echo 0)"]
+        stdout: StdioCollector {
+            onStreamFinished: root.lockscreensInstalled = (text.trim() === "1")
+        }
+    }
+    readonly property var filteredGroups: {
+        if (root.lockscreensInstalled) return Pages.groups
+        const out = []
+        for (let g = 0; g < Pages.groups.length; g++) {
+            const grp = Pages.groups[g]
+            const pages = grp.pages.filter(p => p !== "lockscreens")
+            out.push({ title: grp.title, pages: pages })
+        }
+        return out
+    }
+    readonly property var filteredOrder: root.lockscreensInstalled ? Pages.order : Pages.order.filter(p => p !== "lockscreens")
+
     // pages and the controls read the palette from here
     Binding { target: Cc; property: "theme"; value: root.theme }
     Binding { target: Cc; property: "apps"; value: apps }
@@ -310,7 +333,7 @@ Scope {
                         width: side.width - 24
                         spacing: 2
                         Repeater {
-                            model: Pages.groups
+                            model: root.filteredGroups
                             delegate: Column {
                                 id: grp
                                 required property var modelData
@@ -400,7 +423,7 @@ Scope {
 
                     Repeater {
                         id: pageLoaders
-                        model: Pages.order
+                        model: root.filteredOrder
                         delegate: Loader {
                             required property string modelData
                             readonly property bool current: root.page === modelData
