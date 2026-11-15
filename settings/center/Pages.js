@@ -37,8 +37,9 @@ var pages = {
                  words: ["Window layout", "Layouts in Super + L", "Built-in arrangement"],
                  also: "tiling layout master dwindle scrolling grid focus" },
     windows:   { label: "Window look", icon: "\u{F05AF}", file: "Windows",
-                 words: ["Space between windows", "Rounded corners", "Window border", "Blur", "Animations", "See-through windows"],
-                 also: "gaps rounding border opacity transparency effects hyprland" },
+                 words: ["Space between windows", "Rounded corners", "Window border", "Blur", "Animations", "See-through windows",
+                         "Behind panels", "Blur behind panels", "Smooth blur", "Frost", "Maelstrom", "Darkness", "Colour of the blur"],
+                 also: "gaps rounding border opacity transparency effects hyprland backdrop dim zoom iris mosaic swirl" },
     screens:   { label: "Screens", icon: "\u{F0379}", file: "Screens",
                  words: ["Brightness", "Arrange screens", "Resolution", "Scale"],
                  also: "monitor display displays brightness resolution refresh" },
@@ -92,7 +93,7 @@ for (var g = 0; g < groups.length; g++) order = order.concat(groups[g].pages);
 var aliases = { appearance: "theme", defaultApps: "apps", hyprland: "windows",
                 displays: "screens", power: "sleep", docks: "dock",
                 themes: "theme", wallpapers: "wallpaper", layouts: "arrange",
-                rotation: "wallpaper:1", palette: "theme:1", panel: "picker" };
+                rotation: "wallpaper:1", palette: "theme:1", panel: "picker", backdrop: "windows:1" };
 
 // "wifi", "rotation" or "wallpaper:1" -> { page, tab }; page "" when there is none
 function resolve(name) {
