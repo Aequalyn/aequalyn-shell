@@ -1,5 +1,5 @@
 // Wallpaper: the picture behind everything, and how it changes over time (Atelier's
-// rotation pane).
+// rotation pane). A wallpaper changes only the picture: the theme's colours stay.
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -11,7 +11,7 @@ import ".."
 CcPage {
     id: page
     title: "Wallpaper"
-    sub: "The picture behind everything. Your colours can follow it."
+    sub: "The picture behind everything. Changing it keeps your theme's colours."
     tabs: ["Pick one", "Change it over time"]
     readonly property string folder: AequalynSettings.wallpaperCfg.folder || (Quickshell.env("HOME") + "/Pictures/Wallpapers")
 
@@ -47,9 +47,9 @@ CcPage {
     CcRow {
         visible: page.tab === 0
         icon: "\u{F03D8}"
-        title: "Colours follow the wallpaper"
-        sub: "Choose in Theme and colours whether they come from the wallpaper or a theme."
-        action: "Theme and colours"
+        title: "Your theme's wallpapers and your own"
+        sub: "Super + W shows the theme's wallpapers first, then the ones in your wallpaper folder. Other themes bring their own."
+        action: "Themes"
         onActivated: Cc.go("theme")
     }
 

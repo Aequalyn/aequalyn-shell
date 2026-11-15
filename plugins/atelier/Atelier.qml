@@ -1,16 +1,18 @@
 // Atelier -- the engine behind the look of the desktop: the theme and wallpaper picker,
-// and the panes the control center shows for wallpapers, colours, the bar, docks,
-// window layouts and the picker itself.
+// and the panes the control center shows for wallpapers, the bar, docks and window
+// layouts.
 //
-//   Super + T / Super + W (and the bar's Themes button) open the picker alone over the
-//   blurred desktop. Everything else that used to be a tab here is a page of the
-//   control center now; asking Atelier for one opens that page:
+//   Super + T: themes. A theme is its colours and its own wallpapers: picking one
+//              applies both.
+//   Super + W: wallpapers, the current theme's and your own. Picking one changes only
+//              the wallpaper; the theme's colours stay.
+// Everything else that used to be a tab here is a page of the control center; asking
+// Atelier for one opens that page:
 //     layouts -> Arranging windows     rotation -> Wallpaper, over time
-//     palette -> Theme, colours        bar -> Bar      docks -> Dock
-//     panel   -> Theme picker
+//     palette, panel -> Theme          bar -> Bar      docks -> Dock
 //
 // IPC:  qs ipc call atelier toggle [themes|wallpapers|layouts|rotation|palette|bar|docks|panel]
-//       qs ipc call atelier open <tab> | close | layout <picker type>
+//       qs ipc call atelier open <tab> | close
 //       qs ipc call wallpaper next | prev | random | set <file> | mode <mode>
 
 import Quickshell
@@ -29,7 +31,6 @@ Scope {
 
     property string collection: "themes"
     property string searchText: ""
-    property string filter: "all"
     property int currentIndex: 0
 
     // "" (closed) or "switcher": the picker over the blurred desktop
@@ -48,92 +49,43 @@ Scope {
         { key: "themes", icon: "󰏘", name: "Themes" },
         { key: "wallpapers", icon: "󰸉", name: "Wallpapers" }
     ]
-    readonly property var layoutKeys: ["grid", "carousel", "filmstrip", "radial", "list", "spotlight", "showcase"]
-    readonly property bool browsing: true
-    readonly property string layout: {
-        const l = (AequalynSettings.atelierCfg.layouts || {})[collection];
-        return layoutKeys.indexOf(l) >= 0 ? l : "showcase";
-    }
-    readonly property bool spotlight: browsing && layout === "spotlight"
     readonly property bool livePreview: AequalynSettings.atelierCfg.livePreview !== false
 
     // ---- items ---------------------------------------------------------
+    // Themes: the ones with their own colours and wallpapers.
     readonly property var themeItems: {
         const t = root.theme;
-        if (!t) return [];
-        const out = [];
-        const wp = AtelierService.current;
-        const cf = t.currentFolderId !== "" ? t.folderTheme(t.currentFolderId) : null;
-        out.push({
-            key: "wallpaper", kind: "wallpaper",
-            title: "Wallpaper colours",
-            subtitle: "Follows whatever is on screen",
-            detail: "Colours are generated from the current wallpaper with matugen and change with it.",
-            image: wp && !/\.(mp4|webm|mkv|mov)$/i.test(wp) ? wp : "",
-            palette: t.wallpaperTheme && t.wallpaperTheme.bgBase ? t.wallpaperTheme : null,
-            active: t.wallpaperMode && !(cf && cf.kind === "pack"),
-            badge: "DYNAMIC", group: "dynamic"
-        });
-        for (const f of t.folderThemes) {
-            const n = (f.backgrounds || []).length;
-            out.push({
-                key: "theme:" + f.id, kind: "folder", id: f.id,
-                title: f.name,
-                subtitle: f.family + (n ? " · " + n + (n === 1 ? " background" : " backgrounds") : ""),
-                detail: f.dir + (f.author ? "\nby " + f.author : ""),
-                image: f.preview || ((f.backgrounds || [])[0] || ""),
-                palette: f.hasPalette ? f : null,
-                backgrounds: f.backgrounds || [], dir: f.dir || "",
-                active: t.currentFolderId === f.id && (f.hasPalette ? !t.wallpaperMode : true),
-                badge: f.kind === "pack" ? "PACK" : (f.family && f.family !== "Aequalyn" ? f.family.toUpperCase() : ""),
-                group: f.kind === "pack" ? "pack" : "theme",
-                light: f.hasPalette ? t.isLightColor(f.bgBase) : false
-            });
-        }
-        for (let i = 0; i < t.themes.length; i++) {
-            const p = t.themes[i];
-            out.push({
-                key: "palette:" + i, kind: "palette", index: i,
-                title: p.name, subtitle: p.family,
-                detail: "Palette only: keeps your current wallpaper.",
-                image: "", palette: p,
-                active: !t.wallpaperMode && t.currentFolderId === "" && t.currentIndex === i,
-                badge: "", group: "palette",
-                light: t.isLightColor(p.bgBase)
-            });
-        }
-        return out;
+        if (!t || !t.folderThemes) return [];
+        return t.folderThemes.filter(f => f.hasPalette && (f.backgrounds || []).length > 0).map(f => ({
+            key: "theme:" + f.id, kind: "folder", id: f.id,
+            title: f.name, subtitle: f.family,
+            image: f.preview || f.backgrounds[0],
+            palette: f, backgrounds: f.backgrounds, dir: f.dir || "",
+            active: t.currentFolderId === f.id
+        }));
     }
 
-    readonly property var wallpaperItems: AtelierService.wallpapers.map(w => ({
-        key: w.path, kind: "image", path: w.path,
-        title: w.name, subtitle: w.folder,
-        detail: w.path,
-        image: w.thumb, video: w.video,
-        active: w.path === AtelierService.current,
-        badge: w.video ? "LIVE" : w.generated ? "PAINTED" : w.theme ? "THEME" : "",
-        group: w.video ? "live" : w.generated ? "painted" : w.theme ? "theme" : "image"
-    }))
-
-    readonly property var filters: collection === "themes"
-        ? [["all", "All"], ["fav", "★ Favourites"], ["recent", "Recent"], ["theme", "With backgrounds"], ["palette", "Palettes"], ["dark", "Dark"], ["light", "Light"]]
-        : [["all", "All"], ["fav", "★ Favourites"], ["recent", "Recent"], ["image", "Images"], ["live", "Live"], ["theme", "Theme"], ["painted", "Painted"]]
+    // Wallpapers: the current theme's first, then your own (your wallpaper folder);
+    // other themes' wallpapers come with their theme, from Super + T.
+    readonly property string currentThemeId: root.theme ? root.theme.currentFolderId : ""
+    function ownedByTheme(w, id) { return id !== "" && w.path.indexOf("/" + id + "/backgrounds/") >= 0; }
+    readonly property var wallpaperItems: {
+        const id = currentThemeId;
+        const theirs = AtelierService.wallpapers.filter(w => w.theme && ownedByTheme(w, id));
+        const yours = AtelierService.wallpapers.filter(w => !w.theme && !w.generated);
+        return theirs.concat(yours).map(w => ({
+            key: w.path, kind: "image", path: w.path,
+            title: w.name, subtitle: w.folder,
+            image: w.thumb, video: w.video,
+            active: w.path === AtelierService.current
+        }));
+    }
 
     readonly property var items: {
         const src = collection === "themes" ? themeItems : collection === "wallpapers" ? wallpaperItems : [];
         const q = searchText.toLowerCase();
-        return src.filter(it => {
-            if (q !== "" && (it.title + " " + it.subtitle).toLowerCase().indexOf(q) < 0) return false;
-            switch (root.filter) {
-            case "all": return true;
-            case "theme": return collection === "themes" ? (it.group === "theme" || it.group === "pack") : it.group === "theme";
-            case "dark": return it.group === "dynamic" || (it.palette && !it.light);
-            case "fav": return root.isFavorite(it);
-            case "recent": return root.recentKeys.indexOf(it.key) >= 0;
-            case "light": return !!it.light;
-            default: return it.group === root.filter;
-            }
-        });
+        if (q === "") return src;
+        return src.filter(it => (it.title + " " + it.subtitle).toLowerCase().indexOf(q) >= 0);
     }
 
     readonly property var currentItem: items[currentIndex] || null
@@ -193,20 +145,11 @@ Scope {
         if (root.theme) root.theme.previewPalette = null;
         collection = c;
         searchText = "";
-        filter = "all";
         selectActive();
         if (c === "wallpapers") AtelierService.refresh();
     }
 
     function search(text) { searchText = text; currentIndex = 0; preview(); }
-    function setFilter(f) { filter = f; currentIndex = 0; preview(); }
-
-    function setLayout(l) {
-        if (!browsing || layoutKeys.indexOf(l) < 0) return;
-        const next = Object.assign({}, AequalynSettings.atelierCfg.layouts || {});
-        next[collection] = l;
-        AequalynSettings.setIn("atelier", "layouts", next);
-    }
 
     function selectActive() {
         const list = items;
@@ -217,10 +160,7 @@ Scope {
     function move(delta) {
         const n = items.length;
         if (n === 0) return;
-        const wraps = layout === "carousel" || layout === "radial";
-        let i = currentIndex + delta;
-        i = wraps ? (i % n + n) % n : Math.max(0, Math.min(n - 1, i));
-        currentIndex = i;
+        currentIndex = Math.max(0, Math.min(n - 1, currentIndex + delta));
     }
 
     onCurrentIndexChanged: preview()
@@ -243,18 +183,12 @@ Scope {
         noteRecent(it);
         const t = root.theme;
         switch (it.kind) {
-        case "wallpaper":
-            t.previewPalette = null;
-            t.setWallpaperMode();
-            AequalynSettings.retheme();
-            break;
         case "folder":
+            // its colours, and its first wallpaper unless one of its own is on already
             t.setFolderTheme(it.id);
             break;
-        case "palette":
-            t.setTheme(it.index);
-            break;
         case "image":
+            // only the wallpaper: the theme's colours stay
             if (AtelierService.mode === "workspace" && AtelierService.focusedWorkspace !== "")
                 AtelierService.assignWorkspace(AtelierService.focusedWorkspace, it.path);
             else
@@ -286,7 +220,6 @@ Scope {
         function toggle(collection: string): void { root.toggle(collection); }
         function open(collection: string): void { root.open(collection); }
         function close(): void { root.close(); }
-        function layout(name: string): void { root.setLayout(name); }
     }
 
     IpcHandler {
@@ -312,11 +245,6 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
 
-        Rectangle {
-            anchors.fill: parent
-            color: Qt.rgba(0, 0, 0, root.spotlight ? 0 : 0.35)
-            MouseArea { anchors.fill: parent; onClicked: root.close() }
-        }
         Loader {
             anchors.fill: parent
             active: switcherWin.visible
