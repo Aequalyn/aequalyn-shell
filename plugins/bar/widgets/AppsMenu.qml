@@ -1,8 +1,9 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import QtQuick.Controls
 
-// Arch logo: opens the app launcher (SUPER+D).
+// Aequalyn mark: opens the app launcher (SUPER+D).
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
@@ -14,12 +15,18 @@ Rectangle {
   radius: 8
   color: appsMenuHover.containsMouse ? bar.theme.bgSelected : "transparent"
   Image {
+    id: logo
     anchors.centerIn: parent
-    source: "root:/assets/apps-menu.svg"
-    sourceSize.width: 16; sourceSize.height: 16
-    width: 16; height: 16
+    source: "root:/assets/ae-mark.svg"
+    sourceSize.width: 24; sourceSize.height: 16
+    width: 24; height: 16
     fillMode: Image.PreserveAspectFit
     smooth: true
+    layer.enabled: true
+    layer.effect: MultiEffect {
+      colorization: 1.0
+      colorizationColor: bar.theme.accentPrimary
+    }
   }
   MouseArea {
     id: appsMenuHover
