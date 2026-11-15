@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import "root:/settings"
 import ".."
 
@@ -50,5 +51,40 @@ CcPage {
         sub: "~/.config/aequalyn/settings.json"
         action: "Open the folder"
         onActivated: Cc.run(["xdg-open", Quickshell.env("HOME") + "/.config/aequalyn"])
+    }
+
+    // Optional SDDM lock-screen theme pack.
+    readonly property bool lockscreensInstalled: AequalynSettings.lockscreensInstalled
+    property Process lsInstall: Process {
+        running: false
+        onExited: (code, st) => {
+            if (code === 0) {
+                page.status = "Lock screens installed. Open Lock Screens in Look."
+                AequalynSettings.lockscreensMarker.reload()
+            } else {
+                page.status = "Install failed (exit " + code + ")."
+            }
+        }
+    }
+    property string status: ""
+
+    CcSection {
+        title: "Lock screens"
+        hint: page.lockscreensInstalled ? "SDDM theme pack installed." : "Optional SDDM login themes (~400 MB download)."
+        CcButton {
+            visible: !page.lockscreensInstalled
+            text: "Install lock screens"
+            icon: "\u{F0193}"
+            primary: true
+            onClicked: {
+                page.status = "Installing…"
+                page.lsInstall.command = ["pkexec", "aequalyn-sddm", "install"]
+                page.lsInstall.running = true
+            }
+        }
+        CcNote {
+            visible: page.status !== ""
+            text: page.status
+        }
     }
 }
