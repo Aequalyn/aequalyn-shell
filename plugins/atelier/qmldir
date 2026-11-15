@@ -1,7 +1,6 @@
 singleton AtelierService 1.0 AtelierService.qml
 Atelier 1.0 Atelier.qml
 RotationPane 1.0 RotationPane.qml
-PalettePane 1.0 PalettePane.qml
 singleton LayoutService 1.0 LayoutService.qml
 LayoutArt 1.0 LayoutArt.qml
 LayoutsPane 1.0 LayoutsPane.qml

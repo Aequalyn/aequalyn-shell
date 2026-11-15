@@ -1,7 +1,6 @@
 // Theme provider for the whole shell.
-// Exposes the active palette as `theme` (curated palettes, folder themes or
-// the wallpaper-derived matugen palette, see Theme.qml) and the `theme` IPC
-// target. Picking themes and wallpapers happens in Atelier.
+// Exposes the active theme's colours as `theme` (see Theme.qml) and the `theme`
+// IPC target. Picking themes and wallpapers happens in Atelier.
 
 import Quickshell
 import Quickshell.Io
@@ -17,17 +16,7 @@ Scope {
     IpcHandler {
         target: "theme"
 
-        // Regenerate colours from an image and let them follow the wallpaper.
-        function wallpaper(image: string): void {
-            root.theme.setWallpaperFromImage(image);
-        }
-
-        // Colours follow the wallpaper again (keeps the current backgrounds).
-        function follow(): void {
-            root.theme.setWallpaperMode();
-        }
-
-        // A folder-theme id, a curated "Family/Name" or a palette index.
+        // A theme's id: its colours and its first wallpaper.
         function set(key: string): bool {
             return root.theme.setByKey(key);
         }
@@ -38,9 +27,7 @@ Scope {
         }
 
         function current(): string {
-            if (root.theme.wallpaperMode) return "wallpaper";
-            if (root.theme.currentFolderId !== "") return root.theme.currentFolderId;
-            return root.theme.currentFamily + "/" + root.theme.currentName;
+            return root.theme.currentFolderId;
         }
 
         // Kept for older keybinds: opens Atelier on the themes collection.

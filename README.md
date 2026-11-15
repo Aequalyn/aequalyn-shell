@@ -96,7 +96,7 @@ bar/               Bar.qml (shared state, one bar per screen), BarSection.qml (a
                    when full), BarSlot.qml, BarDecor.qml (the shapes behind the widgets),
                    widgets/ (one file per widget, listed in widgets/Widgets.js)
 docks/             DocksService.qml (up to 16), DockWindow.qml
-theme-switcher/    Theme.qml (palette engine), curated themes.json, matugen glue
+theme-switcher/    Theme.qml: the colours of the current theme (a theme is its colours and wallpapers)
 settings/          AequalynSettings.qml (settings.json contract), ControlCenter.qml and center/ (the control center)
 app-launcher/ notifications/ osd/ clipboard/ power-menu/
 monitor-manager/ bluetooth/ idle-inhibitor/

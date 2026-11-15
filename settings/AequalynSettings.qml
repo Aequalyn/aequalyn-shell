@@ -423,17 +423,12 @@ QtObject {
         idleProc.running = true
     }
 
-    // Re-render every matugen template from the CURRENT wallpaper. This never
-    // changes the wallpaper itself (--colors-only --refresh).
+    // Re-apply the current theme's colours everywhere (after "Apps use these colours
+    // too" changes). Colours come only from the theme, never from the wallpaper.
     function retheme() {
-        themeProc.command = ["aequalyn-theme", "--colors-only", "--refresh"]
-        themeProc.running = true
-    }
-
-    function setWallpaper(path) {
-        root.wallpaperPath = path
-        root.save()
-        themeProc.command = ["aequalyn-theme", path]
+        themeProc.command = ["sh", "-c",
+            'id=$(basename "$(readlink -f "$HOME/.config/aequalyn/current/theme")" 2>/dev/null); '
+            + '[ -n "$id" ] && qs ipc call theme set "$id" >/dev/null 2>&1 || true']
         themeProc.running = true
     }
 
