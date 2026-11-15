@@ -30,14 +30,7 @@ Scope {
     // Lock Screens page is only shown when the user opted into the (optional)
     // SDDM theme pack during install/update. The marker is created by
     // aequalyn-sddm / the installer when themes are actually installed.
-    property bool lockscreensInstalled: false
-    property Process lockscreensCheck: Process {
-        running: true
-        command: ["sh", "-c", "test -f /usr/share/aequalyn/lockscreens.enabled && echo 1 || (test -f \"$HOME/.config/aequalyn/lockscreens.enabled\" && echo 1 || echo 0)"]
-        stdout: StdioCollector {
-            onStreamFinished: root.lockscreensInstalled = (text.trim() === "1")
-        }
-    }
+    readonly property bool lockscreensInstalled: AequalynSettings.lockscreensInstalled
     readonly property var filteredGroups: {
         if (root.lockscreensInstalled) return Pages.groups
         const out = []

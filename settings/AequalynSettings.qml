@@ -641,6 +641,16 @@ QtObject {
     property Process themeProc: Process { running: false }
     property Process idleProc: Process { running: false }
 
+    // Optional SDDM lock-screen theme pack: installed marker.
+    property bool lockscreensInstalled: false
+    property FileView lockscreensMarker: FileView {
+        path: "/usr/share/aequalyn/lockscreens.enabled"
+        watchChanges: true
+        onFileChanged: root.lockscreensMarker.reload()
+        onTextChanged: root.lockscreensInstalled = (root.lockscreensMarker.text() !== null && root.lockscreensMarker.text().trim() !== "")
+        onLoaded: root.lockscreensInstalled = (root.lockscreensMarker.text() !== null && root.lockscreensMarker.text().trim() !== "")
+    }
+
     property Process loadProc: Process {
         running: true
         command: ["sh", "-c", 'cat "$HOME/.config/aequalyn/settings.json" 2>/dev/null || true']
