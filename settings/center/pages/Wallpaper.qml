@@ -11,7 +11,8 @@ import ".."
 CcPage {
     id: page
     title: "Wallpaper"
-    sub: "The picture behind everything. Changing it keeps your theme's colours."
+    sub: Cc.theme.wallpaperMode ? "The picture behind everything. Your colours are made from it."
+                                : "The picture behind everything. Changing it keeps your theme's colours."
     tabs: ["Pick one", "Change it over time"]
     readonly property string folder: AequalynSettings.wallpaperCfg.folder || (Quickshell.env("HOME") + "/Pictures/Wallpapers")
 
@@ -47,9 +48,10 @@ CcPage {
     CcRow {
         visible: page.tab === 0
         icon: "\u{F03D8}"
-        title: "Your theme's wallpapers and your own"
-        sub: "Super + W shows the theme's wallpapers first, then the ones in your wallpaper folder. Other themes bring their own."
-        action: "Themes"
+        title: Cc.theme.wallpaperMode ? "Colours follow the wallpaper" : "Your theme's wallpapers and your own"
+        sub: Cc.theme.wallpaperMode ? "Every wallpaper repaints the desktop. Set on the Theme page."
+                                    : "Super + W shows the theme's wallpapers first, then the ones in your wallpaper folder. Other themes bring their own."
+        action: "Theme page"
         onActivated: Cc.go("theme")
     }
 

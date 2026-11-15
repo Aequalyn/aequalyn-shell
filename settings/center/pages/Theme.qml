@@ -1,6 +1,7 @@
-// Theme: the desktop's colours and its wallpapers, together. Every theme brings its
-// own wallpapers; picking one applies its colours and its first wallpaper. Wallpapers
-// alone are changed on the Wallpaper page (or Super + W) and keep the theme.
+// Theme: where the desktop's colours come from, a theme (its colours, and its own
+// wallpapers when "A theme brings its wallpapers" is on) or the wallpaper (colours made
+// from whatever wallpaper is on), the themes themselves, and how wallpaper colours are
+// made (Atelier's palette pane).
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -12,7 +13,8 @@ import ".."
 CcPage {
     id: page
     title: "Theme"
-    sub: "Colours and wallpapers that belong together. Super + T picks one from anywhere."
+    sub: "Colours and wallpapers that belong together, or colours made from your wallpaper. Super + T picks one from anywhere."
+    tabs: ["Themes", "How colours are made"]
 
     readonly property var svc: AtelierHost.docks
     // the themes with their own colours and wallpapers, as the picker lists them
@@ -42,10 +44,35 @@ CcPage {
         }
     ]
 
+    // ---- where the colours come from ------------------------------------------------------
+    CcSection {
+        visible: page.tab === 0
+        title: "Colours come from"
+        hint: Cc.theme.wallpaperMode ? "Every new wallpaper repaints the desktop, apps and terminals."
+                                     : "The theme's own colours, whatever the wallpaper."
+        CcChoice {
+            options: [{ key: "theme", label: "The theme" }, { key: "wallpaper", label: "The wallpaper" }]
+            current: Cc.theme.wallpaperMode ? "wallpaper" : "theme"
+            onChosen: key => {
+                if (key === "wallpaper") { Cc.theme.setWallpaperMode(); AequalynSettings.retheme(); }
+                else Cc.theme.useThemeColours(Cc.theme.currentFolderId);
+            }
+        }
+    }
+    CcToggle {
+        visible: page.tab === 0
+        title: "A theme brings its wallpapers"
+        sub: "On: picking a theme also puts on its first wallpaper. Off: only its colours; your wallpaper stays."
+        checked: AequalynSettings.atelierCfg.themeWallpapers !== false
+        onToggled: v => AequalynSettings.setIn("atelier", "themeWallpapers", v)
+    }
+
     // ---- the themes -----------------------------------------------------------------------
     CcSection {
+        visible: page.tab === 0
         title: "Your themes"
-        hint: page.current ? page.current.name + " is on, with " + page.current.backgrounds.length
+        hint: Cc.theme.wallpaperMode ? "Picking one goes back to a theme's colours."
+            : page.current ? page.current.name + " is on, with " + page.current.backgrounds.length
                              + (page.current.backgrounds.length === 1 ? " wallpaper." : " wallpapers.") : ""
         GridLayout {
             Layout.fillWidth: true
@@ -57,7 +84,7 @@ CcPage {
                 delegate: Rectangle {
                     id: tile
                     required property var modelData
-                    readonly property bool on: page.current && page.current.id === modelData.id
+                    readonly property bool on: !Cc.theme.wallpaperMode && page.current && page.current.id === modelData.id
                     Layout.fillWidth: true
                     implicitHeight: 150
                     radius: 14
@@ -137,17 +164,20 @@ CcPage {
     }
 
     CcToggle {
+        visible: page.tab === 0
         setting: "themeApps"
         title: "Apps use these colours too"
         sub: "Files, settings windows and other GTK apps match your desktop. Off leaves them as they come."
     }
     CcToggle {
+        visible: page.tab === 0
         title: "Show each theme on the whole desktop while choosing"
         sub: "In the picker, the bar, dock and windows take the colours of the theme you are on until you pick one or close it."
         checked: AequalynSettings.atelierCfg.livePreview !== false
         onToggled: v => AequalynSettings.setIn("atelier", "livePreview", v)
     }
     CcMore {
+        visible: page.tab === 0
         title: "Add your own theme"
         CcNote {
             text: "A theme is a folder in ~/.config/aequalyn/themes: a theme.json with its name and colours, and a backgrounds folder with one or more wallpapers. It shows here and in Super + T as soon as it is there."
@@ -155,6 +185,21 @@ CcPage {
         CcButton {
             text: "Open the themes folder"; icon: "\u{F024B}"
             onClicked: Cc.run(["sh", "-c", "mkdir -p \"$HOME/.config/aequalyn/themes\" && xdg-open \"$HOME/.config/aequalyn/themes\""])
+        }
+    }
+
+    // ---- how wallpaper colours are made --------------------------------------------------
+    Loader {
+        visible: page.tab === 1
+        active: page.opened(1)
+        Layout.fillWidth: true
+        Layout.preferredHeight: item ? item.contentHeight : 0
+        sourceComponent: Component {
+            PalettePane {
+                interactive: false
+                theme: Cc.theme
+                font: Cc.mono
+            }
         }
     }
 }

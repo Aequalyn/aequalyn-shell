@@ -3,9 +3,11 @@
 // layouts.
 //
 //   Super + T: themes. A theme is its colours and its own wallpapers: picking one
-//              applies both.
-//   Super + W: wallpapers, the current theme's and your own. Picking one changes only
-//              the wallpaper; the theme's colours stay.
+//              applies both (its colours only, if "A theme brings its wallpapers" is
+//              off). "Wallpaper colours", first, makes colours from the wallpaper.
+//   Super + W: wallpapers. With a theme's colours: the theme's and your own, and the
+//              colours stay. With wallpaper colours: every wallpaper, and the colours
+//              follow it.
 // Everything else that used to be a tab here is a page of the control center; asking
 // Atelier for one opens that page:
 //     layouts -> Arranging windows     rotation -> Wallpaper, over time
@@ -52,17 +54,26 @@ Scope {
     readonly property bool livePreview: AequalynSettings.atelierCfg.livePreview !== false
 
     // ---- items ---------------------------------------------------------
-    // Themes: the ones with their own colours and wallpapers.
+    // Themes: "Wallpaper colours" first, then the ones with their own colours and
+    // wallpapers.
     readonly property var themeItems: {
         const t = root.theme;
         if (!t || !t.folderThemes) return [];
-        return t.folderThemes.filter(f => f.hasPalette && (f.backgrounds || []).length > 0).map(f => ({
+        const wp = AtelierService.current;
+        const dynamic = [{
+            key: "wallpaper", kind: "wallpaper", title: "Wallpaper colours",
+            subtitle: "Made from whatever wallpaper is on",
+            image: wp && !/\.(mp4|webm|mkv|mov)$/i.test(wp) ? wp : "",
+            palette: t.wallpaperTheme && t.wallpaperTheme.bgBase ? t.wallpaperTheme : null,
+            active: t.wallpaperMode
+        }];
+        return dynamic.concat(t.folderThemes.filter(f => f.hasPalette && (f.backgrounds || []).length > 0).map(f => ({
             key: "theme:" + f.id, kind: "folder", id: f.id,
             title: f.name, subtitle: f.family,
             image: f.preview || f.backgrounds[0],
             palette: f, backgrounds: f.backgrounds, dir: f.dir || "",
-            active: t.currentFolderId === f.id
-        }));
+            active: !t.wallpaperMode && t.currentFolderId === f.id
+        })));
     }
 
     // Wallpapers: the current theme's first, then your own (your wallpaper folder);
@@ -71,9 +82,11 @@ Scope {
     function ownedByTheme(w, id) { return id !== "" && w.path.indexOf("/" + id + "/backgrounds/") >= 0; }
     readonly property var wallpaperItems: {
         const id = currentThemeId;
-        const theirs = AtelierService.wallpapers.filter(w => w.theme && ownedByTheme(w, id));
-        const yours = AtelierService.wallpapers.filter(w => !w.theme && !w.generated);
-        return theirs.concat(yours).map(w => ({
+        const all = AtelierService.wallpapers;
+        // colours from the wallpaper: any wallpaper; from a theme: its own and yours
+        const list = root.theme && root.theme.wallpaperMode ? all
+            : all.filter(w => w.theme && ownedByTheme(w, id)).concat(all.filter(w => !w.theme && !w.generated));
+        return list.map(w => ({
             key: w.path, kind: "image", path: w.path,
             title: w.name, subtitle: w.folder,
             image: w.thumb, video: w.video,
@@ -183,12 +196,18 @@ Scope {
         noteRecent(it);
         const t = root.theme;
         switch (it.kind) {
+        case "wallpaper":
+            // colours made from the wallpaper from now on
+            t.previewPalette = null;
+            t.setWallpaperMode();
+            AequalynSettings.retheme();
+            break;
         case "folder":
             // its colours, and its first wallpaper unless one of its own is on already
             t.setFolderTheme(it.id);
             break;
         case "image":
-            // only the wallpaper: the theme's colours stay
+            // the wallpaper; the colours stay, unless they follow the wallpaper
             if (AtelierService.mode === "workspace" && AtelierService.focusedWorkspace !== "")
                 AtelierService.assignWorkspace(AtelierService.focusedWorkspace, it.path);
             else

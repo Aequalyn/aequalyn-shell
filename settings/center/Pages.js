@@ -22,8 +22,8 @@ var pages = {
                  words: ["Choose a wallpaper", "Next wallpaper", "Wallpaper picker", "Slideshow", "Wallpaper by time of day", "One wallpaper per workspace", "Moving wallpapers"],
                  also: "background picture image rotation video live" },
     theme:     { label: "Theme", icon: "\u{F03D8}", file: "Theme",
-                 words: ["Choose a theme", "Theme picker", "Apps use these colours", "Add your own theme"],
-                 also: "color colours palette dark light accent look switcher super t" },
+                 words: ["Choose a theme", "Wallpaper colours", "Colours follow the wallpaper", "A theme brings its wallpapers", "Apps use these colours", "Colour scheme", "Light or dark", "Add your own theme"],
+                 also: "color colours palette matugen gtk dark light accent look super t" },
     bar:       { label: "Bar", icon: "\u{F10AB}", file: "Bar",
                  words: ["Bar shape", "Bar look", "Bar height", "Bar see-through", "Widgets on the bar", "Hide a widget", "Bar and docks together"],
                  also: "top panel taskbar widgets opacity size pills islands pebbles" },
@@ -89,7 +89,7 @@ for (var g = 0; g < groups.length; g++) order = order.concat(groups[g].pages);
 var aliases = { appearance: "theme", defaultApps: "apps", hyprland: "windows",
                 displays: "screens", power: "sleep", docks: "dock",
                 themes: "theme", wallpapers: "wallpaper", layouts: "arrange",
-                rotation: "wallpaper:1", palette: "theme", panel: "theme", picker: "theme" };
+                rotation: "wallpaper:1", palette: "theme:1", panel: "theme", picker: "theme" };
 
 // "wifi", "rotation" or "wallpaper:1" -> { page, tab }; page "" when there is none
 function resolve(name) {
