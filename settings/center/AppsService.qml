@@ -12,6 +12,7 @@ QtObject {
     property var current: ({})
     readonly property var categories: [
         { key: "browser",     label: "Web pages",      hint: "Super + B opens it" },
+        { key: "aiTool",      label: "AI coding tool", hint: "Install and manage agents in Settings → AI tools" },
         { key: "fileManager", label: "Folders",        hint: "Super + E opens it" },
         { key: "terminal",    label: "Terminal",       hint: "Super + Enter opens it" },
         { key: "textEditor",  label: "Text files",     hint: "" },
@@ -21,6 +22,14 @@ QtObject {
     function refresh() { if (!listProc.running) listProc.running = true; }
 
     function set(category, appId, appName) {
+        if (category === "aiTool") {
+            setProc.command = ["aequalyn-ai-tool", "set-default", appId || "none"];
+            setProc.running = true;
+            const c = Object.assign({}, current);
+            c[category] = appId === "none" ? "" : appId;
+            current = c;
+            return;
+        }
         if (!appId) return;
         const name = appName || appId;
         setProc.command = ["sh", "-c", command(category, appId, name)];
@@ -46,6 +55,7 @@ QtObject {
     // the apps of a category, the one in use included even when it isn't listed
     function choices(category) {
         const list = (apps[category] || []).map(a => ({ key: a.id, label: a.name }));
+        if (category === "aiTool") list.unshift({ key: "none", label: "None" });
         const cur = current[category];
         if (cur && !list.some(a => a.key === cur)) list.push({ key: cur, label: cur });
         return list;

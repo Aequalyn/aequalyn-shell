@@ -167,13 +167,13 @@ QtObject {
     // ---- Plugins / modules ----------------------------------------------
     // Which shell elements are loaded. Missing entries default to all of them.
     property var enabledPlugins: [
-        "bar", "appLauncher", "notifications", "atelier", "osd",
+        "bar", "appLauncher", "defaultApps", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
         "docks", "plume", "altscape", "programsMenu", "settings"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "programsMenu"]
+    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps"]
     property var pluginsKnown: []
 
     // ---- Dock -------------------------------------------------------------

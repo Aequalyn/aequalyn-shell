@@ -28,6 +28,7 @@ Scope {
       root.open = !root.open
       if (root.open) {
         if (!cliPrograms.length) cliScan.running = true
+        aiToolScan.running = true
         root.activeCategory = "All"
         searchInput.text = ""
         selectedIndex = -1
@@ -41,11 +42,28 @@ Scope {
 
   property string activeCategory: "All"
   property var cliPrograms: []
+  property string defaultAiCommand: ""
 
   Process {
     id: cliScan
     command: ["bash", "-lc", "compgen -c | sort -u | while IFS= read -r c; do p=$(command -v -- \"$c\" 2>/dev/null) || continue; [ -f \"$p\" ] && [ -x \"$p\" ] && printf '%s\\n' \"$c\"; done"]
     stdout: StdioCollector { onStreamFinished: root.cliPrograms = text.trim().split("\n").filter(x => x && !["sh", "bash", "zsh", "fish", "cd", "echo", "printf", "test", "sudo", "doas"].includes(x)) }
+  }
+
+  Process {
+    id: aiToolScan
+    command: ["aequalyn-ai-tool", "list", "--json"]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        try {
+          const tools = JSON.parse(text.trim());
+          const selected = tools.find(tool => tool.default);
+          root.defaultAiCommand = selected ? selected.command : "";
+        } catch (e) {
+          root.defaultAiCommand = "";
+        }
+      }
+    }
   }
 
   function categoryFor(entry) {
@@ -70,7 +88,10 @@ Scope {
     const present = new Set(apps.map(e => String(e.name || "").toLowerCase()));
     for (const name of cliPrograms) {
       if (present.has(name.toLowerCase())) continue;
-      apps.push({ id: "cli-" + name, name, genericName: "Command line program", isCli: true, icon: "utilities-terminal" });
+      apps.push({ id: "cli-" + name, name,
+        genericName: name === root.defaultAiCommand ? "Default AI tool" : "Command line program",
+        isDefaultAiTool: name === root.defaultAiCommand,
+        isCli: true, icon: "utilities-terminal" });
     }
     return apps;
   }
