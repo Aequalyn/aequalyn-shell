@@ -11,6 +11,18 @@ CcPage {
     title: "About"
     readonly property var u: Cc.updates
 
+    function shellQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
+    // Install the optional theme pack through sudo's askpass prompt: the polkit
+    // agent crashes on some GPU/VM setups, so pkexec cannot be used here.
+    function installCommand() {
+        const home = Quickshell.env("HOME")
+        return "DISPLAY=" + shellQuote(Quickshell.env("DISPLAY") || "")
+             + " WAYLAND_DISPLAY=" + shellQuote(Quickshell.env("WAYLAND_DISPLAY") || "")
+             + " XDG_RUNTIME_DIR=" + shellQuote(Quickshell.env("XDG_RUNTIME_DIR") || "")
+             + " SUDO_ASKPASS=" + shellQuote(home + "/.local/bin/aequalyn-askpass")
+             + " sudo -A " + shellQuote(home + "/.local/bin/aequalyn-sddm") + " install"
+    }
+
     RowLayout {
         spacing: 18
         Rectangle {
@@ -78,7 +90,7 @@ CcPage {
             primary: true
             onClicked: {
                 page.status = "Installing…"
-                page.lsInstall.command = ["pkexec", "aequalyn-sddm", "install"]
+                page.lsInstall.command = ["setsid", "sh", "-c", page.installCommand()]
                 page.lsInstall.running = true
             }
         }
