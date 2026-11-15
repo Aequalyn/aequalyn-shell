@@ -9,7 +9,7 @@
 // and timers only run while you look at them.
 var groups = [
     { title: "",        pages: ["home"] },
-    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
+    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock"] },
     { title: "Windows", pages: ["arrange", "windows", "screens", "input"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
     { title: "System",  pages: ["apps", "webapps", "store", "clock", "sleep", "updates", "backup", "plugins", "about"] }
@@ -19,20 +19,17 @@ var pages = {
     home:      { label: "Home", icon: "\u{F02DC}", file: "Home",
                  words: [], also: "start overview desktop" },
     wallpaper: { label: "Wallpaper", icon: "\u{F0E09}", file: "Wallpaper",
-                 words: ["Choose a wallpaper", "Next wallpaper", "Slideshow", "Wallpaper by time of day", "One wallpaper per workspace", "Moving wallpapers"],
+                 words: ["Choose a wallpaper", "Next wallpaper", "Wallpaper picker", "Slideshow", "Wallpaper by time of day", "One wallpaper per workspace", "Moving wallpapers"],
                  also: "background picture image rotation video live" },
-    theme:     { label: "Theme and colours", icon: "\u{F03D8}", file: "Theme",
-                 words: ["Choose a theme", "Regenerate colours", "Apps use these colours", "Colour scheme", "Light or dark"],
-                 also: "color colours palette matugen gtk dark light accent look" },
+    theme:     { label: "Theme", icon: "\u{F03D8}", file: "Theme",
+                 words: ["Choose a theme", "Theme picker", "Apps use these colours", "Add your own theme"],
+                 also: "color colours palette dark light accent look switcher super t" },
     bar:       { label: "Bar", icon: "\u{F10AB}", file: "Bar",
                  words: ["Bar shape", "Bar look", "Bar height", "Bar see-through", "Widgets on the bar", "Hide a widget", "Bar and docks together"],
                  also: "top panel taskbar widgets opacity size pills islands pebbles" },
     dock:      { label: "Dock", icon: "\u{F10A9}", file: "Dock",
                  words: ["Add a dock", "Dock position", "Hide the dock", "Dock icons", "Dock look"],
                  also: "launcher pinned apps taskbar autohide" },
-    picker:    { label: "Theme picker", icon: "\u{F08B5}", file: "Picker",
-                 words: ["Picker shape", "Picker position", "Picker size", "Open over the blurred desktop"],
-                 also: "switcher showcase carousel super t super w atelier" },
     arrange:   { label: "Arranging windows", icon: "\u{F0570}", file: "Arrange",
                  words: ["Window layout", "Layouts in Super + L", "Built-in arrangement"],
                  also: "tiling layout master dwindle scrolling grid focus" },
@@ -92,7 +89,7 @@ for (var g = 0; g < groups.length; g++) order = order.concat(groups[g].pages);
 var aliases = { appearance: "theme", defaultApps: "apps", hyprland: "windows",
                 displays: "screens", power: "sleep", docks: "dock",
                 themes: "theme", wallpapers: "wallpaper", layouts: "arrange",
-                rotation: "wallpaper:1", palette: "theme:1", panel: "picker" };
+                rotation: "wallpaper:1", palette: "theme", panel: "theme", picker: "theme" };
 
 // "wifi", "rotation" or "wallpaper:1" -> { page, tab }; page "" when there is none
 function resolve(name) {
@@ -127,4 +124,4 @@ function search(query) {
 }
 
 // the pages kept once built: no timers or scans run on them while hidden
-var kept = ["home", "wallpaper", "theme", "bar", "dock", "picker", "windows", "sleep"];
+var kept = ["home", "wallpaper", "theme", "bar", "dock", "windows", "sleep"];
