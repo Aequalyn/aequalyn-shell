@@ -99,6 +99,9 @@ Item {
     }
     onLookChanged: { lastKey = ""; refresh(); }
     onWidthChanged: refresh()
+    // A picture of the bar (fakeSlots) has no timer to catch up: one made while hidden
+    // (a tab not shown yet, a page made in the background) draws when it is shown.
+    onVisibleChanged: if (visible) { lastKey = ""; refresh(); }
     Timer { interval: 200; repeat: true; running: deco.visible && !deco.fakeSlots; onTriggered: deco.refresh() }
     Component.onCompleted: refresh()
 
