@@ -37,19 +37,26 @@ CcPage {
         caption: !AequalynSettings.dockEnabled ? "Docks are off" : ""
     }
 
+    // each tab's part of the docks pane, made the first time the tab is opened
     Repeater {
         model: ["docks", "look", "hiding"]
-        delegate: DocksPane {
+        delegate: Loader {
+            id: slot
             required property string modelData
             required property int index
             visible: page.tab === index
-            section: modelData
-            showStage: false
-            interactive: false
+            active: page.opened(index)
             Layout.fillWidth: true
-            Layout.preferredHeight: contentHeight
-            theme: Cc.theme
-            font: Cc.mono
+            Layout.preferredHeight: item ? item.contentHeight : 0
+            sourceComponent: Component {
+                DocksPane {
+                    section: slot.modelData
+                    showStage: false
+                    interactive: false
+                    theme: Cc.theme
+                    font: Cc.mono
+                }
+            }
         }
     }
 }

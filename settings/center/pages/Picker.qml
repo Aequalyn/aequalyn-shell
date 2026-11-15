@@ -34,18 +34,25 @@ CcPage {
         onChosen: key => page.showing = key
     }
 
+    // each tab's part of the picker's settings, made the first time the tab is opened
     Repeater {
         model: ["type", "shape", "place", "parts"]
-        delegate: PanelPane {
+        delegate: Loader {
+            id: slot
             required property string modelData
             required property int index
             visible: page.tab === index
-            section: modelData
-            interactive: false
+            active: page.opened(index)
             Layout.fillWidth: true
-            Layout.preferredHeight: contentHeight
-            theme: Cc.theme
-            font: Cc.mono
+            Layout.preferredHeight: item ? item.contentHeight : 0
+            sourceComponent: Component {
+                PanelPane {
+                    section: slot.modelData
+                    interactive: false
+                    theme: Cc.theme
+                    font: Cc.mono
+                }
+            }
         }
     }
 }

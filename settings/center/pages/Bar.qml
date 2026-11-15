@@ -37,27 +37,37 @@ CcPage {
     ]
 
     // ---- ready-made looks, and the bar and docks together ---------------------------------
-    BarPane {
+    Loader {
         visible: page.tab === 0
-        section: "looks"
-        showStage: false
-        interactive: false
+        active: page.opened(0)
         Layout.fillWidth: true
-        Layout.preferredHeight: contentHeight
-        theme: Cc.theme
-        font: Cc.mono
+        Layout.preferredHeight: item ? item.contentHeight : 0
+        sourceComponent: Component {
+            BarPane {
+                section: "looks"
+                showStage: false
+                interactive: false
+                theme: Cc.theme
+                font: Cc.mono
+            }
+        }
     }
 
     // ---- shape, every part and colours ----------------------------------------------------
-    BarPane {
+    Loader {
         visible: page.tab === 1
-        section: "shape"
-        showStage: false
-        interactive: false
+        active: page.opened(1)
         Layout.fillWidth: true
-        Layout.preferredHeight: contentHeight
-        theme: Cc.theme
-        font: Cc.mono
+        Layout.preferredHeight: item ? item.contentHeight : 0
+        sourceComponent: Component {
+            BarPane {
+                section: "shape"
+                showStage: false
+                interactive: false
+                theme: Cc.theme
+                font: Cc.mono
+            }
+        }
     }
 
     // ---- size and place -------------------------------------------------------------------
@@ -72,15 +82,20 @@ CcPage {
         sub: "Lower lets the wallpaper show through."
         from: 40; to: 100; step: 5; unit: "%"
     }
-    BarPane {
+    Loader {
         visible: page.tab === 2
-        section: "place"
-        showStage: false
-        interactive: false
+        active: page.opened(2)
         Layout.fillWidth: true
-        Layout.preferredHeight: contentHeight
-        theme: Cc.theme
-        font: Cc.mono
+        Layout.preferredHeight: item ? item.contentHeight : 0
+        sourceComponent: Component {
+            BarPane {
+                section: "place"
+                showStage: false
+                interactive: false
+                theme: Cc.theme
+                font: Cc.mono
+            }
+        }
     }
     CcMore {
         visible: page.tab === 2

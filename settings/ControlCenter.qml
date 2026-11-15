@@ -58,12 +58,18 @@ Scope {
         const r = Pages.resolve(name || "home");
         if (r.page !== "") {
             Cc.startTab = r.tab;
-            const same = root.page === r.page;
             root.page = r.page;
             // already showing: the page isn't made again, so switch its sub page here
-            if (same && pageLoader.item && pageLoader.item.tabs !== undefined) pageLoader.item.tab = r.tab;
+            // already made (shown now, or kept): it isn't made again, so set its sub page here
+            const it = root.pageItem(r.page);
+            if (it && it.tabs !== undefined) it.tab = r.tab < it.tabs.length ? r.tab : 0;
         }
         root.panelVisible = true;
+    }
+    function pageItem(name) {
+        const i = Pages.order.indexOf(name);
+        const l = i >= 0 ? pageLoaders.itemAt(i) : null;
+        return l && l.status === Loader.Ready ? l.item : null;
     }
     function step(delta) {
         const i = Pages.order.indexOf(root.page);
@@ -372,8 +378,14 @@ Scope {
                 Rectangle { anchors.left: side.right; anchors.top: titleBar.bottom; anchors.bottom: footer.top; width: 1; color: Cc.theme.bgBorder }
 
                 // ---- the page ------------------------------------------------------------
-                Loader {
-                    id: pageLoader
+                // One loader per page. A kept page (Pages.kept: the ones with live
+                // pictures) is made the first time it is shown and then stays, painted,
+                // so its pictures are there at once every time after; any other page is
+                // made when shown and dropped when left, so its scans and timers only run
+                // while you look at it.
+                Item {
+                    id: pageArea
+                    clip: true
                     anchors.left: side.right
                     anchors.leftMargin: 32
                     anchors.right: parent.right
@@ -382,11 +394,35 @@ Scope {
                     anchors.topMargin: 26
                     anchors.bottom: footer.top
                     anchors.bottomMargin: 4
-                    // pages are made when shown and dropped when left, so a page's scans
-                    // and timers only run while you look at it
-                    active: root.panelVisible
-                    source: Qt.resolvedUrl("center/pages/" + Pages.pages[root.page].file + ".qml")
-                    onStatusChanged: if (status === Loader.Error) console.error("control center: page failed to load:", root.page)
+
+                    Repeater {
+                        id: pageLoaders
+                        model: Pages.order
+                        delegate: Loader {
+                            required property string modelData
+                            readonly property bool current: root.page === modelData
+                            readonly property bool kept: Pages.kept.indexOf(modelData) >= 0
+                            // A kept page stays drawn, just outside the page area (which clips
+                            // it) and out of reach: its pictures (canvases, which only paint
+                            // while drawn) are painted in the background, not all at once when
+                            // you switch to it. Opacity 0 would skip them: Qt doesn't draw it.
+                            width: pageArea.width
+                            height: pageArea.height
+                            x: current ? 0 : pageArea.width + 64
+                            visible: current || kept
+                            enabled: current
+                            // made when first shown; a kept page then stays made
+                            property bool made: false
+                            active: (current && root.panelVisible) || (kept && made)
+                            onLoaded: {
+                                made = true;
+                                // the sub page asked for, when the page is opened by name
+                                if (current && item.tabs !== undefined && Cc.startTab < item.tabs.length) item.tab = Cc.startTab;
+                            }
+                            source: Qt.resolvedUrl("center/pages/" + Pages.pages[modelData].file + ".qml")
+                            onStatusChanged: if (status === Loader.Error) console.error("control center: page failed to load:", modelData)
+                        }
+                    }
                 }
 
                 // ---- footer --------------------------------------------------------------
