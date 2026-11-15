@@ -1,0 +1,4 @@
+singleton AltscapeHost 1.0 AltscapeHost.qml
+Altscape 1.0 Altscape.qml
+Service 1.0 Service.qml
+Switcher 1.0 Switcher.qml

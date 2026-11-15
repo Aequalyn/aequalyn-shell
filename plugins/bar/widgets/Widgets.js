@@ -22,6 +22,7 @@ var files = {
     network:        "Network.qml",
     caffeine:       "Caffeine.qml",
     plume:          "Plume.qml",
+    altscape:       "AltscapeButton.qml",
     power:          "Power.qml",
     screenrecorder: "ScreenRecorder.qml",
     atelier:        "AtelierButton.qml",

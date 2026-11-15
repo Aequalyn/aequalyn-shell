@@ -169,11 +169,11 @@ QtObject {
     property var enabledPlugins: [
         "bar", "appLauncher", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
-        "docks", "plume", "settings"
+        "docks", "plume", "altscape", "settings"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume"]
+    readonly property var newPlugins: ["plume", "altscape"]
     property var pluginsKnown: []
 
     // ---- Dock -------------------------------------------------------------
@@ -193,7 +193,7 @@ QtObject {
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
     property var barCenter: ["clock", "media", "title"]
-    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "settingsbutton"]
+    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
@@ -211,6 +211,7 @@ QtObject {
         settingsbutton: "Settings button",
         caffeine: "Caffeine (idle inhibit)",
         plume: "Cursor effects (Plume)",
+        altscape: "Window switcher",
         atelier: "Themes and wallpapers",
         layouts: "Window layout"
     })
@@ -250,7 +251,7 @@ QtObject {
     function normalizeBarRegions() {
         const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
-            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "settingsbutton"]
+            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
         // instead of silently dropping extras. The bar sections scroll when a
         // region has more plugins than fits on screen.
