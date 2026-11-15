@@ -15,5 +15,6 @@ var list = [
     { id: "powerMenu",      label: "Power menu",     source: "plugins/powerMenu/PowerMenu.qml" },
     { id: "docks",          label: "Docks",          source: "plugins/docks/DocksService.qml" },
     { id: "plume",          label: "Cursor and pointer effects", source: "plugins/plume/Service.qml" },
+    { id: "altscape",       label: "Window switcher", source: "plugins/altscape/Altscape.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];

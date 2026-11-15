@@ -1,0 +1,5 @@
+FocusRequest 1.0 FocusRequest.qml
+SettingsStore 1.0 SettingsStore.qml
+SwitcherShortcuts 1.0 SwitcherShortcuts.qml
+SwitchState 1.0 SwitchState.qml
+UiState 1.0 UiState.qml

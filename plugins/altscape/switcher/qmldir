@@ -1,0 +1,16 @@
+AppIcon 1.0 AppIcon.qml
+SmoothShot 1.0 SmoothShot.qml
+SwitchView 1.0 SwitchView.qml
+VizCarousel 1.0 VizCarousel.qml
+VizColumns 1.0 VizColumns.qml
+VizCompact 1.0 VizCompact.qml
+VizDock 1.0 VizDock.qml
+VizFan 1.0 VizFan.qml
+VizGrid 1.0 VizGrid.qml
+VizList 1.0 VizList.qml
+VizOverview 1.0 VizOverview.qml
+VizRing 1.0 VizRing.qml
+VizSpread 1.0 VizSpread.qml
+VizStack 1.0 VizStack.qml
+VizStrip 1.0 VizStrip.qml
+WindowCard 1.0 WindowCard.qml
