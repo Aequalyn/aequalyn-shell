@@ -10,6 +10,7 @@ QtObject {
     id: svc
     property var apps: []
     property var browsers: []
+    property var categories: []      // [{ id, label, count }]: your categories, in order
     property string browser: "auto"
     property string resolved: ""
     property string resolvedLabel: ""
@@ -18,6 +19,7 @@ QtObject {
     property string error: ""
     property string note: ""
     signal added()
+    signal categoryAdded()
 
     function refresh() { if (!listProc.running) listProc.running = true; }
 
@@ -40,8 +42,25 @@ QtObject {
         terminalProc.running = true;
     }
 
-    function add(name, url) {
-        run("add", ["add", "--name", name, "--url", url], "")
+    // category: an id from `categories`, or "" for none
+    function add(name, url, category) {
+        const args = ["add", "--name", name, "--url", url];
+        if (category) args.push("--category", category);
+        run("add", args, "")
+    }
+    function setCategory(slug, category) {
+        run("category", ["set-category", slug, category || "none"], "")
+    }
+    // your categories: a new (empty) one, a new name, or gone (its web apps then
+    // have no category)
+    function addCategory(label) {
+        run("catadd", ["category-add", label], "Added " + label + ".")
+    }
+    function renameCategory(id, label) {
+        run("catrename", ["category-rename", id, label], "")
+    }
+    function removeCategory(id) {
+        run("catremove", ["category-remove", id], "")
     }
 
     function remove(slug) {
@@ -58,12 +77,14 @@ QtObject {
         error = "";
         note = "";
         pending = kind;
+        lastKind = kind;
         pendingNote = done;
         action.command = ["sh", "-c", command(args)];
         action.running = true;
     }
 
     property string pending: ""
+    property string lastKind: ""     // the last action run ("add", "catadd", ...), for where its message shows
     property string pendingNote: ""
 
     function command(args) {
@@ -79,6 +100,7 @@ QtObject {
                     const j = JSON.parse(text.trim());
                     svc.apps = j.apps || [];
                     svc.browsers = j.browsers || [];
+                    svc.categories = j.categories || [];
                     svc.browser = j.browser || "auto";
                     svc.resolved = j.resolved || "";
                     svc.resolvedLabel = j.resolvedLabel || "";
@@ -107,6 +129,7 @@ QtObject {
                 if (action.exitCode === 0) {
                     svc.note = svc.pendingNote;
                     if (svc.pending === "add") svc.added();
+                    if (svc.pending === "catadd") svc.categoryAdded();
                 } else {
                     const msg = text.trim().split("\n")[0]
                         .replace(/^aequalyn-webapp:\s*/, "");
