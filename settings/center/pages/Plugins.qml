@@ -14,6 +14,7 @@ CcPage {
     readonly property var about: ({
         bar: "The strip along the top.",
         appLauncher: "Super + D: search and open desktop applications.",
+        defaultApps: "Super + Alt + A: choose the default app for each category.",
         programsMenu: "Super + Space: browse desktop and command line programs by category.",
         notifications: "Messages from apps, in the corner.",
         atelier: "The theme and wallpaper picker, and the look pages here.",
