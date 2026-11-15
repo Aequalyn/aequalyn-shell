@@ -169,8 +169,12 @@ QtObject {
     property var enabledPlugins: [
         "bar", "appLauncher", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
-        "docks", "settings"
+        "docks", "plume", "settings"
     ]
+    // Plugins added after a settings file was first written: turned on once, the first
+    // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
+    readonly property var newPlugins: ["plume"]
+    property var pluginsKnown: []
 
     // ---- Dock -------------------------------------------------------------
     // Docks are a plugin now: enabled iff "docks" is in enabledPlugins.
@@ -189,7 +193,7 @@ QtObject {
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
     property var barCenter: ["clock", "media", "title"]
-    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "settingsbutton"]
+    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
@@ -206,6 +210,7 @@ QtObject {
         appsmenu: "Apps menu (Arch)",
         settingsbutton: "Settings button",
         caffeine: "Caffeine (idle inhibit)",
+        plume: "Cursor effects (Plume)",
         atelier: "Themes and wallpapers",
         layouts: "Window layout"
     })
@@ -245,7 +250,7 @@ QtObject {
     function normalizeBarRegions() {
         const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
-            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "settingsbutton"]
+            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
         // instead of silently dropping extras. The bar sections scroll when a
         // region has more plugins than fits on screen.
@@ -394,6 +399,7 @@ QtObject {
             atelier: root.atelierCfg,
             backdrop: root.backdropCfg,
             plugins: root.enabledPlugins,
+            pluginsKnown: root.pluginsKnown,
             barStyle: root.barStyleCfg,
             dock: {
                 enabled: (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).indexOf("docks") >= 0,
@@ -566,8 +572,17 @@ QtObject {
         root.paletteCfg = root._merge(root.paletteDefaults, d.palette)
         root.atelierCfg = root._merge(root.atelierDefaults, d.atelier)
         root.backdropCfg = root._merge(root.backdropDefaults, d.backdrop)
-        if (Array.isArray(d.plugins)) root.enabledPlugins = d.plugins.slice()
-        if (dk.enabled === false) root.enabledPlugins = (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).filter(x => x !== "docks")
+        // the plugins: worked out whole and set once (every change rebuilds them all)
+        {
+            let on = Array.isArray(d.plugins) ? d.plugins.slice()
+                : (Array.isArray(root.enabledPlugins) ? root.enabledPlugins.slice() : [])
+            const known = Array.isArray(d.pluginsKnown) ? d.pluginsKnown.slice() : []
+            const fresh = root.newPlugins.filter(id => known.indexOf(id) < 0)
+            for (const id of fresh) if (on.indexOf(id) < 0) on.push(id)
+            if (dk.enabled === false) on = on.filter(x => x !== "docks")
+            root.pluginsKnown = known.concat(fresh)
+            if (JSON.stringify(on) !== JSON.stringify(root.enabledPlugins)) root.enabledPlugins = on
+        }
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })
 

@@ -21,7 +21,8 @@ CcPage {
         idleInhibitor: "Keep awake.",
         clipboard: "Super + Ctrl + V: everything you copied.",
         powerMenu: "Lock, log out, restart, shut down.",
-        docks: "Your apps at the edges of the screen."
+        docks: "Your apps at the edges of the screen.",
+        plume: "Plume: your own cursor, and trails and halos around the pointer."
     })
 
     CcSection {

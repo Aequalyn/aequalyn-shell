@@ -10,7 +10,7 @@
 var groups = [
     { title: "",        pages: ["home"] },
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
-    { title: "Windows", pages: ["arrange", "windows", "screens", "input"] },
+    { title: "Windows", pages: ["arrange", "windows", "screens", "input", "cursor"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
     { title: "System",  pages: ["apps", "webapps", "store", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
@@ -40,6 +40,9 @@ var pages = {
                  words: ["Space between windows", "Rounded corners", "Window border", "Blur", "Animations", "See-through windows",
                          "Behind panels", "Blur behind panels", "Smooth blur", "Frost", "Maelstrom", "Darkness", "Colour of the blur"],
                  also: "gaps rounding border opacity transparency effects hyprland backdrop dim zoom iris mosaic swirl" },
+    cursor:    { label: "Cursor", icon: "\u{F01C0}", file: "Cursor",
+                 words: ["Design your own cursor", "Cursor theme", "Cursor size", "Pointer trail", "Halo", "Shake to find the pointer", "Hide the cursor", "Cursor looks"],
+                 also: "plume pointer mouse arrow trail halo glow comet sparks ring spotlight crosshair hyprcursor xcursor" },
     screens:   { label: "Screens", icon: "\u{F0379}", file: "Screens",
                  words: ["Brightness", "Arrange screens", "Resolution", "Scale"],
                  also: "monitor display displays brightness resolution refresh" },

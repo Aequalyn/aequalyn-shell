@@ -1,0 +1,2 @@
+singleton PlumeHost 1.0 PlumeHost.qml
+Service 1.0 Service.qml
