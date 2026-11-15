@@ -71,10 +71,19 @@ QtObject {
         scheme: "scheme-tonal-spot", contrast: 0
     })
     readonly property var atelierDefaults: ({
-        // themes recolour the whole desktop while you move through them in the picker
-        livePreview: true,
+        // the type of picker for themes and for wallpapers ("slices" by default); themes
+        // recolour the whole desktop while you move through them
+        layouts: { themes: "slices", wallpapers: "slices" }, livePreview: true,
         // picking a theme also puts on its first wallpaper (off: only its colours)
         themeWallpapers: true,
+        // the Slices type: the cards' shape ("original" = the plain slant, "bar" or an end
+        // shape), where it sits and how large
+        slices: { shape: "original", position: "center", size: 100 },
+        // the Showcase type: where, how large, the cards' shape ("bar" = the bar's own
+        // ends) and which parts it shows
+        showcase: { position: "center", size: 100, shape: "bar",
+                    parts: { palette: true, backgrounds: true, three: true, live: true,
+                             tabs: true, badges: true, actions: true } },
         favorites: {}, recent: {},
         // the bar's Themes and Layouts buttons: the name beside the icon, and what a
         // right or middle click does
@@ -114,6 +123,25 @@ QtObject {
         if (section === "palette" && ["mode", "scheme", "contrast", "lightFrom", "darkFrom"].indexOf(key) >= 0)
             root.pendingRetheme = true
         root.save()
+    }
+
+    // A picker type's settings ("slices" or "showcase": shape, position, size, parts) for
+    // one picker ("themes" or "wallpapers"): its own, over the ones both share, so the
+    // theme picker and the wallpaper picker can each sit, look and size differently.
+    function pickerCfg(type, collection) {
+        const base = root.atelierCfg[type] || {}
+        const own = collection && base[collection] && typeof base[collection] === "object" ? base[collection] : {}
+        const out = Object.assign({}, base, own)
+        delete out.themes
+        delete out.wallpapers
+        return out
+    }
+    function setPicker(type, collection, key, value) {
+        const base = Object.assign({}, root.atelierCfg[type] || {})
+        const own = Object.assign({}, base[collection] || {})
+        own[key] = value
+        base[collection] = own
+        root.setIn("atelier", type, base)
     }
 
     // Atelier's Reset all: these sections back to their defaults.

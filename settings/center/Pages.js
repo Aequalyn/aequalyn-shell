@@ -9,7 +9,7 @@
 // and timers only run while you look at them.
 var groups = [
     { title: "",        pages: ["home"] },
-    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock"] },
+    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
     { title: "Windows", pages: ["arrange", "windows", "screens", "input"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
     { title: "System",  pages: ["apps", "webapps", "store", "clock", "sleep", "updates", "backup", "plugins", "about"] }
@@ -30,6 +30,9 @@ var pages = {
     dock:      { label: "Dock", icon: "\u{F10A9}", file: "Dock",
                  words: ["Add a dock", "Dock position", "Hide the dock", "Dock icons", "Dock look"],
                  also: "launcher pinned apps taskbar autohide" },
+    picker:    { label: "Theme picker", icon: "\u{F08B5}", file: "Picker",
+                 words: ["Picker type", "Slices", "Picker shape", "Picker position", "Picker size"],
+                 also: "switcher showcase carousel grid slices super t super w atelier" },
     arrange:   { label: "Arranging windows", icon: "\u{F0570}", file: "Arrange",
                  words: ["Window layout", "Layouts in Super + L", "Built-in arrangement"],
                  also: "tiling layout master dwindle scrolling grid focus" },
@@ -89,7 +92,7 @@ for (var g = 0; g < groups.length; g++) order = order.concat(groups[g].pages);
 var aliases = { appearance: "theme", defaultApps: "apps", hyprland: "windows",
                 displays: "screens", power: "sleep", docks: "dock",
                 themes: "theme", wallpapers: "wallpaper", layouts: "arrange",
-                rotation: "wallpaper:1", palette: "theme:1", panel: "theme", picker: "theme" };
+                rotation: "wallpaper:1", palette: "theme:1", panel: "picker" };
 
 // "wifi", "rotation" or "wallpaper:1" -> { page, tab }; page "" when there is none
 function resolve(name) {
@@ -124,4 +127,4 @@ function search(query) {
 }
 
 // the pages kept once built: no timers or scans run on them while hidden
-var kept = ["home", "wallpaper", "theme", "bar", "dock", "windows", "sleep"];
+var kept = ["home", "wallpaper", "theme", "bar", "dock", "picker", "windows", "sleep"];

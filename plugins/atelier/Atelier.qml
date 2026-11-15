@@ -13,8 +13,11 @@
 //     layouts -> Arranging windows     rotation -> Wallpaper, over time
 //     palette, panel -> Theme          bar -> Bar      docks -> Dock
 //
+// The type of picker (Slices, Showcase, Carousel, Grid...) is set per collection on the
+// control center's Theme picker page.
+//
 // IPC:  qs ipc call atelier toggle [themes|wallpapers|layouts|rotation|palette|bar|docks|panel]
-//       qs ipc call atelier open <tab> | close
+//       qs ipc call atelier open <tab> | close | layout <picker type>
 //       qs ipc call wallpaper next | prev | random | set <file> | mode <mode>
 
 import Quickshell
@@ -51,6 +54,12 @@ Scope {
         { key: "themes", icon: "󰏘", name: "Themes" },
         { key: "wallpapers", icon: "󰸉", name: "Wallpapers" }
     ]
+    readonly property var layoutKeys: ["slices", "showcase", "carousel", "grid", "filmstrip", "radial", "list", "spotlight"]
+    readonly property string layout: {
+        const l = (AequalynSettings.atelierCfg.layouts || {})[collection];
+        return layoutKeys.indexOf(l) >= 0 ? l : "slices";
+    }
+    readonly property bool spotlight: layout === "spotlight"
     readonly property bool livePreview: AequalynSettings.atelierCfg.livePreview !== false
 
     // ---- items ---------------------------------------------------------
@@ -164,6 +173,13 @@ Scope {
 
     function search(text) { searchText = text; currentIndex = 0; preview(); }
 
+    function setLayout(l) {
+        if (layoutKeys.indexOf(l) < 0) return;
+        const next = Object.assign({}, AequalynSettings.atelierCfg.layouts || {});
+        next[collection] = l;
+        AequalynSettings.setIn("atelier", "layouts", next);
+    }
+
     function selectActive() {
         const list = items;
         for (let i = 0; i < list.length; i++) if (list[i].active) { currentIndex = i; return; }
@@ -173,7 +189,9 @@ Scope {
     function move(delta) {
         const n = items.length;
         if (n === 0) return;
-        currentIndex = Math.max(0, Math.min(n - 1, currentIndex + delta));
+        const wraps = layout === "carousel" || layout === "radial";
+        const i = currentIndex + delta;
+        currentIndex = wraps ? (i % n + n) % n : Math.max(0, Math.min(n - 1, i));
     }
 
     onCurrentIndexChanged: preview()
@@ -239,6 +257,7 @@ Scope {
         function toggle(collection: string): void { root.toggle(collection); }
         function open(collection: string): void { root.open(collection); }
         function close(): void { root.close(); }
+        function layout(name: string): void { root.setLayout(name); }
     }
 
     IpcHandler {
@@ -264,6 +283,13 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
 
+        // the dimmed desktop; Slices draws its own, Spotlight none
+        Rectangle {
+            anchors.fill: parent
+            visible: root.layout !== "slices"
+            color: Qt.rgba(0, 0, 0, root.spotlight ? 0 : 0.35)
+            MouseArea { anchors.fill: parent; onClicked: root.close() }
+        }
         Loader {
             anchors.fill: parent
             active: switcherWin.visible
