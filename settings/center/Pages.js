@@ -12,7 +12,7 @@ var groups = [
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker", "lockscreens"] },
     { title: "Windows", pages: ["arrange", "windows", "switcher", "screens", "input", "cursor"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
-    { title: "System",  pages: ["apps", "webapps", "store", "clock", "sleep", "updates", "backup", "plugins", "about"] }
+    { title: "System",  pages: ["apps", "webapps", "store", "aiTools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
 
 var pages = {
@@ -73,6 +73,9 @@ var pages = {
     store:     { label: "Store", icon: "\u{F034A}", file: "Store",
                   words: ["Install a package", "Install from the AUR", "Arch packages", "AUR packages"],
                   also: "store install software package aur pacman yay app application" },
+    aiTools:   { label: "AI tools", icon: "\u{F06A9}", file: "AiTools",
+                 words: ["Install a coding agent", "Update an AI CLI", "Remove an AI CLI", "Claude Code", "Codex", "Copilot CLI", "Gemini CLI"],
+                 also: "ai artificial intelligence coding agent cli terminal claude codex copilot gemini developer development programming mise node npm" },
     clock:     { label: "Clock", icon: "\u{F0954}", file: "Clock",
                  words: ["24-hour clock", "Show seconds"],
                  also: "time date am pm" },
