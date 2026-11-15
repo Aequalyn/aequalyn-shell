@@ -13,7 +13,7 @@ CcPage {
 
     readonly property var about: ({
         bar: "The strip along the top.",
-        appLauncher: "Super + D: find and open apps.",
+        appLauncher: "Super + D or Super + Space: find and open apps.",
         notifications: "Messages from apps, in the corner.",
         atelier: "The theme and wallpaper picker, and the look pages here.",
         osd: "Shows the volume and brightness as they change.",
