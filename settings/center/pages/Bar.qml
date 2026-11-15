@@ -199,6 +199,50 @@ CcPage {
         }
     }
 
+    // the Themes and Layouts buttons: the name beside the icon, and their other clicks
+    CcMore {
+        visible: page.tab === 3
+        title: "The Themes and Layouts buttons"
+        Repeater {
+            model: [
+                { key: "atelier", title: "Themes button", sub: "A click opens the theme picker.", right: "next-wallpaper", middle: "random-wallpaper" },
+                { key: "layouts", title: "Layouts button", sub: "A click opens Arranging windows.", right: "next-layout", middle: "prev-layout" }
+            ]
+            delegate: CcSection {
+                id: btn
+                required property var modelData
+                title: modelData.title
+                hint: modelData.sub
+                CcToggle {
+                    title: "Show the name beside the icon"
+                    checked: AequalynSettings.atelierCfg[btn.modelData.key + "ShowName"] !== false
+                    onToggled: v => AequalynSettings.setIn("atelier", btn.modelData.key + "ShowName", v)
+                }
+                Repeater {
+                    model: [["Right", "A right click"], ["Middle", "A middle click"]]
+                    delegate: ColumnLayout {
+                        id: click
+                        required property var modelData
+                        readonly property string key: btn.modelData.key + modelData[0] + "Click"
+                        Layout.fillWidth: true
+                        spacing: 6
+                        CcNote { text: click.modelData[1] }
+                        CcChoice {
+                            options: page.buttonActions
+                            current: AequalynSettings.atelierCfg[click.key] || (click.modelData[0] === "Right" ? btn.modelData.right : btn.modelData.middle)
+                            onChosen: k => AequalynSettings.setIn("atelier", click.key, k)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    readonly property var buttonActions: [
+        { key: "next-layout", label: "Next layout" }, { key: "prev-layout", label: "Previous layout" },
+        { key: "next-wallpaper", label: "Next wallpaper" }, { key: "random-wallpaper", label: "Random wallpaper" },
+        { key: "themes", label: "Themes" }, { key: "none", label: "Nothing" }
+    ]
+
     readonly property var regionKeys: ["left", "center", "right"]
     // to the end of the part on the left / the start of the part on the right
     function moveTo(from, index, toRegion) {
