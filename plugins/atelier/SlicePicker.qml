@@ -75,8 +75,22 @@ Item {
     // ---- the backdrop (drawn by the switcher window): a click closes ----------------------
     MouseArea { anchors.fill: parent; onClicked: root.cancelled() }
 
+    // The cards show once the pictures near the chosen one have loaded (or after a moment,
+    // whichever comes first), so they never flash empty; and they only glide once shown, so
+    // their first layout does not slide in.
+    property bool settled: false
+    property int loadedNear: 0
+    readonly property int wantNear: Math.max(0, Math.min(items.length, currentIndex + 4) - Math.max(0, currentIndex - 3))
+    function checkSettled() { if (loadedNear >= wantNear) settled = true; }
+    onLoadedNearChanged: checkSettled()
+    onWantNearChanged: checkSettled()
+    Component.onCompleted: checkSettled()
+    Timer { interval: 350; running: !root.settled; onTriggered: root.settled = true }
+
     Item {
         id: card
+        opacity: root.settled ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         readonly property real carouselLength: root.vertical
             ? Math.min(root.height - 80 - 30 - root.bottomChromeHeight, root.expandedHeight + 13 * root.itemStep)
             : Math.min(root.width - 80, root.expandedWidth + 13 * root.itemStep)
@@ -119,10 +133,19 @@ Item {
                     height: chosen ? root.expandedHeight : root.sliceHeight
                     x: root.vertical ? (carousel.width - width) / 2 : along
                     y: root.vertical ? along : (root.expandedHeight - height) / 2
-                    Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                    Behavior on y { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                    Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-                    Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                    Behavior on x { enabled: root.settled; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                    Behavior on y { enabled: root.settled; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                    Behavior on width { enabled: root.settled; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+                    Behavior on height { enabled: root.settled; NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+                    // counted once, when its picture is in (or has none, or failed)
+                    readonly property bool near: Math.abs(rel) <= 3
+                    readonly property bool loaded: pic.status === Image.Ready || pic.status === Image.Error || pic.source == ""
+                    property bool counted: false
+                    function count() { if (near && loaded && !counted) { counted = true; root.loadedNear++; } }
+                    onLoadedChanged: count()
+                    onNearChanged: count()
+                    Component.onCompleted: count()
 
                     // the plain slant: the top and bottom edges shifted in a row, the left
                     // and right ones in a column
