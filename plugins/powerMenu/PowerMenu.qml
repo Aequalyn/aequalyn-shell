@@ -11,6 +11,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import "root:/settings"
+import "root:/style/backdrop"
 
 Scope {
     id: root
@@ -51,11 +52,11 @@ Scope {
 
     PanelWindow {
         id: win
-        visible: root.panelVisible
+        visible: veil.shown
         color: "transparent"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        WlrLayershell.namespace: "aequalyn-power-menu"
+        WlrLayershell.keyboardFocus: veil.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None   // none while it fades away
+        WlrLayershell.namespace: veil.layerName("power_menu")
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
 
@@ -71,11 +72,18 @@ Scope {
             MouseArea {
                 anchors.fill: parent
                 onClicked: root.panelVisible = false
-                Rectangle { anchors.fill: parent; color: root.theme.bgOverlay }
+                Backdrop {
+                    id: veil
+                    open: root.panelVisible
+                    theme: root.theme
+                    tintAlpha: root.theme.bgOverlay.a
+                }
             }
 
             Rectangle {
                 anchors.centerIn: parent
+                opacity: veil.progress
+                scale: 0.97 + 0.03 * veil.progress
                 width: 360
                 height: col.implicitHeight + 36
                 radius: 16

@@ -25,6 +25,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import "root:/settings"
+import "root:/style/backdrop"
 
 Scope {
     id: root
@@ -270,28 +271,33 @@ Scope {
         function mode(name: string): void { AtelierService.setMode(name); }
     }
 
-    // The switcher: the picker alone over the whole screen. Hyprland blurs every
-    // aequalyn-* layer, so the desktop shows through blurred and dimmed.
+    // The switcher: the picker alone over the whole screen, the desktop behind it blurred
+    // and dimmed as Window look sets (style/backdrop).
     PanelWindow {
         id: switcherWin
-        visible: root.surface === "switcher"
+        visible: veil.shown
         focusable: true
         color: "transparent"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        WlrLayershell.namespace: "aequalyn-switcher"
+        WlrLayershell.keyboardFocus: veil.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None   // none while it fades away
+        WlrLayershell.namespace: veil.layerName("switcher")
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
 
-        // the dimmed desktop; Slices draws its own, Spotlight none
-        Rectangle {
+        // the desktop behind: Slices shades it in the theme's own colour, Spotlight not at all
+        MouseArea {
             anchors.fill: parent
-            visible: root.layout !== "slices"
-            color: Qt.rgba(0, 0, 0, root.spotlight ? 0 : 0.35)
-            MouseArea { anchors.fill: parent; onClicked: root.close() }
+            onClicked: root.close()
+            Backdrop {
+                id: veil
+                open: root.surface === "switcher"
+                theme: root.theme
+                tintAlpha: root.layout === "slices" ? 0.72 : root.spotlight ? 0 : 0.35
+            }
         }
         Loader {
             anchors.fill: parent
+            opacity: veil.progress
             active: switcherWin.visible
             sourceComponent: Switcher { host: root }
             onLoaded: item.forceActiveFocus()

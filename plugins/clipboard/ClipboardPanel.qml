@@ -11,6 +11,7 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 import "root:/settings"
+import "root:/style/backdrop"
 import "root:/plugins/clipboard"
 
 Scope {
@@ -28,11 +29,11 @@ Scope {
 
     PanelWindow {
         id: win
-        visible: ClipboardService.panelVisible
+        visible: veil.shown
         color: "transparent"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        WlrLayershell.namespace: "aequalyn-clipboard"
+        WlrLayershell.keyboardFocus: veil.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None   // none while it fades away
+        WlrLayershell.namespace: veil.layerName("clipboard")
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
 
@@ -41,11 +42,18 @@ Scope {
             MouseArea {
                 anchors.fill: parent
                 onClicked: ClipboardService.close()
-                Rectangle { anchors.fill: parent; color: root.theme.bgOverlay }
+                Backdrop {
+                    id: veil
+                    open: ClipboardService.panelVisible
+                    theme: root.theme
+                    tintAlpha: root.theme.bgOverlay.a
+                }
             }
 
             Rectangle {
                 anchors.centerIn: parent
+                opacity: veil.progress
+                scale: 0.97 + 0.03 * veil.progress
                 width: Math.min(760, parent.width * 0.9)
                 height: Math.min(620, parent.height * 0.9)
                 radius: 16

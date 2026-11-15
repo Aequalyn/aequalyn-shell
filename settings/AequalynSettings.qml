@@ -90,6 +90,12 @@ QtObject {
         atelierShowName: true, atelierRightClick: "next-wallpaper", atelierMiddleClick: "random-wallpaper",
         layoutsShowName: true, layoutsRightClick: "next-layout", layoutsMiddleClick: "prev-layout"
     })
+    // behind the full-screen panels (control center, pickers, clipboard, power menu,
+    // launcher, screens): the style (style/backdrop/Styles.js), how strong the blur is
+    // and how dark, 0..100 (50 = each panel's own shade); its colour "theme" (the theme's
+    // background and a little of its accent) or "neutral" (black)
+    readonly property var backdropDefaults: ({ style: "smooth", strength: 60, dim: 50, colour: "theme" })
+    property var backdropCfg: backdropDefaults
     property var wallpaperCfg: wallpaperDefaults
     property var paletteCfg: paletteDefaults
     property var atelierCfg: atelierDefaults
@@ -386,6 +392,7 @@ QtObject {
             wallpaper: root.wallpaperCfg,
             palette: root.paletteCfg,
             atelier: root.atelierCfg,
+            backdrop: root.backdropCfg,
             plugins: root.enabledPlugins,
             barStyle: root.barStyleCfg,
             dock: {
@@ -558,6 +565,7 @@ QtObject {
         root.wallpaperCfg = root._merge(root.wallpaperDefaults, d.wallpaper)
         root.paletteCfg = root._merge(root.paletteDefaults, d.palette)
         root.atelierCfg = root._merge(root.atelierDefaults, d.atelier)
+        root.backdropCfg = root._merge(root.backdropDefaults, d.backdrop)
         if (Array.isArray(d.plugins)) root.enabledPlugins = d.plugins.slice()
         if (dk.enabled === false) root.enabledPlugins = (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).filter(x => x !== "docks")
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),

@@ -72,12 +72,8 @@ Item {
         return raw.replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
 
-    // ---- the backdrop: a click closes ---------------------------------------------------
-    Rectangle {
-        anchors.fill: parent
-        color: Qt.rgba(root.background.r, root.background.g, root.background.b, 0.72)
-        MouseArea { anchors.fill: parent; onClicked: root.cancelled() }
-    }
+    // ---- the backdrop (drawn by the switcher window): a click closes ----------------------
+    MouseArea { anchors.fill: parent; onClicked: root.cancelled() }
 
     Item {
         id: card

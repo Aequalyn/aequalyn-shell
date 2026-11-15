@@ -11,6 +11,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "root:/plugins/docks"
+import "root:/style/backdrop"
 
 Scope {
   id: root
@@ -21,8 +22,8 @@ Scope {
     target: "launcher"
 
     function toggle(): void {
-      launcherPanel.visible = !launcherPanel.visible
-      if (launcherPanel.visible) {
+      root.open = !root.open
+      if (root.open) {
         searchInput.text = ""
         selectedIndex = -1
         searchInput.forceActiveFocus()
@@ -31,6 +32,7 @@ Scope {
   }
 
   property int selectedIndex: 0
+  property bool open: false
 
   ScriptModel {
     id: filteredApps
@@ -58,18 +60,18 @@ Scope {
 
   function launchApp(entry) {
     entry.execute();
-    launcherPanel.visible = false;
+    root.open = false;
   }
 
   PanelWindow {
     id: launcherPanel
-    visible: false
+    visible: veil.shown
     focusable: true
     color: "transparent"
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    WlrLayershell.namespace: "quickshell-launcher"
+    WlrLayershell.keyboardFocus: veil.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None   // none while it fades away
+    WlrLayershell.namespace: veil.layerName("launcher")
 
     exclusionMode: ExclusionMode.Ignore
 
@@ -80,14 +82,16 @@ Scope {
       right: true
     }
 
-    // Dark overlay backdrop
+    // the desktop behind, blurred and dimmed as Window look sets; a click closes
     MouseArea {
       anchors.fill: parent
-      onClicked: launcherPanel.visible = false
+      onClicked: root.open = false
 
-      Rectangle {
-        anchors.fill: parent
-        color: root.theme.bgOverlay
+      Backdrop {
+        id: veil
+        open: root.open
+        theme: root.theme
+        tintAlpha: root.theme.bgOverlay.a
       }
     }
 
@@ -95,6 +99,8 @@ Scope {
     Rectangle {
       id: launcherBox
       anchors.centerIn: parent
+      opacity: veil.progress
+      scale: 0.97 + 0.03 * veil.progress
       width: 580
       height: 480
       radius: 16
@@ -166,7 +172,7 @@ Scope {
 
               onTextChanged: root.selectedIndex = text === "" ? -1 : 0
 
-              Keys.onEscapePressed: launcherPanel.visible = false
+              Keys.onEscapePressed: root.open = false
 
               Keys.onPressed: event => {
                 if (event.key === Qt.Key_Down) {
@@ -375,7 +381,7 @@ Scope {
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: {
-                launcherPanel.visible = false;
+                root.open = false;
                 Quickshell.execDetached(["qs", "ipc", "call", "aequalyn", "page", "store"]);
               }
             }

@@ -18,6 +18,7 @@ import QtQuick.Controls
 import "root:/settings"
 import "center"
 import "center/Pages.js" as Pages
+import "root:/style/backdrop"
 
 Scope {
     id: root
@@ -103,11 +104,11 @@ Scope {
 
     PanelWindow {
         id: win
-        visible: root.panelVisible
+        visible: veil.shown
         color: "transparent"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-        WlrLayershell.namespace: "aequalyn-settings"
+        WlrLayershell.keyboardFocus: veil.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None   // none while it fades away
+        WlrLayershell.namespace: veil.layerName("settings")
         exclusionMode: ExclusionMode.Ignore
         anchors { top: true; bottom: true; left: true; right: true }
 
@@ -134,16 +135,18 @@ Scope {
                 }
             }
 
-            // the desktop behind, dimmed (and blurred by the layer rule); a click closes
+            // the desktop behind, blurred and dimmed as Window look sets; a click closes
             MouseArea {
                 anchors.fill: parent
                 onClicked: root.panelVisible = false
-                Rectangle { anchors.fill: parent; color: Qt.rgba(0, 0, 0, 0.35) }
+                Backdrop { id: veil; open: root.panelVisible; theme: root.theme; tintAlpha: 0.35 }
             }
 
             Rectangle {
                 id: card
                 anchors.centerIn: parent
+                opacity: veil.progress
+                scale: 0.97 + 0.03 * veil.progress
                 width: Math.min(1320, parent.width * 0.9)
                 height: Math.min(900, parent.height * 0.9)
                 radius: 20

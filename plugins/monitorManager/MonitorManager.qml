@@ -9,6 +9,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
+import "root:/style/backdrop"
 
 Scope {
   id: root
@@ -215,13 +216,13 @@ Scope {
 
   PanelWindow {
     id: overlay
-    visible: root.isOpen
+    visible: veil.shown
     focusable: true
     color: "transparent"
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    WlrLayershell.namespace: "quickshell-monitors"
+    WlrLayershell.keyboardFocus: veil.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None   // none while it fades away
+    WlrLayershell.namespace: veil.layerName("monitors")
 
     exclusionMode: ExclusionMode.Ignore
 
@@ -248,15 +249,19 @@ Scope {
         root.cancelChanges();
       }
 
-      Rectangle {
-        anchors.fill: parent
-        color: root.theme.bgOverlay
+      Backdrop {
+        id: veil
+        open: root.isOpen
+        theme: root.theme
+        tintAlpha: root.theme.bgOverlay.a
       }
     }
 
     // Main card
     Rectangle {
       anchors.centerIn: parent
+      opacity: veil.progress
+      scale: 0.97 + 0.03 * veil.progress
       width: 960
       height: 640
       radius: 16
