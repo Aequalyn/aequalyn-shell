@@ -21,6 +21,7 @@ var files = {
     cpu:            "Cpu.qml",
     network:        "Network.qml",
     caffeine:       "Caffeine.qml",
+    plume:          "Plume.qml",
     power:          "Power.qml",
     screenrecorder: "ScreenRecorder.qml",
     atelier:        "AtelierButton.qml",
