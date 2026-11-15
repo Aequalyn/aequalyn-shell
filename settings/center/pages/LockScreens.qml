@@ -159,7 +159,7 @@ CcPage {
                         "file:///usr/share/sddm/themes/" + modelData + "/screenshots/hi_IN.png"
                     ]
                     Layout.fillWidth: true
-                    implicitHeight: 150
+                    implicitHeight: 180
                     radius: 14
                     color: sel ? Cc.alpha(Cc.theme.accentPrimary, 0.18)
                            : (on ? Cc.alpha(Cc.theme.accentPrimary, 0.10) : (tileArea.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSurface))
@@ -199,8 +199,8 @@ CcPage {
                         anchors.leftMargin: 10
                         anchors.right: parent.right
                         anchors.rightMargin: 10
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 10
+                        anchors.bottom: applyBtn.top
+                        anchors.bottomMargin: 6
                         text: tile.modelData + (tile.on ? "  (current)" : "")
                         elide: Text.ElideRight
                         color: Cc.theme.textPrimary
@@ -209,9 +209,28 @@ CcPage {
                         font.weight: tile.on ? Font.DemiBold : Font.Normal
                     }
 
+                    CcButton {
+                        id: applyBtn
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8
+                        anchors.right: parent.right
+                        anchors.rightMargin: 8
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 6
+                        height: 26
+                        text: tile.on ? "Applied" : "Apply"
+                        primary: tile.sel && !tile.on
+                        enabled: !tile.on && !page.applying && !page.previewing
+                        onClicked: {
+                            page.selectedTheme = tile.modelData
+                            page.applyTheme(tile.modelData)
+                        }
+                    }
+
                     MouseArea {
                         id: tileArea
                         anchors.fill: parent
+                        anchors.bottomMargin: 36
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
