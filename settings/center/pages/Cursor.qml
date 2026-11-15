@@ -22,9 +22,9 @@ CcPage {
     readonly property var svc: PlumeHost.svc
     readonly property var cfg: svc ? svc.cfg : Schema.resolve({}, null)
 
-    // Plume's tabs, without the colours of its own popup (this page has the control
-    // center's)
-    readonly property var ptabs: Schema.tabs.map(t => Object.assign({}, t, {
+    // Plume's tabs, without its About and the colours of its own popup (this page has
+    // the control center's)
+    readonly property var ptabs: Schema.tabs.filter(t => t.kind !== "about").map(t => Object.assign({}, t, {
         groups: t.groups.filter(g => !g.items.some(it => String(it.key).indexOf("panel") === 0))
     }))
     tabs: ptabs.map(t => t.title)
@@ -160,19 +160,8 @@ CcPage {
                 fontFamily: Cc.sans
             }
 
-            AboutPage {
-                visible: page.cur.kind === "about"
-                Layout.fillWidth: true
-                Layout.preferredWidth: col.width
-                Layout.maximumWidth: col.width
-                version: page.svc ? page.svc.version : ""
-                ink: page.ink
-                accent: page.accent
-                fontFamily: Cc.sans
-            }
-
             Repeater {
-                model: page.cur.kind === "looks" || page.cur.kind === "about" ? [] : page.rows
+                model: page.cur.kind === "looks" ? [] : page.rows
 
                 delegate: ColumnLayout {
                     id: entry
