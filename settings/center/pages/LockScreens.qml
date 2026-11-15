@@ -75,8 +75,9 @@ CcPage {
     function applyTheme(name) {
         page.applying = true
         page.status = "Applying " + name + "…"
-        // Detach + hide Settings so the pkexec auth dialog is visible.
-        applyProc.command = ["sh", "-c", "setsid sh -c 'DISPLAY=" + shellQuote(Quickshell.env("DISPLAY") || "") + " WAYLAND_DISPLAY=" + shellQuote(Quickshell.env("WAYLAND_DISPLAY") || "") + " XDG_RUNTIME_DIR=" + shellQuote(Quickshell.env("XDG_RUNTIME_DIR") || "") + " qs ipc call aequalyn closeSettings; sleep 0.3; pkexec aequalyn-sddm apply " + shellQuote(name) + " >/dev/null 2>&1; qs ipc call aequalyn openSettings' >/dev/null 2>&1 &"]
+        // Hide Settings, then let sudo prompt for the password with zenity: some
+        // GPU/VM setups crash hyprpolkitagent, which makes pkexec unusable.
+        applyProc.command = ["setsid", "sh", "-c", privilegedSession("apply " + shellQuote(name))]
         applyProc.running = true
     }
 
@@ -96,7 +97,7 @@ CcPage {
 
     function toggleAutologin(on) {
         page.status = on ? "Enabling autologin…" : "Disabling autologin…"
-        autoToggleProc.command = ["sh", "-c", "setsid sh -c 'qs ipc call aequalyn closeSettings; sleep 0.3; pkexec aequalyn-sddm autologin " + (on ? "on" : "off") + " >/dev/null 2>&1; qs ipc call aequalyn openSettings' >/dev/null 2>&1 &"]
+        autoToggleProc.command = ["setsid", "sh", "-c", privilegedSession("autologin " + (on ? "on" : "off"))]
         autoToggleProc.running = true
     }
 
@@ -105,7 +106,23 @@ CcPage {
         onExited: (code, st) => { page.previewing = false }
     }
 
-    function shellQuote(s) { return "'" + String(s).replace(/'/g, "'\\\\''") + "'" }
+    function shellQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
+
+    // Run the privileged SDDM helper without pkexec: sudo's own askpass prompt
+    // (zenity) is reliable even where the polkit agent is not.
+    function privilegedCommand(subcommand) {
+        const home = Quickshell.env("HOME")
+        return "DISPLAY=" + shellQuote(Quickshell.env("DISPLAY") || "")
+             + " WAYLAND_DISPLAY=" + shellQuote(Quickshell.env("WAYLAND_DISPLAY") || "")
+             + " XDG_RUNTIME_DIR=" + shellQuote(Quickshell.env("XDG_RUNTIME_DIR") || "")
+             + " SUDO_ASKPASS=" + shellQuote(home + "/.local/bin/aequalyn-askpass")
+             + " sudo -A " + shellQuote(home + "/.local/bin/aequalyn-sddm") + " " + subcommand
+    }
+    function privilegedSession(subcommand) {
+        return "qs ipc call aequalyn closeSettings; sleep 0.3; " + privilegedCommand(subcommand)
+             + "; rc=$?; qs ipc call aequalyn openSettings; exit $rc"
+    }
+
     function previewTheme(name) {
         page.previewing = true
         page.status = "Previewing " + name + " for 10 seconds…"
