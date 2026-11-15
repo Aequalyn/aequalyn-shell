@@ -12,7 +12,9 @@ import ".."
 
 CcPage {
     id: page
-    readonly property int hour: new Date().getHours()
+    // kept once made: the greeting follows the hour
+    property int hour: new Date().getHours()
+    Timer { interval: 60000; repeat: true; running: true; onTriggered: page.hour = new Date().getHours() }
     title: (hour < 5 ? "Good evening" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening")
         + ". What would you like to change?"
     sub: "Click any part of your desktop below, or just start typing."

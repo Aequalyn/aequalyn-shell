@@ -3,6 +3,10 @@
 // Every page of the control center, in the order of the sidebar. `words` are the
 // settings on the page, shown as search results; `also` are other words people may
 // type for it. A plugin's page will be added here from its plugin.json.
+//
+// Pages with live pictures are kept once made (on their first visit), so they show at
+// once after that; the rest are made when shown and dropped when left, so their scans
+// and timers only run while you look at them.
 var groups = [
     { title: "",        pages: ["home"] },
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
@@ -121,3 +125,6 @@ function search(query) {
     out.sort(function (a, b) { return b.score - a.score; });
     return out.slice(0, 8);
 }
+
+// the pages kept once built: no timers or scans run on them while hidden
+var kept = ["home", "wallpaper", "theme", "bar", "dock", "picker", "windows", "sleep"];

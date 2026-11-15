@@ -25,8 +25,18 @@ Item {
     readonly property bool hasStage: stageHeight > 0 && (stageTabs.length === 0 || stageTabs.indexOf(tab) >= 0)
 
     readonly property bool fill: fills.indexOf(tab) >= 0
-    onTabChanged: flick.contentY = 0
-    Component.onCompleted: if (Cc.startTab > 0 && Cc.startTab < tabs.length) tab = Cc.startTab
+    // the sub pages opened so far: a heavy one can be made only once it is first opened
+    // (a Loader with `active: page.opened(i)`), then kept
+    property var seen: [0]
+    // `settled` turns true a moment after the page is made: heavy parts wait for it, so the
+    // pinned picture paints first instead of together with dozens of cards
+    property bool settled: false
+    Timer { interval: 60; running: true; onTriggered: page.settled = true }
+    function opened(i) { return settled && seen.indexOf(i) >= 0; }
+    onTabChanged: {
+        flick.contentY = 0;
+        if (seen.indexOf(tab) < 0) seen = seen.concat([tab]);
+    }
 
     ColumnLayout {
         id: header
