@@ -169,11 +169,11 @@ QtObject {
     property var enabledPlugins: [
         "bar", "appLauncher", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
-        "docks", "plume", "altscape", "settings"
+        "docks", "plume", "altscape", "programsMenu", "settings"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape"]
+    readonly property var newPlugins: ["plume", "altscape", "programsMenu"]
     property var pluginsKnown: []
 
     // ---- Dock -------------------------------------------------------------

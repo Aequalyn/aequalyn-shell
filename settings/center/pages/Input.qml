@@ -11,7 +11,7 @@ CcPage {
     sub: "Typing, scrolling and the shortcuts you use every day."
 
     readonly property var everyday: [
-        { k: "Super  Space", v: "Find an app" },
+        { k: "Super  Space", v: "Browse programs by category" },
         { k: "Super  Enter", v: "Terminal" },
         { k: "Super  E", v: "Files" },
         { k: "Super  T", v: "Pick a theme" },
