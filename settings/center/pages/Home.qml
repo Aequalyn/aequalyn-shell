@@ -120,7 +120,7 @@ CcPage {
         }
         CcCard {
             icon: "\u{F03D8}"; title: "Theme"
-            sub: Cc.theme.currentName || ""
+            sub: Cc.theme.wallpaperMode ? "Colours from the wallpaper" : (Cc.theme.currentName || "")
             onClicked: Cc.go("theme")
         }
         CcCard {

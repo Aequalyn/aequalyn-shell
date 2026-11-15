@@ -16,3 +16,4 @@ Stage 1.0 Stage.qml
 LookCard 1.0 LookCard.qml
 Switcher 1.0 Switcher.qml
 SlicePicker 1.0 SlicePicker.qml
+PalettePane 1.0 PalettePane.qml

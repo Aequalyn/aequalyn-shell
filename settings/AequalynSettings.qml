@@ -73,6 +73,8 @@ QtObject {
     readonly property var atelierDefaults: ({
         // themes recolour the whole desktop while you move through them in the picker
         livePreview: true,
+        // picking a theme also puts on its first wallpaper (off: only its colours)
+        themeWallpapers: true,
         favorites: {}, recent: {},
         // the bar's Themes and Layouts buttons: the name beside the icon, and what a
         // right or middle click does
@@ -423,12 +425,14 @@ QtObject {
         idleProc.running = true
     }
 
-    // Re-apply the current theme's colours everywhere (after "Apps use these colours
-    // too" changes). Colours come only from the theme, never from the wallpaper.
+    // Re-apply the colours everywhere (after "Apps use these colours too" changes, or on
+    // switching to wallpaper colours): made again from the current wallpaper when the
+    // colours follow it, else the current theme's. The wallpaper itself never changes.
     function retheme() {
         themeProc.command = ["sh", "-c",
-            'id=$(basename "$(readlink -f "$HOME/.config/aequalyn/current/theme")" 2>/dev/null); '
-            + '[ -n "$id" ] && qs ipc call theme set "$id" >/dev/null 2>&1 || true']
+            'if [ "$(cat "$HOME/.config/quickshell/theme.conf" 2>/dev/null)" = wallpaper ]; then '
+            + 'exec aequalyn-theme --colors-only --refresh; fi; '
+            + 'qs ipc call theme reapply >/dev/null 2>&1 || true']
         themeProc.running = true
     }
 

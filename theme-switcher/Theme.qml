@@ -1,20 +1,26 @@
-// The desktop's colours. A theme is a folder: its colours and its own wallpapers
-// (aequalyn-themes). Picking one applies both; a wallpaper on its own never changes the
-// colours. ~/.config/quickshell/theme.conf holds "theme:<id>".
+// The desktop's colours, from one of two places (set on the control center's Theme page):
+//   a theme      a folder with its colours and its own wallpapers (aequalyn-themes).
+//                Picking one applies its colours, and its first wallpaper unless "A
+//                theme brings its wallpapers" is off. Another wallpaper keeps them.
+//   the wallpaper colours made from whatever wallpaper is on (matugen), following
+//                every change of wallpaper.
+// ~/.config/quickshell/theme.conf holds "theme:<id>" or "wallpaper".
 
 pragma Singleton
 
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "root:/settings"
 
 Singleton {
     id: root
 
     property int currentIndex: 0
     property int previewIndex: -1
-    // colours never come from the wallpaper any more; kept false for older readers
-    readonly property bool wallpaperMode: false
+    // true: colours are made from the wallpaper and follow it
+    property bool wallpaperMode: false
+    property var wallpaperTheme: ({})
     property string configFormat: "conf" // "conf" or "lua" — which hyprland.* is active
     property bool configFormatReady: false
     property bool kdeIntegrationEnabled: Quickshell.env("QUICKSHELL_KDE_INTEGRATION") === "1"
@@ -102,6 +108,8 @@ Singleton {
     }
     // The committed palette, ignoring any preview.
     readonly property var committed: {
+        if (wallpaperMode && wallpaperTheme && wallpaperTheme.bgBase)
+            return wallpaperTheme;
         if (currentFolderId !== "") {
             const f = folderTheme(currentFolderId);
             if (f && f.hasPalette) return f;
@@ -343,14 +351,38 @@ Singleton {
         if (!t || !t.hasPalette) return false;
         previewPalette = null;
         previewIndex = -1;
+        wallpaperMode = false;
         currentFolderId = id;
         applyTheme(t);
+        // its wallpaper too, unless "A theme brings its wallpapers" is off
+        const keepWallpaper = AequalynSettings.atelierCfg.themeWallpapers === false;
         folderSetProc.command = ["sh", "-c",
-            'printf "%s" "$1" > "$HOME/.config/quickshell/theme.conf" && aequalyn-themes set "$2" --from-shell',
-            "sh", "theme:" + id, id];
+            'printf "%s" "$1" > "$HOME/.config/quickshell/theme.conf" && aequalyn-themes set "$2" --from-shell $3',
+            "sh", "theme:" + id, id, keepWallpaper ? "--no-background" : ""];
         folderSetProc.running = true;
         return true;
     }
+
+    // Colours made from the wallpaper from now on, following every change of it.
+    function setWallpaperMode() {
+        wallpaperMode = true;
+        previewPalette = null;
+        saveProc.command = ["sh", "-c", 'printf "%s" wallpaper > "$HOME/.config/quickshell/theme.conf"'];
+        saveProc.running = true;
+        if (wallpaperTheme && wallpaperTheme.bgBase)
+            applyTheme(wallpaperTheme);
+    }
+
+    // Colours made from a given image, then from the wallpaper. set.sh writes
+    // wallpaper-theme.json, which the FileView below live-reloads and applies.
+    function setWallpaperFromImage(img) {
+        if (img && img.length > 0) {
+            generateProc.command = ["sh", Quickshell.env("HOME") + "/.config/quickshell/theme-switcher/wallpaper-theme/set.sh", img];
+            generateProc.running = true;
+        }
+        setWallpaperMode();
+    }
+    Process { id: generateProc; running: false }
 
     // IPC / CLI entry: a theme's id.
     function setByKey(key) { return setFolderTheme(key); }
@@ -477,6 +509,13 @@ Singleton {
             onStreamFinished: {
                 root.initialLoadDone = true;
                 const raw = text.trim();
+                if (raw === "wallpaper") {
+                    // colours from the wallpaper; until its palette is read, the
+                    // fallback theme's
+                    root.wallpaperMode = true;
+                    root.applyTheme(root.wallpaperTheme && root.wallpaperTheme.bgBase ? root.wallpaperTheme : root.themes[0]);
+                    return;
+                }
                 const f = raw.startsWith("theme:") ? root.folderTheme(raw.slice(6)) : null;
                 if (f && f.hasPalette) {
                     root.currentFolderId = f.id;
@@ -486,9 +525,9 @@ Singleton {
                     saveProc.running = true;
                     return;
                 }
-                // Colours from the wallpaper, a palette without wallpapers, or a theme
-                // that's gone: move to a theme with its own wallpapers, keeping the
-                // wallpaper that's on now.
+                // A palette without wallpapers (no longer shipped) or a theme that's
+                // gone: move to a theme with its own wallpapers, keeping the wallpaper
+                // that's on now.
                 root.adoptDefaultTheme();
             }
         }
@@ -500,10 +539,15 @@ Singleton {
         const basalt = ok.find(t => t.id === "basalt");
         return basalt ? basalt.id : (ok.length ? ok[0].id : "");
     }
-    function adoptDefaultTheme() {
-        const id = defaultThemeId();
-        const f = id !== "" ? folderTheme(id) : null;
+    function adoptDefaultTheme() { useThemeColours(defaultThemeId()); }
+    // A theme's colours (the current one's, else the default's), leaving the wallpaper as
+    // it is: going back from wallpaper colours to a theme's.
+    function useThemeColours(id) {
+        let f = id ? folderTheme(id) : null;
+        if (!f || !f.hasPalette) f = folderTheme(defaultThemeId());
         if (!f) { applyTheme(themes[0]); return; }
+        wallpaperMode = false;
+        previewPalette = null;
         currentFolderId = f.id;
         applyTheme(f);
         saveProc.command = ["sh", "-c",
@@ -512,6 +556,26 @@ Singleton {
             + '&& ln -sfn "$2" "$HOME/.config/aequalyn/current/theme"',
             "sh", f.id, f.dir];
         saveProc.running = true;
+    }
+
+    // Live-reloads the palette made from the wallpaper: while colours follow the
+    // wallpaper, a new wallpaper (and a fresh wallpaper-theme.json) repaints the shell.
+    FileView {
+        id: wallpaperThemeFile
+        path: Quickshell.env("HOME") + "/.config/quickshell/theme-switcher/wallpaper-theme.json"
+        watchChanges: true
+        onFileChanged: reload()
+        onTextChanged: {
+            const raw = wallpaperThemeFile.text();
+            if (!raw) return;
+            try {
+                root.wallpaperTheme = JSON.parse(raw);
+                if (root.wallpaperMode && root.wallpaperTheme.bgBase)
+                    root.applyTheme(root.wallpaperTheme);
+            } catch (e) {
+                console.error("Failed to parse wallpaper-theme.json:", e);
+            }
+        }
     }
 
     // Only until a theme is applied, or if none is installed at all.
