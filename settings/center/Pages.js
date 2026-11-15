@@ -9,7 +9,7 @@
 // and timers only run while you look at them.
 var groups = [
     { title: "",        pages: ["home"] },
-    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker"] },
+    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker", "lockscreens"] },
     { title: "Windows", pages: ["arrange", "windows", "switcher", "screens", "input", "cursor"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
     { title: "System",  pages: ["apps", "webapps", "store", "clock", "sleep", "updates", "backup", "plugins", "about"] }
@@ -33,6 +33,9 @@ var pages = {
     picker:    { label: "Theme picker", icon: "\u{F08B5}", file: "Picker",
                  words: ["Picker type", "Slices", "Picker shape", "Picker position", "Picker size"],
                  also: "switcher showcase carousel grid slices super t super w atelier" },
+    lockscreens: { label: "Lock screens", icon: "\u{F033E}", file: "LockScreens",
+                 words: ["SDDM theme", "Login screen", "Autologin", "Lock screen preview"],
+                 also: "sddm greeter login autologin preview lock" },
     arrange:   { label: "Arranging windows", icon: "\u{F0570}", file: "Arrange",
                  words: ["Window layout", "Layouts in Super + L", "Built-in arrangement"],
                  also: "tiling layout master dwindle scrolling grid focus" },
