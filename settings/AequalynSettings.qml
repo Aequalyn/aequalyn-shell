@@ -641,14 +641,25 @@ QtObject {
     property Process themeProc: Process { running: false }
     property Process idleProc: Process { running: false }
 
-    // Optional SDDM lock-screen theme pack: installed marker.
+    // Optional SDDM lock-screen theme pack: installed marker OR any non-default
+    // theme present (covers pre-feature installs and manually added themes).
     property bool lockscreensInstalled: false
+    property bool hasExtraThemes: false
     property FileView lockscreensMarker: FileView {
         path: "/usr/share/aequalyn/lockscreens.enabled"
         watchChanges: true
         onFileChanged: root.lockscreensMarker.reload()
-        onTextChanged: root.lockscreensInstalled = (root.lockscreensMarker.text() !== null && root.lockscreensMarker.text().trim() !== "")
-        onLoaded: root.lockscreensInstalled = (root.lockscreensMarker.text() !== null && root.lockscreensMarker.text().trim() !== "")
+        onTextChanged: root._updateLockscreensInstalled()
+        onLoaded: root._updateLockscreensInstalled()
+    }
+    property Process lockscreensThemeCheck: Process {
+        running: true
+        command: ["sh", "-c", "ls /usr/share/sddm/themes 2>/dev/null | grep -vE '^(elarun|maldives|maya|aequalyn)$' | head -1"]
+        stdout: StdioCollector { onStreamFinished: { root.hasExtraThemes = (text.trim() !== ""); root._updateLockscreensInstalled() } }
+    }
+    function _updateLockscreensInstalled() {
+        const marker = (root.lockscreensMarker.text() !== null && root.lockscreensMarker.text().trim() !== "")
+        root.lockscreensInstalled = marker || root.hasExtraThemes
     }
 
     property Process loadProc: Process {
