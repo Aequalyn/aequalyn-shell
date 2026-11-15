@@ -73,10 +73,10 @@ CcPage {
     property string _pendingApply: ""
 
     function applyTheme(name) {
-        page._pendingApply = name
         page.applying = true
         page.status = "Applying " + name + "…"
-        applyProc.command = ["pkexec", "aequalyn-sddm", "apply", name]
+        // Detach + hide Settings so the pkexec auth dialog is visible.
+        applyProc.command = ["sh", "-c", "setsid sh -c 'DISPLAY=" + shellQuote(Quickshell.env("DISPLAY") || "") + " WAYLAND_DISPLAY=" + shellQuote(Quickshell.env("WAYLAND_DISPLAY") || "") + " XDG_RUNTIME_DIR=" + shellQuote(Quickshell.env("XDG_RUNTIME_DIR") || "") + " qs ipc call aequalyn closeSettings; sleep 0.3; pkexec aequalyn-sddm apply " + shellQuote(name) + " >/dev/null 2>&1; qs ipc call aequalyn openSettings' >/dev/null 2>&1 &"]
         applyProc.running = true
     }
 
@@ -96,7 +96,7 @@ CcPage {
 
     function toggleAutologin(on) {
         page.status = on ? "Enabling autologin…" : "Disabling autologin…"
-        autoToggleProc.command = ["pkexec", "aequalyn-sddm", "autologin", on ? "on" : "off"]
+        autoToggleProc.command = ["sh", "-c", "setsid sh -c 'qs ipc call aequalyn closeSettings; sleep 0.3; pkexec aequalyn-sddm autologin " + (on ? "on" : "off") + " >/dev/null 2>&1; qs ipc call aequalyn openSettings' >/dev/null 2>&1 &"]
         autoToggleProc.running = true
     }
 
