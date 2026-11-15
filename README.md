@@ -51,6 +51,14 @@ bar and every dock in one click. Right-click any dock to open Atelier on it.
 Settings: `settings.json` → `barStyle` (checked by `style/BarLooks.js`), and
 `~/.config/aequalyn/docks.json` (the first start takes the old `dock` block).
 
+## AI and development tools
+
+**Settings → AI tools** manages optional Claude Code, Codex CLI, GitHub Copilot
+CLI and Gemini CLI installations for the current user. The page also links to
+the package Store for runtimes, editors and other development packages. The
+agent installer and programming package profile live in the sibling
+`aequalyn` and `aequalyn-pkgs` repositories.
+
 ### Keys
 
 | Key | |
