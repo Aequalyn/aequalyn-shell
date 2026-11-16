@@ -37,10 +37,9 @@ Item {
     Rectangle {
         id: frame
         anchors.fill: parent
-        visible: !card.customShape
         radius: card.r
-        color: card.theme.bgSurface
-        border.width: card.selected ? 2 : 1
+        color: card.customShape ? "transparent" : card.theme.bgSurface
+        border.width: card.customShape ? 0 : (card.selected ? 2 : 1)
         border.color: card.selected ? card.theme.accentPrimary : (hover.containsMouse ? card.theme.textMuted : card.theme.bgBorder)
         Behavior on border.color { ColorAnimation { duration: 120 } }
 
