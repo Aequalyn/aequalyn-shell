@@ -62,6 +62,7 @@ Rectangle {
 
   PopupWindow {
     id: wifiPopup
+    grabFocus: true
     visible: bar.wifiPopupVisible && !!netPill.QsWindow.window && netPill.QsWindow.window.screen === bar.popupScreen
     Shortcut {
       sequence: "Escape"
@@ -80,7 +81,12 @@ Rectangle {
     anchor.gravity: Edges.Bottom
     anchor.adjustment: PopupAdjustment.Slide
 
-    onVisibleChanged: if (visible) WifiService.scan()
+    onVisibleChanged: {
+      if (visible) WifiService.scan()
+      else if (bar.wifiPopupVisible && netPill.QsWindow.window
+               && netPill.QsWindow.window.screen === bar.popupScreen)
+        bar.wifiPopupVisible = false
+    }
 
     Rectangle {
       id: wifiPopupBg

@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 
 PopupWindow {
   id: popup
@@ -19,12 +18,7 @@ PopupWindow {
   implicitWidth: 300
   implicitHeight: 326
   color: "transparent"
-
-  HyprlandFocusGrab {
-    windows: [popup]
-    active: popup.visible
-    onCleared: popup.dismissed()
-  }
+  grabFocus: true
 
   Rectangle {
     anchors.fill: parent
