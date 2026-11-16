@@ -18,7 +18,10 @@ Item {
     property int imageWidth: 480      // decode size for thumbnails
     property string collection: "themes"
 
-    readonly property string pickerCollection: AtelierHost.shownCollection || collection
+    // The settings stage passes its own collection explicitly. Never substitute
+    // the live picker's collection here: that can make the wallpaper preview use
+    // the theme picker's layout and shape while both are present in the shell.
+    readonly property string pickerCollection: collection
     readonly property string pickerLayout: (AequalynSettings.atelierCfg.layouts || {})[pickerCollection] || "slices"
     readonly property var pickerCardCfg: AequalynSettings.pickerCfg("cards", pickerCollection)
     readonly property var barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
