@@ -39,10 +39,21 @@ Item {
       return !monName || !wm || wm === monName;
     }).sort(function(a, b) { return Number(a.id) - Number(b.id); });
 
-    // Build `count` numbered slots. Empty ones still get an activate that opens
+    function occupied(w) {
+      return (w.toplevels && w.toplevels.values && w.toplevels.values.length > 0)
+        || w.active || w.focused || w.urgent;
+    }
+    // Show at least `count` slots, but grow to cover any workspace actually in
+    // use on this monitor (e.g. a window moved to workspace 6 while only 5
+    // slots are configured). It shrinks back once that workspace is empty.
+    let needed = count;
+    for (let i = 0; i < mine.length; i++) {
+      if (occupied(mine[i]) && i + 1 > needed) needed = i + 1;
+    }
+    // Build the numbered slots. Empty ones still get an activate that opens
     // the workspace on this monitor via `r~N`.
-    const slots = new Array(count);
-    for (let i = 0; i < count; i++) {
+    const slots = new Array(needed);
+    for (let i = 0; i < needed; i++) {
       const id = i + 1;
       slots[i] = { id: id, active: false, focused: false, urgent: false, toplevels: { values: [] },
         activate: function() { Hyprland.dispatch('hl.dsp.focus({ workspace = "r~' + id + '" })'); } };
@@ -50,7 +61,7 @@ Item {
     // Overlay real workspaces at their per-monitor position. Keep the slot's
     // own activate: a raw HyprlandWorkspace's activate() targets its global
     // name, which is the wrong workspace on a multi-monitor setup.
-    for (let i = 0; i < mine.length && i < count; i++) {
+    for (let i = 0; i < mine.length && i < needed; i++) {
       const w = mine[i];
       const slot = slots[i];
       slots[i] = {
@@ -64,8 +75,7 @@ Item {
     }
     for (let i = 0; i < slots.length; i++) {
       const w = slots[i];
-      const hasWins = (w.toplevels && w.toplevels.values && w.toplevels.values.length > 0) || w.active;
-      if (AequalynSettings.workspaceShowEmpty || w.focused || w.urgent || hasWins) out.push(w);
+      if (AequalynSettings.workspaceShowEmpty || occupied(w)) out.push(w);
     }
     return out;
   }
