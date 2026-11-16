@@ -118,6 +118,28 @@ CcPage {
         visible: page.tab === 3
         text: "Move a widget with the arrows, or hide it with its switch. When a part is full, its widgets scroll."
     }
+    CcMore {
+        visible: page.tab === 3
+        title: "Workspaces on the bar"
+        CcSlider {
+            setting: "workspaceCount"; title: "Workspace slots"
+            sub: "Show between one and ten workspaces on each screen."
+            from: 1; to: 10; step: 1
+        }
+        CcChoice {
+            setting: "workspaceLabelStyle"
+            options: [
+                { key: "numbers", label: "1  2  3  4  5 — Numbers" },
+                { key: "roman", label: "I  II  III  IV  V — Roman" },
+                { key: "japanese", label: "一  二  三  四  五 — Japanese" },
+                { key: "symbols", label: "●  ◆  ▲  ■  ★ — Symbols" }
+            ]
+        }
+        CcToggle {
+            setting: "workspaceShowEmpty"; title: "Show empty workspaces"
+            sub: "Keep every workspace slot visible, including ones with no windows."
+        }
+    }
     GridLayout {
         visible: page.tab === 3
         Layout.fillWidth: true

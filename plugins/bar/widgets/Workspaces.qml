@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import "root:/settings"
 
 Item {
   required property var bar
@@ -9,27 +10,41 @@ Item {
   implicitWidth: wsRow.implicitWidth
   implicitHeight: 24
   Process { id: wsScrollProc; running: false }
+  function labelFor(index) {
+    const style = AequalynSettings.workspaceLabelStyle;
+    if (style === "roman") {
+      const ones = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+      return ones[index] || String(index);
+    }
+    if (style === "japanese") return ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][index - 1] || String(index);
+    if (style === "symbols") return ["●", "◆", "▲", "■", "★", "✦", "⬟", "⬢", "✿", "✚"][index - 1] || String(index);
+    return String(index);
+  }
   readonly property var visibleWorkspaces: {
     const m = Hyprland.workspaces;
     let list = [];
     try { list = Array.from(m.values || []); } catch (e) { console.log('ARRFROMERR', e); }
     const monName = (screen && screen.name) ? screen.name : ((bar && bar.screen && bar.screen.name) ? bar.screen.name : "");
     const out = [];
+    const count = Math.max(1, Math.min(10, Number(AequalynSettings.workspaceCount) || 5));
+    const slots = new Array(count);
+    for (let i = 0; i < count; i++) {
+      const id = i + 1;
+      slots[i] = { id: id, active: false, focused: false, urgent: false, toplevels: { values: [] },
+        activate: function() { Hyprland.dispatch('hl.dsp.focus({ workspace = "m~' + id + '" })'); } };
+    }
     for (let i = 0; i < list.length; i++) {
       const w = list[i];
       if (!w) continue;
       const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
       if (monName && wm && wm !== monName) continue;
-    const hasWins = (w.toplevels && w.toplevels.values && w.toplevels.values.length > 0) || w.active;
-    if (w.focused || w.urgent || hasWins) out.push(w);
+      const id = Number(w.id);
+      if (id >= 1 && id <= count) slots[id - 1] = w;
     }
-    if (out.length === 0 && list.length > 0) {
-      for (let i = 0; i < list.length; i++) {
-        const w = list[i];
-        if (!w) continue;
-        const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
-        if (!monName || !wm || wm === monName) { out.push(w); break; }
-      }
+    for (let i = 0; i < slots.length; i++) {
+      const w = slots[i];
+      const hasWins = (w.toplevels && w.toplevels.values && w.toplevels.values.length > 0) || w.active;
+      if (AequalynSettings.workspaceShowEmpty || w.focused || w.urgent || hasWins) out.push(w);
     }
     return out;
   }
@@ -61,7 +76,7 @@ Item {
         }
         Text {
           anchors.centerIn: parent
-          text: String(index + 1)
+          text: labelFor(Number(modelData.id))
           color: wsPill.modelData.focused ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
