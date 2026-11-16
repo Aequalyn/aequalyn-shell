@@ -10,6 +10,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
@@ -38,6 +39,12 @@ PopupWindow {
     anchor.edges: Edges.Bottom
     anchor.gravity: Edges.Bottom
     anchor.adjustment: PopupAdjustment.Slide
+
+    HyprlandFocusGrab {
+        windows: [panel]
+        active: panel.visible
+        onCleared: panel.close()
+    }
 
     function close() { bar.quickPanelVisible = false; }
     // a page of the control center; the panel closes
