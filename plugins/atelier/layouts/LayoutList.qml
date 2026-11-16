@@ -9,6 +9,7 @@ Item {
     property var theme
     property string font
     property var items: []
+    property string collection: "themes"
     property int currentIndex: 0
     readonly property int columns: 1
     signal picked(int index)
@@ -136,6 +137,7 @@ Item {
                     height: Math.min(width / 1.7, details.height * 0.62)
                     theme: root.theme
                     font: root.font
+                    collection: root.collection
                     item: root.cur
                     selected: true
                     showText: false

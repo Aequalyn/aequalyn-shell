@@ -92,6 +92,9 @@ QtObject {
         showcase: { position: "center", size: 100, shape: "bar",
                     parts: { palette: true, backgrounds: true, three: true, live: true,
                              tabs: true, badges: true, actions: true } },
+        // Card based pickers (Carousel, Grid, Filmstrip, Radial, List and Spotlight)
+        // share a shape choice, separately for themes and wallpapers.
+        cards: { shape: "original" },
         favorites: {}, recent: {},
         // the bar's Themes and Layouts buttons: the name beside the icon, and what a
         // right or middle click does

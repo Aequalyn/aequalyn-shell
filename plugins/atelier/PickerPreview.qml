@@ -146,15 +146,15 @@ Item {
     Component { id: showcaseC
         LayoutShowcase { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current; host: host } }
     Component { id: gridC
-        LayoutGrid { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current } }
+        LayoutGrid { theme: pv.theme; font: pv.font; collection: pv.collection; items: pv.items; currentIndex: pv.current } }
     Component { id: carouselC
-        LayoutCarousel { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current } }
+        LayoutCarousel { theme: pv.theme; font: pv.font; collection: pv.collection; items: pv.items; currentIndex: pv.current } }
     Component { id: filmstripC
-        LayoutFilmstrip { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current } }
+        LayoutFilmstrip { theme: pv.theme; font: pv.font; collection: pv.collection; items: pv.items; currentIndex: pv.current } }
     Component { id: radialC
-        LayoutRadial { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current } }
+        LayoutRadial { theme: pv.theme; font: pv.font; collection: pv.collection; items: pv.items; currentIndex: pv.current } }
     Component { id: listC
-        LayoutList { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current } }
+        LayoutList { theme: pv.theme; font: pv.font; collection: pv.collection; items: pv.items; currentIndex: pv.current } }
     Component { id: spotlightC
-        LayoutSpotlight { theme: pv.theme; font: pv.font; items: pv.items; currentIndex: pv.current } }
+        LayoutSpotlight { theme: pv.theme; font: pv.font; collection: pv.collection; items: pv.items; currentIndex: pv.current } }
 }
