@@ -140,4 +140,4 @@ function search(query) {
 }
 
 // the pages kept once built: no timers or scans run on them while hidden
-var kept = ["home", "wallpaper", "theme", "bar", "dock", "picker", "windows", "sleep"];
+var kept = ["home", "wallpaper", "theme", "bar", "dock", "picker", "lockscreens", "windows", "sleep"];
