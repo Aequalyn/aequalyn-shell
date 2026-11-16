@@ -90,7 +90,7 @@ CcPage {
 
     CcSection {
         title: "Coding agents"
-        hint: "Aequalyn installs each tool from its publisher's npm package into ~/.local/share/aequalyn/ai-tools. It does not store sign-in credentials."
+        hint: "Most tools use their publisher's npm package; Antigravity uses Google's official CLI installer. Sign-in stays with each provider."
 
         Repeater {
             model: page.tools
@@ -99,7 +99,7 @@ CcPage {
                 enabled: !page.busy
                 icon: "\u{F06A9}"
                 title: modelData.name
-                sub: modelData.description + "  ·  npm: " + modelData.package
+                sub: modelData.description + (modelData.package ? "  ·  npm: " + modelData.package : "  ·  Google's official installer")
                     + (modelData.installed ? "  ·  " + modelData.command + " " + modelData.version
                        : modelData.availableElsewhere ? "  ·  Already available at " + modelData.availablePath
                        : modelData.launcherConflict ? "  ·  A file already uses the " + modelData.command + " command"
@@ -141,7 +141,7 @@ CcPage {
             onActivated: page.openStore()
         }
         CcNote {
-            text: "AI command line tools need Node.js and npm. New installs get npm when you choose the Developer profile; existing systems can install nodejs and npm from the Store."
+            text: "Most optional coding agents need Node.js and npm. Antigravity CLI installs its own native binary and does not need either."
         }
     }
 
@@ -186,6 +186,6 @@ CcPage {
     }
 
     CcNote {
-        text: "Installing or updating runs the publisher's npm package scripts as your user. Use Update here to keep Aequalyn managing these copies. Authentication happens when you launch a tool in a terminal; removing it keeps its settings and sign-in data."
+        text: "Aequalyn installs npm tools into its own data directory. Antigravity uses Google's official installer in your user account. Authentication happens when you launch a tool in a terminal."
     }
 }
