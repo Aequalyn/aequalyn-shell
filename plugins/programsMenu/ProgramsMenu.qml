@@ -84,7 +84,13 @@ Scope {
   }
 
   function allEntries() {
-    const apps = [...DesktopEntries.applications.values];
+    const seen = new Set();
+    const apps = [...DesktopEntries.applications.values].filter(e => {
+      const key = String(e.name || e.id || "").trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     const present = new Set(apps.map(e => String(e.name || "").toLowerCase()));
     for (const name of cliPrograms) {
       if (present.has(name.toLowerCase())) continue;
