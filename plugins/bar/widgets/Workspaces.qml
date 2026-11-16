@@ -31,7 +31,7 @@ Item {
     for (let i = 0; i < count; i++) {
       const id = i + 1;
       slots[i] = { id: id, active: false, focused: false, urgent: false, toplevels: { values: [] },
-        activate: function() { Hyprland.dispatch('hl.dsp.focus({ workspace = "m~' + id + '" })'); } };
+        activate: function() { Hyprland.dispatch('hl.dsp.focus({ workspace = "r~' + id + '" })'); } };
     }
     for (let i = 0; i < list.length; i++) {
       const w = list[i];
