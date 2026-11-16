@@ -33,6 +33,9 @@ QtObject {
     property int barCenterPercent: 33
     property bool showClock: true
     property bool showWorkspaces: true
+    property int workspaceCount: 5
+    property string workspaceLabelStyle: "numbers"
+    property bool workspaceShowEmpty: true
     property bool showMedia: true
     property bool showVolume: true
     property bool showBrightness: true
@@ -373,6 +376,9 @@ QtObject {
                 barCenterPercent: root.barCenterPercent,
                 showClock: root.showClock,
                 showWorkspaces: root.showWorkspaces,
+                workspaceCount: root.workspaceCount,
+                workspaceLabelStyle: root.workspaceLabelStyle,
+                workspaceShowEmpty: root.workspaceShowEmpty,
                 showMedia: root.showMedia,
                 showVolume: root.showVolume,
                 showBrightness: root.showBrightness,
@@ -523,6 +529,10 @@ QtObject {
         root.barCenterPercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barCenterPercent, root.barCenterPercent)) || 0)))
         root.showClock = pick(a.showClock, root.showClock)
         root.showWorkspaces = pick(a.showWorkspaces, root.showWorkspaces)
+        root.workspaceCount = Math.max(1, Math.min(10, Math.round(Number(pick(a.workspaceCount, root.workspaceCount)) || 5)))
+        root.workspaceLabelStyle = ["numbers", "roman", "japanese", "symbols"].indexOf(pick(a.workspaceLabelStyle, root.workspaceLabelStyle)) >= 0
+            ? pick(a.workspaceLabelStyle, root.workspaceLabelStyle) : "numbers"
+        root.workspaceShowEmpty = pick(a.workspaceShowEmpty, root.workspaceShowEmpty) !== false
         root.showMedia = pick(a.showMedia, root.showMedia)
         root.showVolume = pick(a.showVolume, root.showVolume)
         root.showBrightness = pick(a.showBrightness, root.showBrightness)
