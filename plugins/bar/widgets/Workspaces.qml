@@ -27,19 +27,40 @@ Item {
     const monName = (screen && screen.name) ? screen.name : ((bar && bar.screen && bar.screen.name) ? bar.screen.name : "");
     const out = [];
     const count = Math.max(1, Math.min(10, Number(AequalynSettings.workspaceCount) || 5));
+
+    // `r~N` selects the Nth workspace on the current monitor, NOT the workspace
+    // with global id/name N. Hyprland's ids are shared across monitors, so on a
+    // multi-monitor setup the ids on one monitor have gaps (e.g. 1, 3, 4 on
+    // eDP-1 while 2 lives on HDMI-A-4). Number pills by their position in this
+    // monitor's id-sorted workspace list -- exactly what `r~N` addresses.
+    const mine = list.filter(function(w) {
+      if (!w || Number(w.id) < 1) return false; // skip named/special workspaces
+      const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
+      return !monName || !wm || wm === monName;
+    }).sort(function(a, b) { return Number(a.id) - Number(b.id); });
+
+    // Build `count` numbered slots. Empty ones still get an activate that opens
+    // the workspace on this monitor via `r~N`.
     const slots = new Array(count);
     for (let i = 0; i < count; i++) {
       const id = i + 1;
       slots[i] = { id: id, active: false, focused: false, urgent: false, toplevels: { values: [] },
         activate: function() { Hyprland.dispatch('hl.dsp.focus({ workspace = "r~' + id + '" })'); } };
     }
-    for (let i = 0; i < list.length; i++) {
-      const w = list[i];
-      if (!w) continue;
-      const wm = (typeof w.monitor === "string") ? w.monitor : (w.monitor && w.monitor.name ? w.monitor.name : "");
-      if (monName && wm && wm !== monName) continue;
-      const id = Number(w.id);
-      if (id >= 1 && id <= count) slots[id - 1] = w;
+    // Overlay real workspaces at their per-monitor position. Keep the slot's
+    // own activate: a raw HyprlandWorkspace's activate() targets its global
+    // name, which is the wrong workspace on a multi-monitor setup.
+    for (let i = 0; i < mine.length && i < count; i++) {
+      const w = mine[i];
+      const slot = slots[i];
+      slots[i] = {
+        id: slot.id,
+        active: !!w.active,
+        focused: !!w.focused,
+        urgent: !!w.urgent,
+        toplevels: w.toplevels || { values: [] },
+        activate: slot.activate
+      };
     }
     for (let i = 0; i < slots.length; i++) {
       const w = slots[i];
