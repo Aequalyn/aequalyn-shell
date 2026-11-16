@@ -141,7 +141,7 @@ CcPage {
             onActivated: page.openStore()
         }
         CcNote {
-            text: "Most optional coding agents need Node.js and npm. Antigravity CLI installs its own native binary and does not need either."
+            text: "npm-based agents use your system Node.js/npm or mise's Node LTS. Install mise or nodejs/npm from the Store if neither is available. Antigravity uses a native installer."
         }
     }
 
