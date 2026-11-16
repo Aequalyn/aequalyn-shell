@@ -131,21 +131,21 @@ FocusScope {
         LayoutShowcase { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex; host: sw.host
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
     Component { id: gridC
-        LayoutGrid { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex
+        LayoutGrid { theme: sw.theme; font: sw.font; collection: sw.host.collection; items: sw.host.items; currentIndex: sw.host.currentIndex
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
     Component { id: carouselC
-        LayoutCarousel { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex
+        LayoutCarousel { theme: sw.theme; font: sw.font; collection: sw.host.collection; items: sw.host.items; currentIndex: sw.host.currentIndex
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
     Component { id: filmstripC
-        LayoutFilmstrip { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex
+        LayoutFilmstrip { theme: sw.theme; font: sw.font; collection: sw.host.collection; items: sw.host.items; currentIndex: sw.host.currentIndex
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
     Component { id: radialC
-        LayoutRadial { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex
+        LayoutRadial { theme: sw.theme; font: sw.font; collection: sw.host.collection; items: sw.host.items; currentIndex: sw.host.currentIndex
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
     Component { id: listC
-        LayoutList { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex
+        LayoutList { theme: sw.theme; font: sw.font; collection: sw.host.collection; items: sw.host.items; currentIndex: sw.host.currentIndex
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
     Component { id: spotlightC
-        LayoutSpotlight { theme: sw.theme; font: sw.font; items: sw.host.items; currentIndex: sw.host.currentIndex
+        LayoutSpotlight { theme: sw.theme; font: sw.font; collection: sw.host.collection; items: sw.host.items; currentIndex: sw.host.currentIndex
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true) } }
 }

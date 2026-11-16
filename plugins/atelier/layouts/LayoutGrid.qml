@@ -7,6 +7,7 @@ Item {
     property var theme
     property string font
     property var items: []
+    property string collection: "themes"
     property int currentIndex: 0
     readonly property int columns: Math.max(2, Math.floor(width / 250))
     signal picked(int index)
@@ -36,6 +37,7 @@ Item {
                 anchors.margins: 6
                 theme: root.theme
                 font: root.font
+                collection: root.collection
                 item: modelData
                 selected: index === root.currentIndex
                 imageWidth: 420

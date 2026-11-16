@@ -3,6 +3,9 @@
 // tiny desktop, plus title, subtitle, swatches and badges.
 import QtQuick
 import QtQuick.Effects
+import "../../style/Paint.js" as Paint
+import "../../style/BarLooks.js" as BarLooks
+import "root:/settings"
 
 Item {
     id: card
@@ -13,6 +16,16 @@ Item {
     property bool showText: true
     property bool round: false        // radial layout: circular thumbnails
     property int imageWidth: 480      // decode size for thumbnails
+    property string collection: "themes"
+
+    readonly property string pickerCollection: AtelierHost.shownCollection || collection
+    readonly property string pickerLayout: (AequalynSettings.atelierCfg.layouts || {})[pickerCollection] || "slices"
+    readonly property var pickerCardCfg: AequalynSettings.pickerCfg("cards", pickerCollection)
+    readonly property var barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+    readonly property string cardEnds: pickerLayout !== "slices" && pickerLayout !== "showcase"
+        ? (pickerCardCfg.shape === "original" ? "" : pickerCardCfg.shape === "bar" || !pickerCardCfg.shape ? barLook.ends : pickerCardCfg.shape)
+        : ""
+    readonly property bool customShape: cardEnds !== ""
 
     signal clicked()
     signal doubleClicked()
@@ -24,11 +37,46 @@ Item {
     Rectangle {
         id: frame
         anchors.fill: parent
+        visible: !card.customShape
         radius: card.r
         color: card.theme.bgSurface
         border.width: card.selected ? 2 : 1
         border.color: card.selected ? card.theme.accentPrimary : (hover.containsMouse ? card.theme.textMuted : card.theme.bgBorder)
         Behavior on border.color { ColorAnimation { duration: 120 } }
+
+        Canvas {
+            id: shapedFrame
+            visible: card.customShape
+            anchors.fill: parent
+            onPaint: {
+                const ctx = getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+                Paint.outline(ctx, 0.5, 0.5, width - 1, height - 1, Math.min(10, height / 4), card.cardEnds, "", "", "right", "");
+                ctx.fillStyle = card.theme.bgSurface;
+                ctx.fill();
+                ctx.strokeStyle = card.selected ? card.theme.accentPrimary : (hover.containsMouse ? card.theme.textMuted : card.theme.bgBorder);
+                ctx.lineWidth = card.selected ? 2 : 1;
+                ctx.stroke();
+            }
+            onWidthChanged: requestPaint()
+            onHeightChanged: requestPaint()
+            Connections {
+                target: card
+                function onCardEndsChanged() { shapedFrame.requestPaint(); }
+                function onSelectedChanged() { shapedFrame.requestPaint(); }
+            }
+            Connections {
+                target: hover
+                function onContainsMouseChanged() { shapedFrame.requestPaint(); }
+            }
+            Connections {
+                target: card.theme
+                function onBgSurfaceChanged() { shapedFrame.requestPaint(); }
+                function onAccentPrimaryChanged() { shapedFrame.requestPaint(); }
+                function onTextMutedChanged() { shapedFrame.requestPaint(); }
+                function onBgBorderChanged() { shapedFrame.requestPaint(); }
+            }
+        }
 
         Item {
             id: content
@@ -87,9 +135,28 @@ Item {
             layer.enabled: true
             visible: false
             Rectangle {
+                visible: !card.customShape
                 anchors.fill: parent
                 radius: Math.max(0, card.r - 2)
                 color: "black"
+            }
+            Canvas {
+                id: shapeMask
+                visible: card.customShape
+                anchors.fill: parent
+                onPaint: {
+                    const ctx = getContext("2d");
+                    ctx.clearRect(0, 0, width, height);
+                    Paint.outline(ctx, 0, 0, width, height, Math.min(10, height / 4), card.cardEnds, "", "", "right", "");
+                    ctx.fillStyle = "black";
+                    ctx.fill();
+                }
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                Connections {
+                    target: card
+                    function onCardEndsChanged() { shapeMask.requestPaint(); }
+                }
             }
         }
 

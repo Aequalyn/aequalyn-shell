@@ -8,6 +8,7 @@ Item {
     property var theme
     property string font
     property var items: []
+    property string collection: "themes"
     property int currentIndex: 0
     readonly property int columns: 0
     signal picked(int index)
@@ -85,6 +86,7 @@ Item {
                 height: strip.height
                 theme: root.theme
                 font: root.font
+                collection: root.collection
                 item: modelData
                 selected: index === root.currentIndex
                 showText: false
