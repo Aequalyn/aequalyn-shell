@@ -73,6 +73,7 @@ CcPage {
     property string _pendingApply: ""
 
     function applyTheme(name) {
+        page._pendingApply = name
         page.applying = true
         page.status = "Applying " + name + "…"
         // Hide Settings, then let sudo prompt for the password with zenity: some
