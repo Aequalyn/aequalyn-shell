@@ -37,14 +37,16 @@ Item {
     // this picker's own (themes or wallpapers), over the ones both share
     readonly property var cfg: Object.assign({ position: "center", size: 100, shape: "bar",
         parts: {} }, AequalynSettings.pickerCfg("showcase", host ? host.collection : ""))
+    readonly property var sharedShapeCfg: (AequalynSettings.atelierCfg.cards || {})[host ? host.collection : ""] || ({})
     function part(k) { return !cfg.parts || cfg.parts[k] !== false }
     readonly property string position: ["center", "top", "bottom", "left", "right"].indexOf(cfg.position) >= 0 ? cfg.position : "center"
     readonly property bool vertical: position === "left" || position === "right"
     readonly property real zoom: Math.max(0.6, Math.min(1.4, (Number(cfg.size) || 100) / 100))
     // "bar": the bar's own ends, pointing the way the bar's do
     readonly property var barLook: AequalynSettings.barStyleCfg || ({})
-    readonly property string ends: cfg.shape && cfg.shape !== "bar" ? cfg.shape : (barLook.ends || "slant")
-    readonly property string dir: cfg.shape && cfg.shape !== "bar" ? "right"
+    readonly property string shape: sharedShapeCfg.shape !== undefined ? sharedShapeCfg.shape : cfg.shape
+    readonly property string ends: shape && shape !== "bar" && shape !== "original" ? shape : (barLook.ends || "slant")
+    readonly property string dir: shape && shape !== "bar" && shape !== "original" ? "right"
         : (["left", "both"].indexOf(barLook.pointingBar) >= 0 ? barLook.pointingBar : "right")
     readonly property real cornerR: Math.max(4, Math.min(40, Number(barLook.radius) || 12))
     // shapes that end in points or cuts overlap their neighbours a little, like slats

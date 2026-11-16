@@ -23,19 +23,27 @@ Flickable {
 
     readonly property var cfg: AequalynSettings.atelierCfg
     function set(key, value) { AequalynSettings.setIn("atelier", key, value); }
-    // The Shape and Place parts edit the picker type this collection uses (Slices and
-    // Showcase each keep their own), for this collection only: the theme picker and the
-    // wallpaper picker can each sit, look and size differently.
+    // The shape override is shared across picker modes per collection. Slices and
+    // Showcase retain their own placement, size and parts settings.
     readonly property string pickType: (cfg.layouts || {})[collection] || "slices"
-    readonly property string shapeFor: pickType === "slices" || pickType === "showcase" ? pickType : "cards"
-    readonly property var own: AequalynSettings.pickerCfg(shapeFor, collection)
-    readonly property string currentShape: own.shape || (shapeFor === "slices" ? "original" : "bar")
-    readonly property string currentPosition: own.position || "center"
-    readonly property real currentSize: Number(own.size) || 100
-    function setShape(k) { setFor("shape", k); }
-    function setFor(key, value) { AequalynSettings.setPicker(shapeFor, collection, key, value); }
+    readonly property var cardsCfg: cfg.cards || ({})
+    readonly property var cardsOwn: cardsCfg[collection] || ({})
+    readonly property var shapeOwn: AequalynSettings.pickerCfg("cards", collection)
+    readonly property var layoutOwn: AequalynSettings.pickerCfg(pickType, collection)
+    readonly property string currentShape: {
+        if (cardsOwn.shape !== undefined) return cardsOwn.shape;
+        if (pickType === "slices") return layoutOwn.shape || "original";
+        if (pickType === "showcase") return layoutOwn.shape || "bar";
+        return shapeOwn.shape || "original";
+    }
+    readonly property string originalShape: pickType === "slices" ? "slant"
+        : pickType === "showcase" ? (barLook.ends || "slant") : "rounded"
+    readonly property string currentPosition: layoutOwn.position || "center"
+    readonly property real currentSize: Number(layoutOwn.size) || 100
+    function setShape(k) { AequalynSettings.setPicker("cards", collection, "shape", k); }
+    function setFor(key, value) { AequalynSettings.setPicker(pickType, collection, key, value); }
     // the Showcase type's parts, for this collection
-    readonly property var showcaseOwn: AequalynSettings.pickerCfg("showcase", collection)
+    readonly property var showcaseOwn: layoutOwn
     function setPart(key, on) {
         const parts = Object.assign({}, showcaseOwn.parts || {});
         parts[key] = on;
@@ -105,32 +113,18 @@ Flickable {
             visible: pane.shows("shape")
             theme: pane.theme; font: pane.font
             icon: "󰕮"
-            title: "Shape of the preview windows" + (pane.shapeFor === "slices" ? ": Slices" : pane.shapeFor === "showcase" ? ": Showcase" : "")
-            sub: pane.shapeFor === "cards"
-               ? "For " + (pane.collection === "themes" ? "themes" : "wallpapers") + " in every card based picker layout. “Same as the bar” follows its shape."
-               : "For " + (pane.collection === "themes" ? "themes" : "wallpapers") + " in the " + (pane.shapeFor === "slices" ? "Slices" : "Showcase")
-                 + " type. “Same as the bar” follows its shape."
+            title: "Shape of the preview windows"
+            sub: "For " + (pane.collection === "themes" ? "themes" : "wallpapers") + " in every picker layout. “Same as the bar” follows its shape."
             Flow {
-                visible: pane.shapeFor !== ""
+                visible: true
                 Layout.fillWidth: true
                 spacing: 8
                 StyleTile {
-                    visible: pane.shapeFor === "slices"
                     theme: pane.theme; font: pane.font
                     pal: pane.pal
                     edge: "top"
-                    look: Object.assign({}, pane.barLook, { ends: "slant" })
-                    label: "Original slant"
-                    selected: pane.currentShape === "original"
-                    onClicked: pane.setShape("original")
-                }
-                StyleTile {
-                    visible: pane.shapeFor === "cards"
-                    theme: pane.theme; font: pane.font
-                    pal: pane.pal
-                    edge: "top"
-                    look: Object.assign({}, pane.barLook, { ends: "rounded" })
-                    label: "Rounded"
+                    look: Object.assign({}, pane.barLook, { ends: pane.originalShape })
+                    label: "Default for this layout"
                     selected: pane.currentShape === "original"
                     onClicked: pane.setShape("original")
                 }
@@ -144,7 +138,7 @@ Flickable {
                     onClicked: pane.setShape("bar")
                 }
                 Repeater {
-                    model: Style.ends.options.filter(key => key !== "rounded")
+                    model: Style.ends.options
                     delegate: StyleTile {
                         required property string modelData
                         theme: pane.theme; font: pane.font
@@ -164,13 +158,11 @@ Flickable {
             visible: pane.shows("place")
             theme: pane.theme; font: pane.font
             icon: "󰍹"
-            title: "Where on the screen" + (pane.shapeFor === "slices" ? ": Slices" : pane.shapeFor === "showcase" ? ": Showcase" : "")
-            sub: pane.shapeFor === "cards" ? "Card based layouts use their own placement."
-               : pane.shapeFor === "" ? "Where it sits is for the Slices and Showcase types. " + (pane.collection === "themes" ? "Themes" : "Wallpapers")
-                                         + " use another type: pick Slices or Showcase in Type first."
+            title: "Where on the screen" + (pane.pickType === "slices" ? ": Slices" : pane.pickType === "showcase" ? ": Showcase" : "")
+            sub: pane.pickType !== "slices" && pane.pickType !== "showcase" ? "Card based layouts use their own placement."
                : "Left and right make it run top to bottom."
             Flow {
-                visible: pane.shapeFor !== "cards" && pane.shapeFor !== ""
+                visible: pane.pickType === "slices" || pane.pickType === "showcase"
                 Layout.fillWidth: true
                 spacing: 8
                 Repeater {
@@ -185,7 +177,7 @@ Flickable {
                 }
             }
             Stepper {
-                visible: pane.shapeFor !== "cards" && pane.shapeFor !== ""
+                visible: pane.pickType === "slices" || pane.pickType === "showcase"
                 theme: pane.theme; font: pane.font
                 label: "Size"; suffix: "%"
                 from: 60; to: 140; step: 10
