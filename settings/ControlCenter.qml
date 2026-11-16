@@ -13,6 +13,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
 import "root:/settings"
@@ -186,16 +187,16 @@ Scope {
                         anchors.leftMargin: 20
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 10
-                        Rectangle {
-                            width: 30; height: 30; radius: 9
-                            color: Cc.theme.accentPrimary
-                            Text {
-                                anchors.centerIn: parent
-                                text: "æ"
-                                color: Cc.theme.bgBase
-                                font.family: Cc.sans
-                                font.pixelSize: 16
-                                font.bold: true
+                        Image {
+                            source: "root:/assets/ae-mark.svg"
+                            sourceSize.width: 42; sourceSize.height: 28
+                            width: 42; height: 28
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorization: 1.0
+                                colorizationColor: Cc.theme.accentPrimary
                             }
                         }
                         Text {
