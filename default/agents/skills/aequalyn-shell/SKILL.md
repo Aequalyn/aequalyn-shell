@@ -26,7 +26,7 @@ The QuickShell desktop runs as a single long-running process. Hyprland autostart
 ## Hyprland integration
 
 - Config is Lua (`config/hypr/hyprland.lua` in the `aequalyn` repo, installed to `~/.config/hypr/hyprland.lua`).
-- Workspace numbers are per-monitor via `m~N` selectors; the bar filters workspaces by monitor name.
+- Workspace numbers are per-monitor via `r~N` selectors so empty numbered workspaces can be opened; the bar filters workspaces by monitor name.
 - Reload with `hyprctl reload`.
 
 ## Testing
