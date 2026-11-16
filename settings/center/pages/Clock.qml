@@ -53,5 +53,38 @@ CcPage {
         }
     }
     CcToggle { setting: "clockSeconds"; title: "Show seconds" }
+    CcToggle { setting: "showBarDate"; title: "Show the date on the bar" }
+    CcSection {
+        title: "Date format"
+        CcChoice {
+            setting: "clockDateFormat"
+            options: [
+                { key: "ddd MMM d", label: "Tue Nov 16 — Short" },
+                { key: "dddd, d MMMM", label: "Tuesday, 16 November — Long" },
+                { key: "dd/MM/yyyy", label: "16/11/2026 — Day first" },
+                { key: "MM/dd/yyyy", label: "11/16/2026 — Month first" },
+                { key: "yyyy-MM-dd", label: "2026-11-16 — ISO" }
+            ]
+        }
+    }
+    CcSection {
+        title: "Clock clicks"
+        CcChoice {
+            setting: "clockLeftClick"
+            options: [
+                { key: "calendar", label: "Left click opens the calendar" },
+                { key: "clock-settings", label: "Left click opens clock settings" },
+                { key: "nothing", label: "Left click does nothing" }
+            ]
+        }
+        CcChoice {
+            setting: "clockRightClick"
+            options: [
+                { key: "clock-settings", label: "Right click opens clock settings" },
+                { key: "calendar", label: "Right click opens the calendar" },
+                { key: "nothing", label: "Right click does nothing" }
+            ]
+        }
+    }
     CcToggle { setting: "showClock"; title: "Clock on the bar" }
 }

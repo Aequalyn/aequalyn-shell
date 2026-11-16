@@ -57,6 +57,10 @@ QtObject {
     property bool showLayouts: true
     property bool clockSeconds: false
     property bool use24h: true
+    property bool showBarDate: true
+    property string clockDateFormat: "ddd MMM d"
+    property string clockLeftClick: "calendar"
+    property string clockRightClick: "clock-settings"
     property string wallpaperPath: ""
 
     // ---- Wallpaper rotation, palette and the Atelier picker ---------------
@@ -401,6 +405,10 @@ QtObject {
                 showLayouts: root.showLayouts,
                 clockSeconds: root.clockSeconds,
                 use24h: root.use24h,
+                showBarDate: root.showBarDate,
+                clockDateFormat: root.clockDateFormat,
+                clockLeftClick: root.clockLeftClick,
+                clockRightClick: root.clockRightClick,
                 wallpaperPath: root.wallpaperPath
             },
             wallpaper: root.wallpaperCfg,
@@ -580,6 +588,15 @@ QtObject {
             root.barRight = root.barRight.concat(["settingsbutton"])
         root.clockSeconds = pick(a.clockSeconds, root.clockSeconds)
         root.use24h = pick(a.use24h, root.use24h)
+        root.showBarDate = pick(a.showBarDate, root.showBarDate)
+        const dateFormats = ["ddd MMM d", "dddd, d MMMM", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd"]
+        root.clockDateFormat = dateFormats.indexOf(pick(a.clockDateFormat, root.clockDateFormat)) >= 0
+            ? pick(a.clockDateFormat, root.clockDateFormat) : "ddd MMM d"
+        const clickActions = ["calendar", "clock-settings", "nothing"]
+        root.clockLeftClick = clickActions.indexOf(pick(a.clockLeftClick, root.clockLeftClick)) >= 0
+            ? pick(a.clockLeftClick, root.clockLeftClick) : "calendar"
+        root.clockRightClick = clickActions.indexOf(pick(a.clockRightClick, root.clockRightClick)) >= 0
+            ? pick(a.clockRightClick, root.clockRightClick) : "clock-settings"
         root.wallpaperPath = pick(a.wallpaperPath, root.wallpaperPath)
 
         root.wallpaperCfg = root._merge(root.wallpaperDefaults, d.wallpaper)
