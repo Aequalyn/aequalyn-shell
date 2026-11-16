@@ -14,6 +14,7 @@ var files = {
     layouts:        "LayoutsButton.qml",
     title:          "Title.qml",
     clock:          "Clock.qml",
+    calendar:       "Calendar.qml",
     media:          "Media.qml",
     volume:         "Volume.qml",
     battery:        "Battery.qml",

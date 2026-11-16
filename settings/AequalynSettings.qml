@@ -32,6 +32,7 @@ QtObject {
     property int barSidePercent: 33
     property int barCenterPercent: 33
     property bool showClock: true
+    property bool showCalendar: true
     property bool showWorkspaces: true
     property int workspaceCount: 5
     property string workspaceLabelStyle: "numbers"
@@ -195,7 +196,7 @@ QtObject {
     // layout doesn't spread icons across the full width. Drag plugins between
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
-    property var barCenter: ["clock", "media", "title"]
+    property var barCenter: ["clock", "calendar", "media", "title"]
     property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
@@ -203,7 +204,7 @@ QtObject {
 
     // Friendly names for the settings list.
     readonly property var pluginLabels: ({
-        clock: "Clock & date", workspaces: "Workspaces", media: "Now playing",
+        clock: "Clock & date", calendar: "Calendar", workspaces: "Workspaces", media: "Now playing",
         title: "Window title", volume: "Audio / volume", brightness: "Brightness",
         cpu: "CPU usage", network: "Network", bluetooth: "Bluetooth",
         battery: "Battery", temperature: "Temperature", tray: "System tray",
@@ -222,7 +223,7 @@ QtObject {
     // Maps a plugin id to its visibility toggle (kept for backwards compat
     // with the showX toggles in Settings).
     readonly property var pluginToggleKey: ({
-        clock: "showClock", workspaces: "showWorkspaces", media: "showMedia",
+        clock: "showClock", calendar: "showCalendar", workspaces: "showWorkspaces", media: "showMedia",
         volume: "showVolume", brightness: "showBrightness", cpu: "showCpu",
         network: "showNetwork", bluetooth: "showBluetooth",
         battery: "showBattery", temperature: "showTemperature",
@@ -252,7 +253,7 @@ QtObject {
     }
 
     function normalizeBarRegions() {
-        const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
+        const defaults = ["appsmenu", "clock", "calendar", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
             "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
@@ -375,6 +376,7 @@ QtObject {
                 barSidePercent: root.barSidePercent,
                 barCenterPercent: root.barCenterPercent,
                 showClock: root.showClock,
+                showCalendar: root.showCalendar,
                 showWorkspaces: root.showWorkspaces,
                 workspaceCount: root.workspaceCount,
                 workspaceLabelStyle: root.workspaceLabelStyle,
@@ -528,6 +530,7 @@ QtObject {
         root.barSidePercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barSidePercent, root.barSidePercent)) || 0)))
         root.barCenterPercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barCenterPercent, root.barCenterPercent)) || 0)))
         root.showClock = pick(a.showClock, root.showClock)
+        root.showCalendar = pick(a.showCalendar, root.showCalendar)
         root.showWorkspaces = pick(a.showWorkspaces, root.showWorkspaces)
         root.workspaceCount = Math.max(1, Math.min(10, Math.round(Number(pick(a.workspaceCount, root.workspaceCount)) || 5)))
         root.workspaceLabelStyle = ["numbers", "roman", "japanese", "symbols"].indexOf(pick(a.workspaceLabelStyle, root.workspaceLabelStyle)) >= 0
