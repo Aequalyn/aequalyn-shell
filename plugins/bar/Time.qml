@@ -25,7 +25,7 @@ Singleton {
   }
 
   readonly property string dateString: {
-    Qt.formatDateTime(clock.date, "ddd MMM d")
+    Qt.formatDateTime(clock.date, AequalynSettings.clockDateFormat || "ddd MMM d")
   }
 
   // Ticks every second; format strings above decide what is shown.
