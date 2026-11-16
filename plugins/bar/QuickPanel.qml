@@ -10,7 +10,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
@@ -30,6 +29,11 @@ PopupWindow {
     implicitWidth: 360
     implicitHeight: content.implicitHeight + 28
     color: "transparent"
+    grabFocus: true
+    onVisibleChanged: {
+        if (!visible && bar.quickPanelVisible && bar.popupScreen === panel.screen)
+            bar.quickPanelVisible = false
+    }
 
     anchor.item: anchorItem
     anchor.rect.x: 0
@@ -39,12 +43,6 @@ PopupWindow {
     anchor.edges: Edges.Bottom
     anchor.gravity: Edges.Bottom
     anchor.adjustment: PopupAdjustment.Slide
-
-    HyprlandFocusGrab {
-        windows: [panel]
-        active: panel.visible
-        onCleared: panel.close()
-    }
 
     function close() { bar.quickPanelVisible = false; }
     // a page of the control center; the panel closes

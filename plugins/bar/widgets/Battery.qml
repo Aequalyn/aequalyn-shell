@@ -101,6 +101,7 @@ Rectangle {
 
   PopupWindow {
     id: powerProfilePopup
+    grabFocus: true
     visible: bar.powerProfileVisible && !!battPill.QsWindow.window && battPill.QsWindow.window.screen === bar.popupScreen
     Shortcut {
       sequence: "Escape"
@@ -123,6 +124,9 @@ Rectangle {
       if (visible) {
         powerProfileListProc.running = true;
         powerProfileGetProc.running = true;
+      } else if (bar.powerProfileVisible && battPill.QsWindow.window
+                 && battPill.QsWindow.window.screen === bar.popupScreen) {
+        bar.powerProfileVisible = false;
       }
     }
 

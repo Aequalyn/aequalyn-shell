@@ -203,7 +203,7 @@ QtObject {
     // layout doesn't spread icons across the full width. Drag plugins between
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
-    property var barCenter: ["clock", "calendar", "media", "title"]
+    property var barCenter: ["clock", "media", "title"]
     property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
@@ -260,7 +260,7 @@ QtObject {
     }
 
     function normalizeBarRegions() {
-        const defaults = ["appsmenu", "clock", "calendar", "workspaces", "media", "title", "volume",
+        const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
             "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
@@ -269,6 +269,10 @@ QtObject {
         let left = root._cloneRegion(root.barLeft)
         let center = root._cloneRegion(root.barCenter)
         let right = root._cloneRegion(root.barRight)
+        const withoutCalendarButton = list => list.filter(id => id !== "calendar")
+        left = withoutCalendarButton(left)
+        center = withoutCalendarButton(center)
+        right = withoutCalendarButton(right)
         const seen = {}
         function uniq(list) {
             const out = []

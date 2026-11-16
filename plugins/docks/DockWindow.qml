@@ -723,6 +723,8 @@ PanelWindow {
 
   PopupWindow {
     id: menuPop
+    grabFocus: true
+    onVisibleChanged: if (!visible) win.menuSlot = null
     readonly property var items: {
       const s = win.menuSlot;
       const out = [];
@@ -790,6 +792,7 @@ PanelWindow {
 
   PopupWindow {
     id: addPop
+    grabFocus: true
     readonly property var choices: DesktopEntries.applications.values
       .filter(e => !e.noDisplay && win.shownApps.indexOf(e.id) < 0
         && e.name.toLowerCase().indexOf(search.text.toLowerCase()) >= 0)
@@ -802,7 +805,10 @@ PanelWindow {
     implicitWidth: 300
     implicitHeight: 380
     color: "transparent"
-    onVisibleChanged: if (visible) { search.clear(); search.forceActiveFocus(); }
+    onVisibleChanged: {
+      if (visible) { search.clear(); search.forceActiveFocus(); }
+      else win.addOpen = false;
+    }
 
     Rectangle {
       anchors.fill: parent

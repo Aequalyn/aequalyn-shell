@@ -118,6 +118,7 @@ Rectangle {
 
   PopupWindow {
     id: btPopup
+    grabFocus: true
     visible: bar.bluetoothPopupVisible && !!btPill.QsWindow.window && btPill.QsWindow.window.screen === bar.popupScreen
     implicitWidth: 320
     implicitHeight: Math.min(440, btContent.implicitHeight + 24)
@@ -134,7 +135,12 @@ Rectangle {
     anchor.gravity: Edges.Bottom
     anchor.adjustment: PopupAdjustment.Slide
 
-    onVisibleChanged: if (!visible && btPill.startedScan) btPill.scan(false)
+    onVisibleChanged: {
+      if (!visible && btPill.startedScan) btPill.scan(false)
+      if (!visible && bar.bluetoothPopupVisible && btPill.QsWindow.window
+          && btPill.QsWindow.window.screen === bar.popupScreen)
+        bar.bluetoothPopupVisible = false
+    }
 
     Shortcut {
       sequence: "Escape"
