@@ -63,8 +63,6 @@ PopupWindow {
     property date now: new Date()
     Timer { interval: 1000; repeat: true; running: panel.visible; triggeredOnStart: true; onTriggered: panel.now = new Date() }
 
-    Shortcut { sequence: "Escape"; onActivated: panel.close() }
-
     Rectangle {
         anchors.fill: parent
         radius: 18

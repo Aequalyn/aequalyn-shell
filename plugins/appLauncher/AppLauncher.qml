@@ -38,7 +38,13 @@ Scope {
     id: filteredApps
     objectProp: "id"
     values: {
-      const all = [...DesktopEntries.applications.values];
+      const seen = new Set();
+      const all = [...DesktopEntries.applications.values].filter(d => {
+        const key = String(d.name || d.id || "").trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       const q = searchInput.text.trim().toLowerCase();
       if (q === "") return all.sort((a, b) => a.name.localeCompare(b.name));
       return all.filter(d =>

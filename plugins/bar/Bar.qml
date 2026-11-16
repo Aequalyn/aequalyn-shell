@@ -42,6 +42,13 @@ Scope {
     onActivated: root.wifiPopupVisible = false
   }
 
+  Shortcut {
+    sequence: "Escape"
+    context: Qt.ApplicationShortcut
+    enabled: root.quickPanelVisible
+    onActivated: root.quickPanelVisible = false
+  }
+
   // ---- the bar's look (Atelier -> Bar) ------------------------------------
   // Shapes painted behind the widgets (BarDecor): one band, a pill, an island
   // per group or a pill per widget, floating or stuck to the edge.
