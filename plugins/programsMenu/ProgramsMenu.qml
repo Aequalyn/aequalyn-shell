@@ -100,6 +100,14 @@ Scope {
     return ["All", ...[...new Set(entries.map(categoryFor))].sort((a, b) => a.localeCompare(b))];
   }
 
+  function stepCategory(delta) {
+    const categories = root.categoriesFor(root.allEntries());
+    if (!categories.length) return;
+    const current = Math.max(0, categories.indexOf(root.activeCategory));
+    root.activeCategory = categories[(current + delta + categories.length) % categories.length];
+    root.selectedIndex = -1;
+  }
+
   ScriptModel {
     id: filteredApps
     objectProp: "id"
@@ -261,6 +269,12 @@ Scope {
                   event.accepted = true;
                   root.selectedIndex = Math.min(root.selectedIndex + 1, resultsList.count - 1);
                   resultsList.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                } else if (searchInput.text === "" && event.key === Qt.Key_Left) {
+                  event.accepted = true;
+                  root.stepCategory(-1);
+                } else if (searchInput.text === "" && event.key === Qt.Key_Right) {
+                  event.accepted = true;
+                  root.stepCategory(1);
                 }
               }
             }

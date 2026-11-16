@@ -14,8 +14,29 @@ Scope {
     property string font: "JetBrainsMono Nerd Font"
     property bool open: false
     property string activeCategory: "browser"
+    property bool appPaneFocused: false
+    property int selectedChoiceIndex: 0
     readonly property var activeMeta: apps.categories.find(c => c.key === activeCategory) || apps.categories[0]
     readonly property var activeChoices: activeMeta ? apps.choices(activeMeta.key) : []
+
+    function stepCategory(delta) {
+        const categories = apps.categories;
+        if (!categories.length) return;
+        let index = categories.findIndex(c => c.key === root.activeCategory);
+        index = (Math.max(0, index) + delta + categories.length) % categories.length;
+        root.activeCategory = categories[index].key;
+        root.appPaneFocused = false;
+        root.selectedChoiceIndex = 0;
+    }
+    function focusChoices() {
+        root.appPaneFocused = true;
+        const current = root.activeChoices.findIndex(a => a.key === (apps.current[root.activeCategory] || ""));
+        root.selectedChoiceIndex = Math.max(0, current);
+    }
+    function chooseFocused() {
+        const choice = root.activeChoices[root.selectedChoiceIndex];
+        if (choice) apps.set(root.activeCategory, choice.key, choice.label);
+    }
 
     AppsService { id: apps }
     Component.onCompleted: apps.refresh()
@@ -67,6 +88,29 @@ Scope {
                 scale: 0.97 + 0.03 * veil.progress
                 focus: veil.open
                 Keys.onEscapePressed: root.open = false
+                Keys.onPressed: event => {
+                    if (event.key === Qt.Key_Left) {
+                        if (root.appPaneFocused) root.appPaneFocused = false;
+                        else root.stepCategory(-1);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Right) {
+                        if (!root.appPaneFocused) root.focusChoices();
+                        else root.stepCategory(1);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
+                        if (root.appPaneFocused && root.activeChoices.length) {
+                            const step = event.key === Qt.Key_Down ? 1 : -1;
+                            root.selectedChoiceIndex = (root.selectedChoiceIndex + step + root.activeChoices.length) % root.activeChoices.length;
+                        } else {
+                            root.stepCategory(event.key === Qt.Key_Down ? 1 : -1);
+                        }
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        if (root.appPaneFocused) root.chooseFocused();
+                        else root.focusChoices();
+                        event.accepted = true;
+                    }
+                }
 
                 MouseArea { anchors.fill: parent }
 
@@ -141,7 +185,7 @@ Scope {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.activeCategory = modelData.key
+                                            onClicked: { root.activeCategory = modelData.key; root.appPaneFocused = false; root.selectedChoiceIndex = 0; chooser.forceActiveFocus(); }
                                         }
                                     }
                                 }
@@ -198,19 +242,21 @@ Scope {
                                             model: root.activeChoices
                                             delegate: Rectangle {
                                                 required property var modelData
+                                                required property int index
                                                 readonly property bool selected: modelData.key === (apps.current[root.activeCategory] || "")
+                                                readonly property bool keyboardSelected: root.appPaneFocused && index === root.selectedChoiceIndex
                                                 implicitWidth: optionLabel.implicitWidth + 28
                                                 implicitHeight: 38
                                                 radius: 10
-                                                color: selected ? Qt.alpha(root.theme.accentPrimary, 0.18)
+                                                color: selected || keyboardSelected ? Qt.alpha(root.theme.accentPrimary, 0.18)
                                                     : optionMouse.containsMouse ? root.theme.bgHover : root.theme.bgBase
-                                                border.color: selected ? root.theme.accentPrimary : root.theme.bgBorder
+                                                border.color: selected || keyboardSelected ? root.theme.accentPrimary : root.theme.bgBorder
                                                 border.width: 1
                                                 Text {
                                                     id: optionLabel
                                                     anchors.centerIn: parent
                                                     text: modelData.label
-                                                    color: selected ? root.theme.textPrimary : root.theme.textSecondary
+                                                    color: selected || keyboardSelected ? root.theme.textPrimary : root.theme.textSecondary
                                                     font.pixelSize: 11
                                                     font.family: root.font
                                                 }
@@ -219,7 +265,7 @@ Scope {
                                                     anchors.fill: parent
                                                     hoverEnabled: true
                                                     cursorShape: Qt.PointingHandCursor
-                                                    onClicked: apps.set(root.activeCategory, modelData.key, modelData.label)
+                                                    onClicked: { root.appPaneFocused = true; root.selectedChoiceIndex = index; apps.set(root.activeCategory, modelData.key, modelData.label); chooser.forceActiveFocus(); }
                                                 }
                                             }
                                         }
