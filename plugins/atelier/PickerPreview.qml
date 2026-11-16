@@ -140,7 +140,8 @@ Item {
     Component { id: slicesC
         SlicePicker { theme: pv.theme; items: pv.items; currentIndex: pv.current
             readonly property var own: AequalynSettings.pickerCfg("slices", pv.collection)
-            shape: own.shape || "original"
+            readonly property var shared: ((AequalynSettings.atelierCfg.cards || {})[pv.collection]) || ({})
+            shape: shared.shape !== undefined ? shared.shape : (own.shape || "original")
             position: own.position || "center"
             size: Number(own.size) || 100 } }
     Component { id: showcaseC

@@ -120,9 +120,9 @@ FocusScope {
     // ---- the layouts --------------------------------------------------------------
     Component { id: slicesC
         SlicePicker { theme: sw.theme; items: sw.host.items; currentIndex: sw.host.currentIndex; filterText: sw.host.searchText
-            // this picker's own place, size and shape (themes or wallpapers)
             readonly property var own: AequalynSettings.pickerCfg("slices", sw.host.collection)
-            shape: own.shape || "original"
+            readonly property var shared: ((AequalynSettings.atelierCfg.cards || {})[sw.host.collection]) || ({})
+            shape: shared.shape !== undefined ? shared.shape : (own.shape || "original")
             position: own.position || "center"
             size: Number(own.size) || 100
             onHovered: i => sw.host.currentIndex = i; onPicked: i => sw.host.apply(i, true); onCancelled: sw.host.close() } }
