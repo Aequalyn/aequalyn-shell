@@ -100,7 +100,17 @@ CcPage {
         { key: "dot", label: "Dot", about: "Nothing but a greeting and the dots you type, on your theme's colour." },
         { key: "frame", label: "Frame", about: "The wallpaper inside a thin accent frame, the time at the top." },
         { key: "glass", label: "Glass", about: "A see-through card on a deep blur, with the time, the date and the password." },
-        { key: "line", label: "Line", about: "A single accent line to type on, and the time small at the top." }
+        { key: "line", label: "Line", about: "A single accent line to type on, and the time small at the top." },
+        { key: "terminal", label: "Terminal", about: "A prompt in the corner: the seconds ticking, your name, and a password: line to type after." },
+        { key: "neon", label: "Neon", about: "A glowing clock, date and password ring in your accent colours on the dark." },
+        { key: "poster", label: "Poster", about: "Today's name across the whole screen, faint, with the time small over it." },
+        { key: "orbit", label: "Orbit", about: "A ring in your two accents around the time and the date." },
+        { key: "dashboard", label: "Dashboard", about: "The time, then the battery, how long it has been on, and what is playing." },
+        { key: "zen", label: "Zen", about: "No clock to watch: a greeting for the time of day over a deep blur." },
+        { key: "vertical", label: "Vertical", about: "The time turned on its side down a dark strip on the left." },
+        { key: "duo", label: "Duo", about: "Hours and minutes side by side, the minutes in the accent colour, split by a line." },
+        { key: "card", label: "Card", about: "Your picture (~/.face), your name and the password on one card at the bottom." },
+        { key: "nowplaying", label: "Now playing", about: "A large clock, and the song that is playing under it, at the bottom." }
     ]
     readonly property var lockNow: lockStyles.find(x => x.key === AequalynSettings.lockStyle) || lockStyles[0]
     CcSection {
