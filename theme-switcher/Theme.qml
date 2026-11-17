@@ -336,8 +336,23 @@ Singleton {
         paletteProc.running = true;
     }
 
+    // the colours the lock screen designs are drawn in (bin/aequalyn-lockscreen), and the
+    // chosen design made again with them
+    function applyLockScreen(t) {
+        const keys = ["bgBase", "bgSurface", "bgBorder", "textPrimary", "textMuted", "accentPrimary", "accentCyan", "accentRed"];
+        const pal = {};
+        for (const k of keys) pal[k] = String(t[k]);
+        lockProc.command = ["sh", "-c",
+            'mkdir -p "$HOME/.config/aequalyn" && printf \'%s\' "$1" > "$HOME/.config/aequalyn/lock-palette.json" '
+            + '&& { [ ! -x "$HOME/.local/bin/aequalyn-lockscreen" ] || "$HOME/.local/bin/aequalyn-lockscreen" apply; } || true',
+            "sh", JSON.stringify(pal)];
+        lockProc.running = true;
+    }
+    Process { id: lockProc; running: false }
+
     function applyTheme(t) {
         applyKittyTheme(t);
+        applyLockScreen(t);
         applyTerminalPalette(t);
         applySystemColorScheme(!isLightColor(t.bgBase));
         applyHyprlandBorders(t);

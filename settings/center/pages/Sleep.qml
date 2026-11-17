@@ -87,6 +87,35 @@ CcPage {
             from: 1; to: 60; step: 1; unit: " min"
         }
     }
+    // how it looks while locked: one of the designs (bin/aequalyn-lockscreen), in your
+    // theme's colours over your wallpaper
+    readonly property var lockStyles: [
+        { key: "classic", label: "Classic", about: "The time, your name and the password over the blurred wallpaper." },
+        { key: "clean", label: "Clean", about: "A big clock and the date over a soft blur, a round password line under them." },
+        { key: "mono", label: "Mono", about: "Only your theme's colour: a large clock, the date, the password line at the bottom." },
+        { key: "corner", label: "Corner", about: "The wallpaper as it is; the time in the lower left, the password in the lower right." },
+        { key: "pill", label: "Pill", about: "One pill in the middle holding the time and the password." },
+        { key: "split", label: "Split", about: "A panel down the left with the time, the date and your name; the wallpaper beside it." },
+        { key: "stack", label: "Stack", about: "Hours over minutes, large, the minutes in the accent colour." },
+        { key: "dot", label: "Dot", about: "Nothing but a greeting and the dots you type, on your theme's colour." },
+        { key: "frame", label: "Frame", about: "The wallpaper inside a thin accent frame, the time at the top." },
+        { key: "glass", label: "Glass", about: "A see-through card on a deep blur, with the time, the date and the password." },
+        { key: "line", label: "Line", about: "A single accent line to type on, and the time small at the top." }
+    ]
+    readonly property var lockNow: lockStyles.find(x => x.key === AequalynSettings.lockStyle) || lockStyles[0]
+    CcSection {
+        title: "How it looks when locked"
+        hint: page.lockNow.about + " In your theme's colours, over your wallpaper; it follows when they change."
+        CcChoice {
+            options: page.lockStyles.map(x => ({ key: x.key, label: x.label }))
+            current: page.lockNow.key
+            onChosen: key => AequalynSettings.setLockStyle(key)
+        }
+        CcButton {
+            text: "Lock now to see it"; icon: "\u{F033E}"
+            onClicked: Quickshell.execDetached([Quickshell.env("HOME") + "/.local/bin/aequalyn-lockscreen", "try", page.lockNow.key])
+        }
+    }
     CcSection {
         title: "Sleep"
         CcToggle { setting: "suspendEnabled"; title: "Go to sleep when I'm away"; sub: "Saves the battery. Off: only the screen turns off." }
