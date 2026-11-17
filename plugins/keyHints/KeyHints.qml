@@ -19,8 +19,7 @@ Scope {
         power: "Power menu", clipboard: "Clipboard history", clipscape: "Clipboard", altscape: "Window switcher",
         plume: "Cursor effects", media: "Media", calculator: "Calculator", colorPicker: "Color picker", emoji: "Emoji",
         notes: "Quick notes", keyHints: "Key hints", palette: "Command palette", sysmon: "System monitor",
-        screenText: "Screen text", timer: "Timer", focus: "Focus", aiAsk: "AI ask", aiCommand: "AI command",
-        aiClipboard: "AI clipboard", aiTidy: "AI tidy", nightLight: "Night light", weather: "Weather"
+        screenText: "Screen text", timer: "Timer", focus: "Focus", nightLight: "Night light", weather: "Weather"
     })
     readonly property var vars: ({ term: "Terminal", files: "Files", browser: "Browser", menu: "Menu" })
     readonly property var appKeys: ({ A: "select all", C: "copy", V: "paste", X: "cut", Z: "undo", S: "save", F: "find" })

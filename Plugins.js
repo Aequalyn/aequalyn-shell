@@ -36,9 +36,5 @@ var list = [
     { id: "batteryGuard",  label: "Battery guard",     source: "plugins/batteryGuard/BatteryGuard.qml" },
     { id: "breaks",        label: "Break reminder",    source: "plugins/breaks/Breaks.qml" },
     { id: "diskWatch",     label: "Disk watch",        source: "plugins/diskWatch/DiskWatch.qml" },
-    { id: "aiAsk",         label: "AI ask",            source: "plugins/aiAsk/AiAsk.qml" },
-    { id: "aiCommand",     label: "AI command",        source: "plugins/aiCommand/AiCommand.qml" },
-    { id: "aiClipboard",   label: "AI clipboard",      source: "plugins/aiClipboard/AiClipboard.qml" },
-    { id: "aiTidy",        label: "AI tidy",           source: "plugins/aiTidy/AiTidy.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
