@@ -33,7 +33,9 @@ QuickPopup {
 
     // ---- how far in: the player says only when asked ------------------------------
     property real position: 0
-    readonly property real length: safe(() => player && player.lengthSupported !== false && Number(player.length) > 0 ? Number(player.length) : 0, 0)
+    // a live stream reports an endless length: no length then, and no seek bar
+    readonly property real length: safe(() => player && player.lengthSupported !== false && Number(player.length) > 0
+        && Number(player.length) < 7 * 86400 ? Number(player.length) : 0, 0)
     function readPosition() {
         if (!player) { q.position = 0; return }
         try {
