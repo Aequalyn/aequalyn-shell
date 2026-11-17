@@ -2,9 +2,9 @@ import QtQuick
 import Quickshell
 import "root:/plugins/kit"
 
-// Timer: a countdown, a pomodoro or a stopwatch, while it runs.
-// A click opens it; a right click, its quick panel. Hidden while its plugin
-// is off (Plugins), or while there is nothing to show.
+// Timer: a countdown, a pomodoro or a stopwatch, while it runs. A click opens Timer;
+// the click you choose on the Bar page (a right click unless you change it), its quick
+// panel. Not on the bar while its plugin is off; hidden while nothing runs.
 Rectangle {
   id: root
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
@@ -29,10 +29,12 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    acceptedButtons: Qt.LeftButton | Qt.RightButton
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    // the click you chose (Bar page) opens its quick panel, the left one its own panel
     onClicked: (mouse) => {
-      if (mouse.button === Qt.RightButton) root.toggleQuick();
-      else if (root.svc) root.svc.toggle();
+      const role = root.bar.clickRole("timer", mouse.button);
+      if (role === "quick") root.toggleQuick();
+      else if (role === "main") if (root.svc) root.svc.toggle();
     }
   }
 

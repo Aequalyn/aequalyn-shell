@@ -5,6 +5,7 @@ import Quickshell
 import "root:/settings"
 import "../../../plugins/atelier"
 import "../../../style/BarLooks.js" as BarLooks
+import "../../../plugins/bar/widgets/Widgets.js" as Widgets
 import ".."
 
 CcPage {
@@ -221,6 +222,41 @@ CcPage {
             }
         }
     }
+
+    // which click opens each plugin widget's quick panel (Widgets.js: quick); the click
+    // it takes from the left button moves the widget's own thing to the right one
+    CcSection {
+        visible: page.tab === 3 && page.quickWidgets.length > 0
+        title: "Their quick panels"
+        hint: "Which click opens each widget's quick panel. If it takes the left click, the right click does what the left one did."
+        Repeater {
+            model: page.quickWidgets
+            delegate: RowLayout {
+                id: qrow
+                required property string modelData
+                Layout.fillWidth: true
+                spacing: 10
+                Text {
+                    Layout.preferredWidth: 150
+                    text: AequalynSettings.pluginLabels[qrow.modelData] || qrow.modelData
+                    color: Cc.theme.textPrimary
+                    font.family: Cc.sans
+                    font.pixelSize: 12
+                    elide: Text.ElideRight
+                }
+                CcChoice {
+                    Layout.fillWidth: true
+                    options: [{ key: "left", label: "Left click" }, { key: "right", label: "Right click" },
+                              { key: "middle", label: "Middle click" }, { key: "none", label: "None" }]
+                    current: AequalynSettings.quickClick(qrow.modelData, Widgets.quickDefault(qrow.modelData))
+                    onChosen: k => AequalynSettings.setQuickClick(qrow.modelData, k)
+                }
+            }
+        }
+    }
+    // the widgets on the bar with a quick panel, whose plugin is on
+    readonly property var quickWidgets: AequalynSettings.pluginOrder.filter(id => Widgets.quickDefault(id) !== "none"
+        && (Widgets.pluginFor(id) === "" || AequalynSettings.enabledPlugins.indexOf(Widgets.pluginFor(id)) >= 0))
 
     // the Themes and Layouts buttons: the name beside the icon, and their other clicks
     CcMore {

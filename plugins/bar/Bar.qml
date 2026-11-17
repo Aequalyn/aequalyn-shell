@@ -13,6 +13,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
 import "root:/plugins/bar/quick"
+import "widgets/Widgets.js" as Widgets
 import  "../../style/Shapes.js" as Shapes
 import  "../../style/BarLooks.js" as BarLooks
 
@@ -34,6 +35,17 @@ Scope {
     if (open) root.quickPanelVisible = false;
   }
   onQuickPanelVisibleChanged: if (quickPanelVisible) root.widgetPopup = ""
+  // what a click on widget `id` does, as you chose (Bar page): "quick" (its quick panel),
+  // "main" (its own thing), "right" (its own right click) or "middle". The click its
+  // quick panel takes from the left button moves the main thing to the right one.
+  function clickRole(id, button) {
+    const c = AequalynSettings.quickClick(id, Widgets.quickDefault(id));
+    const name = button === Qt.RightButton ? "right" : button === Qt.MiddleButton ? "middle" : "left";
+    if (name === c) return "quick";
+    if (name === "left") return "main";
+    if (name === "right") return c === "left" ? "main" : "right";
+    return "middle";
+  }
   // every screen has its own bar, but the popups above share one switch: they open only on
   // the screen they were opened from
   property var popupScreen: null

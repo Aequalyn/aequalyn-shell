@@ -92,12 +92,15 @@ destruction. Everything that uses it checks for `null`: the plugin may be off.
 A bar widget is a file in `plugins/bar/widgets/` with `required property var bar` (the
 bar's theme, font and size), registered in `Widgets.js`. Say
 `readonly property bool wanted: false` when there is nothing to show: the bar hides the
-whole slot. A left click does the plugin's main thing; a right click opens its quick
+whole slot. A left click does the plugin's main thing; another click opens its quick
 panel.
+
+If the widget belongs to your plugin, say so in `Widgets.js` (`plugins`): while the
+plugin is off, the widget is not loaded and takes no room on the bar.
 
 ### Its quick panel
 
-What a right click on its widget opens, under it: the same look as the gear's quick
+What its widget opens, under it, on the click people choose for it on the Bar page: the same look as the gear's quick
 panel, from the parts in `plugins/bar/quick/` (`QuickPopup`, `QuickCard`, `QuickTile`,
 `QuickWide`, `QuickRound`, `QuickLevel`, `QuickLabel`). They take the bar's colours by
 themselves.
@@ -115,7 +118,13 @@ QuickPopup {
 }
 ```
 
-The widget hosts it, and the bar keeps one open at a time (`bar.widgetPopup`):
+Add it to `quick` in `Widgets.js` with the click that opens it unless people choose
+another (`"right"`, or `"left"` when the widget has nothing else to do). The widget asks
+the bar what a click means, `bar.clickRole("<widget id>", mouse.button)`: `"quick"`
+(open the panel), `"main"` (its own thing), `"right"` (its own right click) or
+`"middle"`. When the panel takes the left click, its own thing moves to the right one.
+
+The widget hosts its panel, and the bar keeps one open at a time (`bar.widgetPopup`):
 
 ```qml
 function toggleQuick() {

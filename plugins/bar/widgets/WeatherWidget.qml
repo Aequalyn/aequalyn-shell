@@ -2,9 +2,9 @@ import QtQuick
 import Quickshell
 import "root:/plugins/kit"
 
-// Weather: the temperature and the sky where you are.
-// A click shows the next days; a right click, its quick panel. Hidden while its plugin
-// is off (Plugins), or while there is nothing to show.
+// Weather: the temperature and the sky where you are. A click shows the next days;
+// the click you choose on the Bar page (a right click unless you change it), its quick
+// panel. Not on the bar while its plugin is off; hidden until it knows the weather.
 Rectangle {
   id: root
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
@@ -29,10 +29,12 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    acceptedButtons: Qt.LeftButton | Qt.RightButton
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    // the click you chose (Bar page) opens its quick panel, the left one its own panel
     onClicked: (mouse) => {
-      if (mouse.button === Qt.RightButton) root.toggleQuick();
-      else if (root.svc) root.svc.toggle();
+      const role = root.bar.clickRole("weather", mouse.button);
+      if (role === "quick") root.toggleQuick();
+      else if (role === "main") if (root.svc) root.svc.toggle();
     }
   }
 

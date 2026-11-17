@@ -1,4 +1,4 @@
-// A quick panel: what a bar widget's right click opens, under it. Every one looks the
+// A quick panel: what a bar widget opens under it, on the click you choose for it. Every one looks the
 // same: a header (its icon, name and a line of state, and round buttons on the right),
 // what it shows and does, and, last, a button to its settings in the control center.
 //

@@ -32,6 +32,19 @@ QtObject {
     // widest the bar's regions get before they scroll, in % of the bar's width, so it's the
     // same on every screen (never into the next region); 33 = equal thirds, 0 = as wide as fits
     property int barSidePercent: 33
+    // which click opens a bar widget's quick panel, by widget: "left" | "right" | "middle"
+    // | "none"; one not here keeps its own (bar/widgets/Widgets.js: quick)
+    property var barClicks: ({})
+    function quickClick(id, fallback) {
+        const v = root.barClicks[id]
+        return ["left", "right", "middle", "none"].indexOf(v) >= 0 ? v : (fallback || "none")
+    }
+    function setQuickClick(id, v) {
+        const n = Object.assign({}, root.barClicks)
+        n[id] = v
+        root.barClicks = n
+        root.save()
+    }
     property int barCenterPercent: 33
     property bool showClock: true
     property bool showCalendar: true
@@ -396,6 +409,7 @@ QtObject {
                 barHeight: root.barHeight,
                 barOpacity: root.barOpacity,
                 barSidePercent: root.barSidePercent,
+                barClicks: root.barClicks,
                 barCenterPercent: root.barCenterPercent,
                 showClock: root.showClock,
                 showCalendar: root.showCalendar,
@@ -565,6 +579,7 @@ QtObject {
         root.barHeight = pick(a.barHeight, root.barHeight)
         root.barOpacity = pick(a.barOpacity, root.barOpacity)
         root.barSidePercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barSidePercent, root.barSidePercent)) || 0)))
+        root.barClicks = a.barClicks && typeof a.barClicks === "object" && !Array.isArray(a.barClicks) ? a.barClicks : ({})
         root.barCenterPercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barCenterPercent, root.barCenterPercent)) || 0)))
         root.showClock = pick(a.showClock, root.showClock)
         root.showCalendar = pick(a.showCalendar, root.showCalendar)

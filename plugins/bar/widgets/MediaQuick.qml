@@ -1,7 +1,7 @@
-// Media's quick panel: a right click on the bar's media widget. What is playing (the
-// cover, the song, how far in), the buttons, the player's own volume, which player the
-// bar follows, and the visualizer and its looks; last, Media's page in the control
-// center. With the Media plugin off it shows the song and the buttons only.
+// Media's quick panel: the click you choose on the bar's media widget (a right click
+// unless you change it). What is playing (the cover, the song, how far in), the
+// buttons, the player's own volume, which player the bar follows, and the visualizer
+// and its looks; last, Media's page in the control center.
 import QtQuick
 import QtQuick.Layouts
 import Quickshell

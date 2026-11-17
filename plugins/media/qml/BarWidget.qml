@@ -403,12 +403,11 @@ Item {
                 acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
 
                 onClicked: function(mouse) {
-                    if (mouse.button === Qt.RightButton) {
-                        root.quickRequested()
-                        return
-                    }
+                    const role = root.roleOf(mouse.button)
+                    if (role === "quick") { root.quickRequested(); return }
+                    if (role === "right") { root.toggleSettings(); return }
                     if (!root.service) return
-                    if (mouse.button === Qt.MiddleButton) root.service.runAction("next")
+                    if (role === "middle") root.service.runAction("next")
                     else if (root.cfg.clickAction === "playPause") root.service.runAction("playPause")
                     else if (root.cfg.clickAction === "next") root.service.runAction("next")
                 }
@@ -544,10 +543,14 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                 onClicked: function(mouse) {
-                    if (mouse.button === Qt.RightButton) root.quickRequested()
-                    else if (root.service) root.service.runAction("playPause")
+                    const role = root.roleOf(mouse.button)
+                    if (role === "quick") root.quickRequested()
+                    else if (role === "right") root.toggleSettings()
+                    else if (!root.service) return
+                    else if (role === "middle") root.service.runAction("next")
+                    else root.service.runAction("playPause")
                 }
             }
         }
@@ -616,6 +619,11 @@ Item {
 
     // ---- the settings: the control center's Media page ------------------------------
     function toggleSettings() { MediaHost.openSettings() }
-    // a right click: the bar opens Media's quick panel (bar/widgets/MediaQuick.qml)
+    // the click you chose (the bar's Bar page) asks the bar for Media's quick panel
+    // (bar/widgets/MediaQuick.qml)
     signal quickRequested()
+    function roleOf(button) {
+        if (root.bar && typeof root.bar.clickRole === "function") return root.bar.clickRole("media", button)
+        return button === Qt.RightButton ? "quick" : button === Qt.MiddleButton ? "middle" : "main"
+    }
 }
