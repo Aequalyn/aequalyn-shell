@@ -25,6 +25,8 @@ var files = {
     plume:          "Plume.qml",
     timer:          "TimerWidget.qml",
     focus:          "FocusWidget.qml",
+    weather:        "WeatherWidget.qml",
+    netspeed:       "NetSpeedWidget.qml",
     altscape:       "AltscapeButton.qml",
     power:          "Power.qml",
     screenrecorder: "ScreenRecorder.qml",

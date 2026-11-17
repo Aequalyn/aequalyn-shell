@@ -229,7 +229,7 @@ QtObject {
         clipscape: "Clipscape (clipboard history)",
         caffeine: "Caffeine (idle inhibit)",
         plume: "Cursor effects (Plume)",
-        timer: "Timer", focus: "Focus",
+        timer: "Timer", focus: "Focus", weather: "Weather", netspeed: "Network speed",
         altscape: "Window switcher",
         atelier: "Themes and wallpapers",
         layouts: "Window layout"

@@ -30,5 +30,7 @@ var list = [
     { id: "screenText",    label: "Screen text",       source: "plugins/screenText/ScreenText.qml" },
     { id: "timer",         label: "Timer",             source: "plugins/timer/Timer.qml" },
     { id: "focus",         label: "Focus",             source: "plugins/focus/Focus.qml" },
+    { id: "weather",       label: "Weather",           source: "plugins/weather/Weather.qml" },
+    { id: "netSpeed",      label: "Network speed",     source: "plugins/netSpeed/NetSpeed.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];

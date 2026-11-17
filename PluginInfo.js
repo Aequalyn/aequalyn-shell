@@ -61,7 +61,11 @@ var info = {
     timer:          { icon: "\u{F051B}", group: "key",        keys: "Super + Alt + T",      page: "",
                       about: "A countdown, a pomodoro or a stopwatch, shown on the bar while it runs." },
     focus:          { icon: "\u{F0F6E}", group: "key",        keys: "Super + Alt + F",      page: "",
-                      about: "Do not disturb for a while, with a message when the time is up." }
+                      about: "Do not disturb for a while, with a message when the time is up." },
+    weather:        { icon: "\u{F0599}", group: "screen",     keys: "",                     page: ""     ,
+                      about: "The weather where you are, on the bar, and the next days." },
+    netSpeed:       { icon: "\u{F06F3}", group: "screen",     keys: "",                     page: "",
+                      about: "How fast things come in and go out, on the bar." }
 };
 
 var groups = [
