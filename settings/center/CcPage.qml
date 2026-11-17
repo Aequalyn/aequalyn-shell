@@ -6,10 +6,19 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import "root:/settings"
+import "../../Plugins.js" as PluginRegistry
+import "../../PluginInfo.js" as PluginInfo
 
 Item {
     id: page
     property string title: ""
+    // a plugin's own page: its id (Plugins.js). The page then opens with the plugin's
+    // strip: what it does, the key that calls it up, and its on/off switch (see PLUGINS.md)
+    property string plugin: ""
+    readonly property var pluginInfo: PluginInfo.of(plugin)
+    readonly property var pluginEntry: plugin !== "" ? (PluginRegistry.list.find(p => p.id === plugin) || null) : null
+    readonly property bool pluginOn: plugin !== "" && AequalynSettings.enabledPlugins.indexOf(plugin) >= 0
     property string sub: ""
     property var tabs: []           // names of the sub pages, if any
     property int tab: 0
@@ -74,6 +83,79 @@ Item {
                 id: actionRow
                 Layout.alignment: Qt.AlignTop
                 spacing: 8
+            }
+        }
+
+        // a plugin's own page: the plugin, on or off
+        Rectangle {
+            visible: page.plugin !== ""
+            Layout.fillWidth: true
+            implicitHeight: 58
+            radius: 12
+            color: Cc.theme.bgSurface
+            border.width: 1
+            border.color: page.pluginOn ? Cc.alpha(Cc.theme.accentPrimary, 0.35) : Cc.theme.bgBorder
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 14
+                spacing: 12
+                Rectangle {
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 10
+                    color: Cc.theme.bgBase
+                    Text {
+                        anchors.centerIn: parent
+                        text: page.pluginInfo.icon
+                        color: Cc.theme.accentPrimary
+                        font.family: Cc.mono
+                        font.pixelSize: 17
+                    }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Text {
+                        Layout.fillWidth: true
+                        text: (page.pluginEntry ? page.pluginEntry.label : page.title) + (page.pluginOn ? "  ·  on" : "  ·  off")
+                        color: Cc.theme.textPrimary
+                        font.family: Cc.sans
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: page.pluginOn ? page.pluginInfo.about
+                            : "Turned off: nothing of it runs, and the settings below wait until it is back on."
+                        color: Cc.theme.textMuted
+                        font.family: Cc.sans
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
+                }
+                Rectangle {
+                    visible: page.pluginInfo.keys !== ""
+                    implicitWidth: pluginKeys.implicitWidth + 14
+                    implicitHeight: 22
+                    radius: 6
+                    color: Cc.theme.bgBase
+                    border.width: 1
+                    border.color: Cc.theme.bgBorder
+                    Text {
+                        id: pluginKeys
+                        anchors.centerIn: parent
+                        text: page.pluginInfo.keys
+                        color: Cc.theme.textSecondary
+                        font.family: Cc.mono
+                        font.pixelSize: 10
+                    }
+                }
+                CcSwitch {
+                    checked: page.pluginOn
+                    onToggled: v => AequalynSettings.togglePlugin(page.plugin, v)
+                }
             }
         }
 

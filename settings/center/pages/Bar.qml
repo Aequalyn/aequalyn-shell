@@ -10,6 +10,7 @@ import ".."
 CcPage {
     id: page
     title: "Bar"
+    plugin: "bar"
     sub: "The strip along the top of the screen: how it looks and what it shows."
     tabs: ["Ready-made", "Shape and colours", "Size and place", "What it shows"]
 

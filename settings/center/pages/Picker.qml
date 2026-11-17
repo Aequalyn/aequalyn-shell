@@ -10,6 +10,7 @@ import ".."
 CcPage {
     id: page
     title: "Theme picker"
+    plugin: "atelier"
     sub: "What Super + T and Super + W open, over your blurred desktop."
     tabs: ["Type", "Shape", "Place and size", "What it shows"]
     actions: [
