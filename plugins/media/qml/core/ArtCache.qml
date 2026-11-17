@@ -30,9 +30,13 @@ Item {
     property string working: ""                // the address being made
     property string waiting: ""                // the newest address asked for meanwhile
     property bool unpacked: false              // the cover being made went through art.py
+    property bool vips: true                   // vipsthumbnail is here; else ImageMagick
 
     onUrlChanged: ask(url)
-    Component.onCompleted: reset.start(["rm", "-rf", "--", root.incomingDir, root.coverDir])
+    Component.onCompleted: {
+        probe.start(["sh", "-c", "command -v vipsthumbnail"])
+        reset.start(["rm", "-rf", "--", root.incomingDir, root.coverDir])
+    }
 
     function ask(u) {
         const p = Art.parse(u)
@@ -56,7 +60,7 @@ Item {
         }
     }
     function thumb(src, n) {
-        const argv = Art.thumbArgs(src, coverDir + "/" + n + ".png")
+        const argv = root.vips ? Art.thumbArgs(src, coverDir + "/" + n + ".png") : Art.magickArgs(src, coverDir + "/" + n + ".png")
         if (!argv) { fail(n); return }
         thumber.start(argv)
     }
@@ -97,6 +101,13 @@ Item {
         seconds: 20
         maxOut: 4096
         onDone: function(code, out, err) { mkdir.start(["mkdir", "-p", "-m", "700", "--", root.coverDir, root.incomingDir]) }
+    }
+    // which tool shrinks the covers: vipsthumbnail, or ImageMagick where libvips is missing
+    Run {
+        id: probe
+        seconds: 5
+        maxOut: 4096
+        onDone: function(code, out, err) { root.vips = code === 0 }
     }
     Run {
         id: mkdir
