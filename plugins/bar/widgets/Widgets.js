@@ -60,6 +60,8 @@ function widgetsOf(pid) { return Object.keys(plugins).filter(w => plugins[w] ===
 // Layouts buttons choose theirs with their other clicks.
 var quick = {
     media: "right", timer: "right", focus: "right", weather: "right", netspeed: "left",
-    plume: "right", altscape: "right", caffeine: "right", appsmenu: "right", power: "right"
+    plume: "right", altscape: "right", caffeine: "right", appsmenu: "right", power: "right",
+    network: "left", bluetooth: "left", battery: "left", volume: "right", brightness: "left",
+    cpu: "left", temperature: "left", calendar: "left", screenshot: "right", screenrecorder: "right"
 };
 function quickDefault(id) { return Object.prototype.hasOwnProperty.call(quick, id) ? quick[id] : "none"; }
