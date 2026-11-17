@@ -182,6 +182,24 @@ Item {
     }
     ArtCache { id: artCache; url: root.artUrl; pythonPath: root.pythonPath; unpackPath: root.pluginSourceDir + "/helper/art.py" }
     readonly property string albumArt: artCache.file
+    // the player's own logo (the icon of its app), for a song that comes without a cover
+    readonly property string appIcon: {
+        if (!player) return ""
+        const keys = [String(player.desktopEntry || ""), String(player.identity || ""),
+                      baseId(idOf(player)).replace(/^org\.mpris\.MediaPlayer2\./, "")]
+        for (const k of keys) {
+            if (k === "") continue
+            let e = null
+            try { e = DesktopEntries.byId(k) || DesktopEntries.heuristicLookup(k) } catch (err) { e = null }
+            if (e && e.icon) {
+                const p = Quickshell.iconPath(e.icon, true)
+                if (p) return p
+            }
+        }
+        return ""
+    }
+    // what the bar shows for a song: its cover, else its player's logo
+    readonly property string coverOrLogo: albumArt !== "" ? albumArt : appIcon
 
     // "auto" follows whatever is playing; otherwise the D-Bus name of the
     // player the user picked in the settings panel.

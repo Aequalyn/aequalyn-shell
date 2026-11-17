@@ -33,6 +33,8 @@ Item {
 
     // Album art URL, empty when nothing is playing.
     readonly property string albumArt: service ? service.albumArt : ""
+    // the cover on the bar: the song's, else its player's logo (Service.coverOrLogo)
+    readonly property string coverSource: service ? service.coverOrLogo : ""
 
     // ---- derived state -----------------------------------------------------
     readonly property string effStyle: service && service.styleOverride !== "" ? service.styleOverride : cfg.vizStyle
@@ -296,7 +298,7 @@ Item {
         Cover {
                     width: root.cfg.coverSize
                     height: root.cfg.coverSize
-                    source: root.albumArt
+                    source: root.coverSource
                     ink: root.fg
                     shape: root.cfg.coverShape
                     spin: root.cfg.coverSpin
@@ -330,7 +332,7 @@ Item {
         Cover {
                     width: root.cfg.coverSize
                     height: root.cfg.coverSize
-                    source: root.albumArt
+                    source: root.coverSource
                     ink: root.fg
                     shape: root.cfg.coverShape
                     spin: root.cfg.coverSpin
@@ -384,7 +386,7 @@ Item {
         Cover {
                     width: root.cfg.coverSize
                     height: root.cfg.coverSize
-                    source: root.albumArt
+                    source: root.coverSource
                     ink: root.fg
                     shape: root.cfg.coverShape
                     spin: root.cfg.coverSpin

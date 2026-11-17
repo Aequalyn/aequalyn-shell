@@ -86,7 +86,7 @@ QuickPopup {
                 }
                 Image {
                     anchors.fill: parent
-                    source: q.svc && q.svc.albumArt !== "" ? q.svc.albumArt
+                    source: q.svc && q.svc.coverOrLogo !== "" ? q.svc.coverOrLogo
                           : q.player && q.player.trackArtUrl ? q.player.trackArtUrl : ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
