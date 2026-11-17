@@ -122,6 +122,7 @@ Flickable {
                                 Layout.fillWidth: true
                                 text: pane.edgeGlyphs[dcard.modelData.edge] + " " + pane.edgeNames[dcard.modelData.edge]
                                     + (Quickshell.screens.length > 1 && dcard.modelData.monitor ? " · " + dcard.modelData.monitor : "")
+                                    + (dcard.index === 0 ? " · Primary" : "")
                                 color: pane.theme.textPrimary
                                 font.family: pane.font
                                 font.pixelSize: 11
@@ -200,9 +201,10 @@ Flickable {
                 Layout.alignment: Qt.AlignTop
                 theme: pane.theme; font: pane.font
                 icon: pane.dock ? pane.edgeGlyphs[pane.dock.edge] : ""
-                title: "Dock " + (pane.sel + 1)
+                title: "Dock " + (pane.sel + 1) + (pane.sel === 0 ? " · Primary" : "")
                 sub: pane.dock ? pane.dock.apps.length + (pane.dock.apps.length === 1 ? " app" : " apps")
-                    + ". Pin apps with its + button and drag icons to reorder." : ""
+                    + ". Pin apps with its + button and drag icons to reorder."
+                    + (pane.sel === 0 && AequalynSettings.dockUnpinned === "primary" ? " Open apps that aren't pinned show here too." : "") : ""
                 ChoiceRow {
                     visible: Quickshell.screens.length > 1
                     theme: pane.theme; font: pane.font

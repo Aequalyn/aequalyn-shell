@@ -201,6 +201,9 @@ QtObject {
         "org.gnome.Nautilus", "firefox", "chromium", "kitty"
     ]
     property bool showWebappsInDock: true
+    // Open apps (web apps too) that aren't pinned to a dock: "primary", shown on the
+    // primary dock (the first one; deleting it makes the next one primary), or "none".
+    property string dockUnpinned: "primary"
 
     // Bar plugins split into three regions (left / center / right) so the
     // layout doesn't spread icons across the full width. Drag plugins between
@@ -440,7 +443,8 @@ QtObject {
                 iconSize: root.dockIconSize,
                 screen: root.dockScreen,
                 pinned: root.dockPinned,
-                showWebappsInDock: root.showWebappsInDock
+                showWebappsInDock: root.showWebappsInDock,
+                unpinned: root.dockUnpinned
             },
             hyprland: {
                 gapsIn: root.gapsIn,
@@ -651,6 +655,9 @@ QtObject {
         root.dockScreen = pick(dk.screen, root.dockScreen)
         root.dockPinned = pick(dk.pinned, root.dockPinned)
         root.showWebappsInDock = pick(dk.showWebappsInDock, root.showWebappsInDock)
+        // a settings file from before the primary dock: its web app switch decides
+        root.dockUnpinned = ["primary", "none"].indexOf(dk.unpinned) >= 0 ? dk.unpinned
+            : (dk.showWebappsInDock === false ? "none" : "primary")
 
         root.gapsIn = pick(h.gapsIn, root.gapsIn)
         root.gapsOut = pick(h.gapsOut, root.gapsOut)

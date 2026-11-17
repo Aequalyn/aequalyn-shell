@@ -15,20 +15,25 @@ PanelWindow {
   property int idx: 0
 
   readonly property var cfg: svc.effective(idx)
-  // pinned apps plus web apps that are currently open but not pinned, so an
-  // opened web app shows up in the dock even without being pinned
+  // The primary dock is the first one (Dock 1); delete it and the next one is primary.
+  readonly property bool primary: idx === 0
+  // pinned apps, then on the primary dock every open app (web apps too) that isn't
+  // pinned, unless that is turned off (Dock › Your docks)
   readonly property var shownApps: {
     const pinned = Array.isArray(cfg.apps) ? cfg.apps.slice() : [];
-    const pinnedSet = new Set(pinned.map(x => String(x).toLowerCase()));
+    const norm = x => String(x).toLowerCase().replace(/\.desktop$/, "");
+    const pinnedSet = new Set(pinned.map(norm));
     const out = pinned.slice();
-    if (!AequalynSettings.showWebappsInDock) return out;
+    if (!win.primary || AequalynSettings.dockUnpinned !== "primary") return out;
     try {
-      for (const e of DesktopEntries.applications.values) {
-        if (!e || !e.id) continue;
-        if (String(e.id).toLowerCase().indexOf("aequalyn-webapp-") !== 0) continue;
-        if (pinnedSet.has(String(e.id).toLowerCase())) continue;
-        const ws = win.windowsOf(e);
-        if (ws && ws.length > 0 && out.indexOf(e.id) < 0) out.push(e.id);
+      for (const t of ToplevelManager.toplevels.values) {
+        if (!t || !t.appId) continue;
+        const e = DesktopEntries.heuristicLookup(t.appId);
+        if (!e || !e.id || e.noDisplay) continue;
+        const key = norm(e.id);
+        if (pinnedSet.has(key)) continue;
+        pinnedSet.add(key);
+        out.push(e.id);
       }
     } catch (err) {}
     return out;

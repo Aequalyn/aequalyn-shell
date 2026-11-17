@@ -37,6 +37,20 @@ CcPage {
         caption: !AequalynSettings.dockEnabled ? "Docks are off" : ""
     }
 
+    // open apps that aren't pinned: on the primary dock (the first one), or nowhere
+    CcSection {
+        visible: page.tab === 0
+        title: "Open apps that aren't pinned"
+        hint: AequalynSettings.dockUnpinned === "primary"
+            ? "They show on the primary dock, Dock 1, after its pinned apps, while they are open. Delete Dock 1 and the next dock becomes primary."
+            : "Docks show only the apps pinned to them."
+        CcChoice {
+            options: [{ key: "primary", label: "On the primary dock" }, { key: "none", label: "Nowhere" }]
+            current: AequalynSettings.dockUnpinned
+            onChosen: key => { AequalynSettings.dockUnpinned = key; AequalynSettings.save(); }
+        }
+    }
+
     // each tab's part of the docks pane, made the first time the tab is opened
     Repeater {
         model: ["docks", "look", "hiding"]
