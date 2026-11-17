@@ -1,9 +1,11 @@
 import QtQuick
+import QtQuick.Effects
 
 // The song's cover, square or round. A round one can turn like a record while the
 // music plays, to the left or to the right, and stops where it is when it pauses.
-// Shows a music note while there is no cover; while a new cover loads it keeps a
-// quiet tinted tile instead of flashing the note.
+// The cover may be the player's logo when the song has none. Shows a music note while
+// there is neither; while a new one loads it keeps a quiet tinted tile instead of
+// flashing the note.
 // Only a cover that is on screen holds its picture: a hidden one lets it go, and a
 // new song lets the old one go, so each cover keeps one small picture at most.
 Item {
@@ -46,45 +48,41 @@ Item {
             sourceSize.height: 128
         }
 
-        // a round cover: the image drawn inside a circle, with a small hole like a record
-        Canvas {
-            id: roundArt
+        // a round cover: the image cut to a circle, with a small hole like a record
+        Image {
+            id: roundImg
             anchors.fill: parent
-            visible: root.round && root.source !== ""
-            renderTarget: Canvas.Image
-            property string loaded: ""
-            onImageLoaded: requestPaint()
-            onWidthChanged: requestPaint()
-            onVisibleChanged: if (visible) requestPaint()
-            // the canvas keeps every picture it loads until told to let it go
-            function take(url) {
-                const want = root.round ? url : ""
-                if (want !== loaded) {
-                    if (loaded !== "") unloadImage(loaded)
-                    loaded = want
-                    if (want !== "" && !isImageLoaded(want)) loadImage(want)
-                }
-                requestPaint()
-            }
-            onPaint: {
-                const ctx = getContext("2d")
-                ctx.reset()
-                const s = Math.min(width, height)
-                if (s < 2 || loaded === "" || !isImageLoaded(loaded)) return
-                ctx.save()
-                ctx.beginPath()
-                ctx.arc(width / 2, height / 2, s / 2, 0, 2 * Math.PI)
-                ctx.clip()
-                ctx.drawImage(loaded, (width - s) / 2, (height - s) / 2, s, s)
-                ctx.restore()
-                if (s >= 12) {
-                    // the spindle hole, so it reads as a record when it turns
-                    ctx.fillStyle = "rgba(0,0,0,0.55)"
-                    ctx.beginPath()
-                    ctx.arc(width / 2, height / 2, Math.max(1, s * 0.07), 0, 2 * Math.PI)
-                    ctx.fill()
-                }
-            }
+            visible: false
+            source: root.round ? root.shown : ""
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            cache: false
+            sourceSize.width: 128
+            sourceSize.height: 128
+        }
+        Rectangle {
+            id: roundMask
+            anchors.fill: parent
+            radius: width / 2
+            visible: false
+            layer.enabled: true
+        }
+        MultiEffect {
+            anchors.fill: parent
+            visible: root.round && root.source !== "" && roundImg.status === Image.Ready
+            source: roundImg
+            maskEnabled: true
+            maskSource: roundMask
+            maskThresholdMin: 0.5
+            maskSpreadAtMin: 1.0
+        }
+        Rectangle {
+            visible: root.round && root.source !== "" && roundImg.status === Image.Ready && root.width >= 12
+            anchors.centerIn: parent
+            width: Math.max(2, root.width * 0.14)
+            height: width
+            radius: width / 2
+            color: Qt.rgba(0, 0, 0, 0.55)
         }
 
         Text {
@@ -122,10 +120,8 @@ Item {
         turn.start()
     }
 
-    onShownChanged: roundArt.take(shown)
-    onRoundChanged: roundArt.take(shown)
     onSpinningChanged: Qt.callLater(applySpin)
     onSpinChanged: Qt.callLater(applySpin)
     onSpinTimeChanged: Qt.callLater(applySpin)
-    Component.onCompleted: { roundArt.take(shown); applySpin() }
+    Component.onCompleted: applySpin()
 }
