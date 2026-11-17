@@ -11,6 +11,16 @@ Scope {
     property double down: 0              // bytes a second
     property double up: 0
     property var last: null
+    // the last minute, a reading every two seconds (its quick panel draws it)
+    property var history: []
+    // everything in and out since the computer started
+    property double received: 0
+    property double sent: 0
+    function total(b) {
+        if (b >= 1073741824) return (b / 1073741824).toFixed(1) + " GB"
+        if (b >= 1048576) return Math.round(b / 1048576) + " MB"
+        return Math.round(b / 1024) + " KB"
+    }
     function human(b) {
         if (b >= 1048576) return (b / 1048576).toFixed(1) + " MB/s"
         if (b >= 1024) return Math.round(b / 1024) + " KB/s"
@@ -37,7 +47,10 @@ Scope {
                 const dt = Math.max(0.5, (t - root.last.t) / 1000)
                 root.down = Math.max(0, (rx - root.last.rx) / dt)
                 root.up = Math.max(0, (tx - root.last.tx) / dt)
+                root.history = root.history.concat([{ d: root.down, u: root.up }]).slice(-30)
             }
+            root.received = rx
+            root.sent = tx
             root.last = { rx: rx, tx: tx, t: t }
         }
     }
