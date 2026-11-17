@@ -10,8 +10,7 @@ Rectangle {
   height: 24
   width: timeDate.width + 16
   radius: 12
-  color: bar.chipColor
-  property bool calendarVisible: false
+  color: quick.visible ? bar.theme.bgSelected : bar.chipColor
   Row {
     id: timeDate
     anchors.centerIn: parent
@@ -39,15 +38,22 @@ Rectangle {
     onClicked: mouse => {
       const action = mouse.button === Qt.RightButton
         ? AequalynSettings.clockRightClick : AequalynSettings.clockLeftClick;
-      if (action === "calendar") clockWidget.calendarVisible = !clockWidget.calendarVisible;
+      if (action === "calendar") clockWidget.toggleQuick();
       else if (action === "clock-settings") bar.openPage("clock");
     }
   }
-  CalendarPopup {
+
+  // its quick panel (CalendarQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = clockWidget.QsWindow.window;
+    clockWidget.bar.toggleWidgetPopup("clock", w ? w.screen : null);
+  }
+  CalendarQuick {
+    id: quick
     bar: clockWidget.bar
     anchorItem: clockWidget
-    visible: clockWidget.calendarVisible
-    onVisibleChanged: if (!visible) clockWidget.calendarVisible = false
-    onDismissed: clockWidget.calendarVisible = false
+    open: clockWidget.bar.widgetPopup === "clock" && !!clockWidget.QsWindow.window
+          && clockWidget.QsWindow.window.screen === clockWidget.bar.popupScreen
+    onDismissed: clockWidget.bar.widgetPopup = ""
   }
 }
