@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import "root:/style/Wheel.js" as Wheel
 
 RowLayout {
     id: lv
@@ -57,7 +58,8 @@ RowLayout {
             onPositionChanged: m => { if (lv.dragging) { lv.dragValue = at(m.x); lv.moved(lv.dragValue); } }
             onReleased: lv.dragging = false
             onCanceled: lv.dragging = false
-            onWheel: w => lv.moved(Math.max(0, Math.min(1, lv.value + (w.angleDelta.y > 0 ? 0.05 : -0.05))))
+            property var acc: ({ v: 0 })
+            onWheel: w => { const s = Wheel.step(w, acc); if (s !== 0) lv.moved(Math.max(0, Math.min(1, lv.value + s * 0.05))); }
         }
     }
     Text {

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import "root:/style/Wheel.js" as Wheel
 
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
@@ -34,7 +35,8 @@ Rectangle {
     anchors.fill: parent
     cursorShape: Qt.PointingHandCursor
     onWheel: (wheel) => {
-      bar.stepBrightness(wheel.angleDelta.y > 0);
+      const s = Wheel.step(wheel, bar.wheelAcc);
+      if (s !== 0) bar.stepBrightness(s > 0);
     }
   }
 }

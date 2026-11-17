@@ -1,9 +1,12 @@
 // Radial: thumbnails on a ring around a large round preview, like a dial.
 import QtQuick
 import ".."
+import "root:/style/Wheel.js" as Wheel
 
 Item {
     id: root
+    // a touchpad swipe, added up into steps (style/Wheel.js)
+    property var wheelAcc: ({ v: 0 })
     property var theme
     property string font
     property var items: []
@@ -66,7 +69,8 @@ Item {
         WheelHandler {
             onWheel: event => {
                 if (root.items.length === 0) return;
-                const d = (event.angleDelta.y || event.angleDelta.x) < 0 ? 1 : -1;
+                const d = -Wheel.step(event, root.wheelAcc);
+                if (d === 0) return;
                 root.hovered((root.currentIndex + d + root.items.length) % root.items.length);
             }
         }
