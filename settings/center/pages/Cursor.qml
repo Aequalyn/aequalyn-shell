@@ -17,6 +17,7 @@ import ".."
 CcPage {
     id: page
     title: "Cursor"
+    plugin: "plume"
     sub: "Design your own cursor, and give the pointer trails and halos that follow it."
 
     readonly property var svc: PlumeHost.svc
@@ -51,7 +52,7 @@ CcPage {
         Text {
             anchors.centerIn: parent
             visible: !page.svc
-            text: "Plume is turned off in Plugins"
+            text: "Plume is turned off"
             color: Cc.theme.textMuted
             font.family: Cc.sans
             font.pixelSize: 13
@@ -75,12 +76,7 @@ CcPage {
 
     CcNote {
         visible: !page.svc
-        text: "Plume draws your cursor and the trails and halos around it. Turn it on in Plugins; it starts the next time the shell does."
-    }
-    CcButton {
-        visible: !page.svc
-        text: "Open Plugins"; icon: "\u{F0431}"
-        onClicked: Cc.go("plugins")
+        text: "Plume draws your cursor and the trails and halos around it. Turn it on above, and it starts at once."
     }
 
     // ---- colours: the control center's ----------------------------------------------------
@@ -120,26 +116,17 @@ CcPage {
     }
 
     // ---- the tab -------------------------------------------------------------------------
-    // Plume's pieces are drawn for a small panel: shown here a quarter larger.
-    Item {
-        id: holder
+    // Plume's pieces are drawn for a small panel: shown at the size every plugin's
+    // settings have here (CcPluginRows)
+    CcPluginRows {
+        id: rows
         visible: !!page.svc
-        Layout.fillWidth: true
-        readonly property real k: 1.25
-        implicitHeight: col.implicitHeight * k
-
-        ColumnLayout {
-            id: col
-            width: holder.width / holder.k
-            scale: holder.k
-            transformOrigin: Item.TopLeft
-            spacing: 0
 
             LooksPage {
                 visible: page.cur.kind === "looks"
                 Layout.fillWidth: true
-                Layout.preferredWidth: col.width
-                Layout.maximumWidth: col.width
+                Layout.preferredWidth: rows.rowWidth
+                Layout.maximumWidth: rows.rowWidth
                 svc: page.svc
                 cfg: page.cfg
                 ink: page.ink
@@ -239,8 +226,7 @@ CcPage {
                     }
                 }
             }
-        }
-    }
+            }
 
     CcMore {
         visible: !!page.svc

@@ -15,6 +15,7 @@ import ".."
 CcPage {
     id: page
     title: "Media"
+    plugin: "media"
     sub: "What is playing, on the bar: a live visualizer, the title, the cover and the buttons."
 
     readonly property var svc: MediaHost.svc
@@ -60,12 +61,7 @@ CcPage {
 
     CcNote {
         visible: !page.svc
-        text: "Media is turned off in Plugins. Turn it on there; it starts the next time the shell does. Until then the bar shows the plain Now playing."
-    }
-    CcButton {
-        visible: !page.svc
-        text: "Open Plugins"; icon: "\u{F0431}"
-        onClicked: Cc.go("plugins")
+        text: "Media is off: the bar shows the plain Now playing. Turn it on above, and it starts at once."
     }
 
     CcSection {
@@ -93,6 +89,8 @@ CcPage {
             required property var modelData
             title: modelData.title
             enabled: !!page.svc
+            // the plugin's rows, at the size every plugin's settings have here
+            CcPluginRows {
             Repeater {
                 model: modelData.items || []
                 delegate: MediaPanel.SettingRow {
@@ -146,6 +144,7 @@ CcPage {
                     onEdited: value => page.svc.setSetting(it.key, value)
                     onClipboardPaste: (target, maxBytes) => page.requestPaste(row, target)
                 }
+            }
             }
         }
     }

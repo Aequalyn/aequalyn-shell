@@ -17,6 +17,7 @@ import ".."
 CcPage {
     id: page
     title: "Window switcher"
+    plugin: "altscape"
     sub: {
         if (!page.svc) return "Alt + Tab: every window in one of twelve layouts, with live previews.";
         const n = page.svc.windowCount;
@@ -64,12 +65,7 @@ CcPage {
 
     CcNote {
         visible: !page.svc
-        text: "The window switcher shows every window when you press Alt + Tab. Turn it on in Plugins; it starts the next time the shell does."
-    }
-    CcButton {
-        visible: !page.svc
-        text: "Open Plugins"; icon: "\u{F0431}"
-        onClicked: Cc.go("plugins")
+        text: "The window switcher shows every window when you press Alt + Tab. Turn it on above, and it starts at once."
     }
 
     // ---- Layouts: pick one, and see your windows in it ---------------------------------
@@ -129,19 +125,11 @@ CcPage {
         return out;
     }
 
-    // Altscape's rows are drawn for a small panel: shown here a fifth larger
-    Item {
-        id: holder
+    // Altscape's rows are drawn for a small panel: shown at the size every plugin's
+    // settings have here (CcPluginRows)
+    CcPluginRows {
+        id: rows
         visible: !!page.svc && page.tab > 0
-        Layout.fillWidth: true
-        readonly property real k: 1.2
-        implicitHeight: rowsCol.implicitHeight * k
-    ColumnLayout {
-        id: rowsCol
-        width: holder.width / holder.k
-        scale: holder.k
-        transformOrigin: Item.TopLeft
-        spacing: 0
         Repeater {
             model: page.tab > 0 && page.ui ? page.rows : []
             delegate: ColumnLayout {
@@ -195,8 +183,7 @@ CcPage {
                 }
             }
         }
-    }
-    }
+        }
 
     CcMore {
         visible: !!page.svc && page.tab > 0

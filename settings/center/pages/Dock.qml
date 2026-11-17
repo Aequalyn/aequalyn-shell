@@ -12,6 +12,7 @@ import ".."
 CcPage {
     id: page
     title: "Dock"
+    plugin: "docks"
     sub: "The apps you keep at hand. Up to 4 docks on each edge of each screen; right-click a dock to come here."
     tabs: ["Your docks", "Look", "Hiding"]
     actions: [

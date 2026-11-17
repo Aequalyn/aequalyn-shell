@@ -9,6 +9,7 @@ import ".."
 CcPage {
     id: page
     title: "Screens"
+    plugin: "monitorManager"
     sub: "How bright, and where each screen sits."
     actions: [
         CcButton { text: "Arrange screens"; icon: "\u{F0379}"; primary: true; onClicked: Cc.ipc(["monitors", "toggle"], true) }
