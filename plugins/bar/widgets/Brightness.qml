@@ -5,10 +5,11 @@ import "root:/style/Wheel.js" as Wheel
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  id: brightWidget
   height: 24
   width: brightContent.width + 12
   radius: 12
-  color: bar.chipColor
+  color: quick.visible ? bar.theme.bgSelected : bar.chipColor
   // no backlight: the bar hides the whole slot
   readonly property bool wanted: bar.hasBacklight
   visible: wanted
@@ -34,9 +35,29 @@ Rectangle {
   MouseArea {
     anchors.fill: parent
     cursorShape: Qt.PointingHandCursor
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    onClicked: (mouse) => {
+      const role = brightWidget.bar.clickRole("brightness", mouse.button);
+      if (role === "quick") brightWidget.toggleQuick();
+      else if (role !== "middle") brightWidget.bar.openPage("screens");
+    }
     onWheel: (wheel) => {
       const s = Wheel.step(wheel, bar.wheelAcc);
       if (s !== 0) bar.stepBrightness(s > 0);
     }
+  }
+
+  // its quick panel (BrightnessQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = brightWidget.QsWindow.window;
+    brightWidget.bar.toggleWidgetPopup("brightness", w ? w.screen : null);
+  }
+  BrightnessQuick {
+    id: quick
+    bar: brightWidget.bar
+    anchorItem: brightWidget
+    open: brightWidget.wanted && brightWidget.bar.widgetPopup === "brightness" && !!brightWidget.QsWindow.window
+          && brightWidget.QsWindow.window.screen === brightWidget.bar.popupScreen
+    onDismissed: brightWidget.bar.widgetPopup = ""
   }
 }

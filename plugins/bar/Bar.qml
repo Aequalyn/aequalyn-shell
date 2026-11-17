@@ -22,9 +22,6 @@ Scope {
   property var theme: DefaultTheme {}
   property string font: "JetBrainsMono Nerd Font"
   property bool barVisible: true
-  property bool wifiPopupVisible: false
-  property bool powerProfileVisible: false
-  property bool bluetoothPopupVisible: false
   property bool quickPanelVisible: false
   // the quick panel a widget's right click opened ("" for none): one at a time, and
   // never with the gear's (quick/QuickPopup.qml)
@@ -57,14 +54,6 @@ Scope {
     const moving = open && root.popupScreen !== scr;
     root.popupScreen = scr;
     return moving ? true : !open;
-  }
-  property string currentPowerProfile: ""
-  property var powerProfiles: []
-
-  Shortcut {
-    sequence: "Escape"
-    enabled: root.wifiPopupVisible
-    onActivated: root.wifiPopupVisible = false
   }
 
   Shortcut {
@@ -118,7 +107,7 @@ Scope {
     function bluetooth(): void {
       const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
       const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
-      root.bluetoothPopupVisible = root.togglePopup(root.bluetoothPopupVisible, scr);
+      root.toggleWidgetPopup("bluetooth", scr, true);
     }
     // the quick panel on the focused screen (`qs ipc call bar quick`)
     function quick(): void {
@@ -128,7 +117,8 @@ Scope {
       root.quickPanelVisible = root.togglePopup(root.quickPanelVisible, scr);
     }
     // a widget's quick panel on the focused screen, as its right click opens it
-    // (`qs ipc call bar popup media`: media, timer, focus, weather, netSpeed)
+    // (`qs ipc call bar popup media`: a widget's id, as Widgets.js names it: media,
+    // network, bluetooth, battery, volume, timer...)
     function popup(id: string): void {
       const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
       const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
