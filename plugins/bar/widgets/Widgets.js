@@ -52,6 +52,8 @@ var plugins = {
     caffeine: "idleInhibitor", appsmenu: "appLauncher", power: "powerMenu"
 };
 function pluginFor(id) { return Object.prototype.hasOwnProperty.call(plugins, id) ? plugins[id] : ""; }
+// the widgets of plugin `pid`, first the one put on the bar when it is turned on
+function widgetsOf(pid) { return Object.keys(plugins).filter(w => plugins[w] === pid); }
 
 // The widgets with a quick panel (widgets/<Name>Quick.qml), and the click that opens it
 // unless you choose another on the Bar page (AequalynSettings.barClicks). The Themes and
