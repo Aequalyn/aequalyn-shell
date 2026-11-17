@@ -11,7 +11,9 @@ Rectangle {
     property int spacing: 8
     Layout.fillWidth: true
     implicitHeight: inner.implicitHeight + 2 * padding
-    radius: 14
+    radius: 10
+    border.width: 1
+    border.color: Quick.theme.bgBorder
     color: Quick.theme.bgSurface
     ColumnLayout {
         id: inner

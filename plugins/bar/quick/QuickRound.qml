@@ -14,15 +14,17 @@ Rectangle {
     implicitWidth: small ? 30 : 36
     implicitHeight: implicitWidth
     radius: width / 2
-    color: accent ? (rbArea.containsMouse && enabled ? Qt.lighter(Quick.theme.accentPrimary, 1.1) : Quick.theme.accentPrimary)
+    color: accent ? (rbArea.containsMouse && enabled ? Quick.theme.bgHover : Quick.theme.bgSelected)
          : rbArea.containsMouse && enabled ? Quick.theme.bgHover : (small ? "transparent" : Quick.theme.bgSurface)
+    border.width: accent ? 1 : 0
+    border.color: Quick.theme.accentPrimary
     opacity: enabled ? 1 : 0.35
     Accessible.role: Accessible.Button
     Accessible.name: tip
     Text {
         anchors.centerIn: parent
         text: rb.glyph
-        color: rb.accent ? Quick.theme.bgBase : rb.active ? Quick.theme.accentPrimary : Quick.theme.textPrimary
+        color: rb.accent || rb.active ? Quick.theme.accentPrimary : Quick.theme.textPrimary
         font.family: Quick.mono
         font.pixelSize: rb.small ? 15 : 16
     }
