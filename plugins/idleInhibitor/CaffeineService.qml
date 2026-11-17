@@ -20,8 +20,21 @@ Singleton {
   function toggle() { active = !active }
   function enable() { active = true }
   function disable() { active = false }
+  // on for a while, then off by itself (the Keep awake quick panel); 0: no end
+  property double until: 0
+  function enableFor(minutes) { active = true; until = Date.now() + minutes * 60000 }
+  property int minutesLeft: 0
+  Timer {
+    interval: 15000; repeat: true; triggeredOnStart: true
+    running: root.active && root.until > 0
+    onTriggered: {
+      root.minutesLeft = Math.max(0, Math.ceil((root.until - Date.now()) / 60000))
+      if (Date.now() >= root.until) root.active = false
+    }
+  }
 
   onActiveChanged: {
+    if (!active) until = 0
     if (restoring) return
     saveProc.command = ["sh", "-c",
       'mkdir -p "$HOME/.local/state/aequalyn" && printf %s "$1" > "$HOME/.local/state/aequalyn/caffeine"',
