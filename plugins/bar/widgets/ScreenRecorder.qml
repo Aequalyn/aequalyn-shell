@@ -34,6 +34,25 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: bar.toggleRecording()
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    onClicked: (mouse) => {
+      const role = recButton.bar.clickRole("screenrecorder", mouse.button);
+      if (role === "quick") recButton.toggleQuick();
+      else if (role === "main") recButton.bar.toggleRecording();
+    }
+  }
+
+  // its quick panel (CaptureQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = recButton.QsWindow.window;
+    recButton.bar.toggleWidgetPopup("capture-rec", w ? w.screen : null);
+  }
+  CaptureQuick {
+    id: quick
+    bar: recButton.bar
+    anchorItem: recButton
+    open: recButton.bar.widgetPopup === "capture-rec" && !!recButton.QsWindow.window
+          && recButton.QsWindow.window.screen === recButton.bar.popupScreen
+    onDismissed: recButton.bar.widgetPopup = ""
   }
 }

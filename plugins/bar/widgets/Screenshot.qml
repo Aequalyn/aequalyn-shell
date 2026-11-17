@@ -12,7 +12,7 @@ Rectangle {
   height: 24
   width: 26
   radius: 12
-  color: shotHover.containsMouse ? bar.theme.bgSelected : bar.chipColor
+  color: shotHover.containsMouse || quick.visible ? bar.theme.bgSelected : bar.chipColor
   Text {
     anchors.centerIn: parent
     text: "󰹑"
@@ -25,6 +25,25 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: bar.takeScreenshot()
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    onClicked: (mouse) => {
+      const role = shotButton.bar.clickRole("screenshot", mouse.button);
+      if (role === "quick") shotButton.toggleQuick();
+      else if (role === "main") shotButton.bar.takeScreenshot();
+    }
+  }
+
+  // its quick panel (CaptureQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = shotButton.QsWindow.window;
+    shotButton.bar.toggleWidgetPopup("capture-shot", w ? w.screen : null);
+  }
+  CaptureQuick {
+    id: quick
+    bar: shotButton.bar
+    anchorItem: shotButton
+    open: shotButton.bar.widgetPopup === "capture-shot" && !!shotButton.QsWindow.window
+          && shotButton.QsWindow.window.screen === shotButton.bar.popupScreen
+    onDismissed: shotButton.bar.widgetPopup = ""
   }
 }
