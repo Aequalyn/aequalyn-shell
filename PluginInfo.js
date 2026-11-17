@@ -40,7 +40,16 @@ var info = {
     idleInhibitor:  { icon: "\u{F0176}", group: "background", keys: "Super + Shift + C",    page: "sleep",
                       about: "Keeps the screen awake while it is on." },
     plume:          { icon: "\u{F01C0}", group: "background", keys: "",                     page: "cursor",
-                      about: "Your own cursor, and trails and halos around the pointer." }
+                      about: "Your own cursor, and trails and halos around the pointer." },
+    // ---- the built-in pack ----
+    calculator:     { icon: "\u{F00EC}", group: "key",        keys: "Super + =",            page: "",
+                      about: "Type a sum, see the answer as you type; Enter copies it." },
+    colorPicker:    { icon: "\u{F0266}", group: "key",        keys: "Super + Shift + P",    page: "",
+                      about: "Click any pixel on the screen; its colour is copied as #rrggbb." },
+    emoji:          { icon: "\u{F0785}", group: "key",        keys: "Super + .",            page: "",
+                      about: "Find an emoji by name; Enter copies it." },
+    notes:          { icon: "\u{F0219}", group: "key",        keys: "Super + Alt + N",      page: "",
+                      about: "One page to jot things down, saved as you type to ~/Documents/Notes.md." }
 };
 
 var groups = [
