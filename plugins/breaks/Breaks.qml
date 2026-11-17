@@ -11,7 +11,7 @@ Scope {
     id: root
     property var theme: null
     KitStore { id: store; pluginId: "breaks"; defaults: ({ minutes: 20 }) }
-    readonly property var settingsStore: store      // for the Everyday tools page
+    readonly property var settingsStore: store      // for its settings on the Plugins page
     property double next: Date.now() + 20 * 60000
     function reset() { root.next = Date.now() + Math.max(5, Number(store.get("minutes"))) * 60000 }
     Connections { target: store; function onLoadedChanged() { root.reset() } function onValuesChanged() { root.reset() } }

@@ -20,6 +20,8 @@ import "root:/settings"
 import "center"
 import "center/Pages.js" as Pages
 import "../Plugins.js" as PluginRegistry
+import "../PluginInfo.js" as PluginInfo
+import "root:/plugins/kit"
 import "root:/style/backdrop"
 
 Scope {
@@ -99,6 +101,14 @@ Scope {
     IpcHandler {
         target: "aequalyn"
         function settings(): void { root.panelVisible = !root.panelVisible }
+        // a plugin's settings: its own page, or Plugins › Name (`qs ipc call aequalyn pluginPage weather`)
+        function pluginPage(id: string): string {
+            if (!PluginRegistry.list.some(p => p.id === id)) return "no plugin " + id;
+            const pg = PluginInfo.of(id).page;
+            if (pg !== "") root.open(pg);
+            else KitHost.openSettings(id);
+            return "ok";
+        }
         // a plugin on or off, at once: `qs ipc call aequalyn plugin docks off`
         function plugin(id: string, state: string): string {
             if (id === "settings") return "the control center stays on";

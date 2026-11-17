@@ -16,3 +16,4 @@ WebappsService 1.0 WebappsService.qml
 UpdatesService 1.0 UpdatesService.qml
 BackupService 1.0 BackupService.qml
 CcPluginRows 1.0 CcPluginRows.qml
+PluginSettings 1.0 PluginSettings.qml

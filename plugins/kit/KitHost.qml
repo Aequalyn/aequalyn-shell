@@ -1,5 +1,5 @@
 // The built-in pack's link to its running plugins: each one registers here while it
-// runs, so the control center's Everyday tools page and the bar widgets find it
+// runs, so the Plugins page (its settings) and the bar widgets find it
 // (`KitHost.get("weather")`), and nothing has to search. A plugin that is off is not
 // here: everything that asks checks for null.
 pragma Singleton
@@ -24,7 +24,14 @@ Singleton {
         host.running = n
     }
     function get(id) { return host.running[id] || null }
-    function openSettings() { Cc.go("tools") }
+    // a plugin's settings: on the Plugins page, opened on that plugin
+    property string pendingDetail: ""
+    signal detailRequested(string id)
+    function openSettings(id) {
+        host.pendingDetail = id
+        host.detailRequested(id)
+        Cc.go("plugins")
+    }
 
     // a short message in the corner, through the shell's notifications
     function notify(title, body) { Quickshell.execDetached(["notify-send", "-a", "Aequalyn", String(title), String(body || "")]) }

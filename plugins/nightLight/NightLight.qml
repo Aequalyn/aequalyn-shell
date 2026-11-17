@@ -10,7 +10,7 @@ Scope {
     id: root
     property var theme: null
     KitStore { id: store; pluginId: "nightLight"; defaults: ({ from: 20, to: 7, warmth: 50, mode: "schedule" }) }
-    readonly property var settingsStore: store      // for the Everyday tools page
+    readonly property var settingsStore: store      // for its settings on the Plugins page
     property bool applied: false
     // schedule | on | off
     readonly property string mode: String(store.get("mode"))
