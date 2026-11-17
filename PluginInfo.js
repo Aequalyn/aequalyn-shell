@@ -49,7 +49,13 @@ var info = {
     emoji:          { icon: "\u{F0785}", group: "key",        keys: "Super + .",            page: "",
                       about: "Find an emoji by name; Enter copies it." },
     notes:          { icon: "\u{F0219}", group: "key",        keys: "Super + Alt + N",      page: "",
-                      about: "One page to jot things down, saved as you type to ~/Documents/Notes.md." }
+                      about: "One page to jot things down, saved as you type to ~/Documents/Notes.md." },
+    keyHints:       { icon: "\u{F030C}", group: "key",        keys: "Super + /",            page: "",
+                      about: "Every key binding, searchable: what to press and what it does." },
+    palette:        { icon: "\u{F0349}", group: "key",        keys: "Super + Shift + Space", page: "",
+                      about: "Every setting, plugin and action in one search." },
+    sysmon:         { icon: "\u{F0EE0}", group: "key",        keys: "Super + Shift + Esc",  page: "",
+                      about: "How busy the computer is, and what uses the most." }
 };
 
 var groups = [

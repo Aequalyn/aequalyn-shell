@@ -24,5 +24,8 @@ var list = [
     { id: "colorPicker",   label: "Color picker",      source: "plugins/colorPicker/ColorPicker.qml" },
     { id: "emoji",         label: "Emoji",             source: "plugins/emoji/Emoji.qml" },
     { id: "notes",         label: "Quick notes",       source: "plugins/notes/Notes.qml" },
+    { id: "keyHints",      label: "Key hints",         source: "plugins/keyHints/KeyHints.qml" },
+    { id: "palette",       label: "Command palette",   source: "plugins/palette/Palette.qml" },
+    { id: "sysmon",        label: "System monitor",    source: "plugins/sysmon/SystemMonitor.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
