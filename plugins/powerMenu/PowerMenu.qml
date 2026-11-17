@@ -85,7 +85,7 @@ Scope {
                 opacity: veil.progress
                 scale: 0.97 + 0.03 * veil.progress
                 width: 360
-                height: col.implicitHeight + 36
+                height: col.implicitHeight + 32
                 radius: 16
                 color: root.theme.bgBase
                 border.color: root.theme.bgBorder
@@ -95,13 +95,13 @@ Scope {
                 ColumnLayout {
                     id: col
                     anchors.fill: parent
-                    anchors.margins: 18
+                    anchors.margins: 16
                     spacing: 8
 
                     Text {
                         text: "󰐥  Power"
                         color: root.theme.accentPrimary
-                        font.pixelSize: 15
+                        font.pixelSize: 14
                         font.bold: true
                         font.family: root.font
                         Layout.fillWidth: true

@@ -80,7 +80,7 @@ Scope {
                 anchors.centerIn: parent
                 width: Math.min(840, parent.width * 0.92)
                 height: Math.min(570, parent.height * 0.88)
-                radius: 18
+                radius: 16
                 color: root.theme.bgBase
                 border.color: root.theme.bgBorder
                 border.width: 1
@@ -116,15 +116,15 @@ Scope {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 22
-                    spacing: 16
+                    anchors.margins: 16
+                    spacing: 12
 
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
-                            text: "Default apps"
+                            text: "\u{F0BE0}  Default apps"
                             color: root.theme.accentPrimary
-                            font.pixelSize: 18
+                            font.pixelSize: 14
                             font.bold: true
                             font.family: root.font
                             Layout.fillWidth: true
