@@ -69,12 +69,13 @@ CcPage {
 
     CcSection {
         title: "Dock"
-        hint: "Show open web apps in the dock even when they are not pinned."
+        hint: "Open web apps, and any other app you haven't pinned, can show on the primary dock while they are open."
 
         CcToggle {
-            title: "Show web apps in the dock"
-            sub: "Open web apps appear in the dock with a running indicator; turn off to keep the dock to pinned apps only."
-            setting: "showWebappsInDock"
+            title: "Show open apps that aren't pinned on the primary dock"
+            sub: "They appear on Dock 1, after its pinned apps, with a running indicator. Off keeps every dock to its pinned apps. Also on the Dock page."
+            checked: AequalynSettings.dockUnpinned === "primary"
+            onToggled: v => { AequalynSettings.dockUnpinned = v ? "primary" : "none"; AequalynSettings.save(); }
         }
     }
 
