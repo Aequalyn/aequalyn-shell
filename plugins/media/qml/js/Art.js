@@ -63,6 +63,14 @@ function thumbArgs(src, out) {
             "vipsthumbnail", src, "--size", "256x256", "-o", out + "[keep=none]"];
 }
 
+// the same with ImageMagick, where libvips isn't installed: the first frame, turned
+// upright, at most 256 by 256, without metadata, under the same limits
+function magickArgs(src, out) {
+    if (!/^\/[^\0\[\]]*$/.test(String(src)) || !/^\/[^\0\[\]]*\/[0-9a-f]{16}\.png$/.test(String(out))) return null;
+    return ["prlimit", "--as=" + MEMORY, "--cpu=10", "--",
+            "magick", src + "[0]", "-auto-orient", "-thumbnail", "256x256>", "-strip", "PNG32:" + out];
+}
+
 // helper/art.py, for a cover vipsthumbnail won't open: .ico, .bmp or .svg to a PNG
 function unpackArgs(python, helper, src, out) {
     if (!/^\/[^\0\[\]]*$/.test(String(python)) || !/^\/[^\0\[\]]*\/art\.py$/.test(String(helper))) return null;
