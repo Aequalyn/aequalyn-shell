@@ -14,15 +14,17 @@ Rectangle {
     signal toggled()
     signal more()
     Layout.fillWidth: true
-    implicitHeight: 62
-    radius: 14
-    color: on ? Quick.theme.accentPrimary : (tileArea.containsMouse && enabled ? Quick.theme.bgHover : Quick.theme.bgSurface)
+    implicitHeight: 54
+    radius: 10
+    color: on ? Quick.theme.bgSelected : (tileArea.containsMouse && enabled ? Quick.theme.bgHover : Quick.theme.bgSurface)
+    border.width: 1
+    border.color: on ? Quick.theme.accentPrimary : Quick.theme.bgBorder
     opacity: enabled ? 1 : 0.45
     Behavior on color { ColorAnimation { duration: 140 } }
     Accessible.role: Accessible.CheckBox
     Accessible.name: title
     Accessible.checked: on
-    readonly property color ink: on ? Quick.theme.bgBase : Quick.theme.textPrimary
+    readonly property color ink: Quick.theme.textPrimary
 
     MouseArea {
         id: tileArea
@@ -39,7 +41,7 @@ Rectangle {
         spacing: 10
         Text {
             text: tile.glyph
-            color: tile.on ? Quick.theme.bgBase : Quick.theme.accentPrimary
+            color: Quick.theme.accentPrimary
             font.family: Quick.mono
             font.pixelSize: 18
         }
@@ -51,14 +53,14 @@ Rectangle {
                 color: tile.ink
                 font.family: Quick.sans
                 font.pixelSize: 12
-                font.weight: Font.DemiBold
+                font.bold: tile.on
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
             Text {
                 visible: tile.sub !== ""
                 text: tile.sub
-                color: tile.on ? Quick.alpha(Quick.theme.bgBase, 0.75) : Quick.theme.textMuted
+                color: tile.on ? Quick.theme.accentPrimary : Quick.theme.textMuted
                 font.family: Quick.sans
                 font.pixelSize: 10
                 elide: Text.ElideRight
@@ -70,7 +72,7 @@ Rectangle {
             Layout.preferredWidth: 26
             Layout.preferredHeight: 40
             radius: 9
-            color: moreArea.containsMouse ? Qt.rgba(0, 0, 0, 0.12) : "transparent"
+            color: moreArea.containsMouse ? Quick.theme.bgHover : "transparent"
             Accessible.role: Accessible.Button
             Accessible.name: tile.title + " settings"
             Text {

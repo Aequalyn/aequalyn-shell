@@ -1,4 +1,5 @@
-// A small heading over a group in a quick panel ("Players", "Start").
+// A small line over a group in a quick panel ("Players", "Start"), as the Applications
+// menu says how many there are.
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -9,8 +10,5 @@ Text {
     Layout.bottomMargin: -4
     color: Quick.theme.textMuted
     font.family: Quick.sans
-    font.pixelSize: 10
-    font.weight: Font.DemiBold
-    font.letterSpacing: 1.1
-    font.capitalization: Font.AllUppercase
+    font.pixelSize: 11
 }

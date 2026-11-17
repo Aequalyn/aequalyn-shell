@@ -14,10 +14,12 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: 40
     implicitWidth: row.implicitWidth + 24
-    radius: 12
+    radius: 10
     readonly property bool filled: accent || on
-    color: filled ? (wbArea.containsMouse && enabled ? Qt.lighter(Quick.theme.accentPrimary, 1.1) : Quick.theme.accentPrimary)
+    color: filled ? (wbArea.containsMouse && enabled ? Quick.theme.bgHover : Quick.theme.bgSelected)
          : (wbArea.containsMouse && enabled ? Quick.theme.bgHover : Quick.theme.bgSurface)
+    border.width: 1
+    border.color: filled ? Quick.theme.accentPrimary : Quick.theme.bgBorder
     opacity: enabled ? 1 : 0.4
     Accessible.role: Accessible.Button
     Accessible.name: label
@@ -28,7 +30,7 @@ Rectangle {
         Text {
             visible: wb.glyph !== ""
             text: wb.glyph
-            color: wb.filled ? Quick.theme.bgBase : Quick.theme.accentPrimary
+            color: Quick.theme.accentPrimary
             font.family: Quick.mono
             font.pixelSize: 15
             anchors.verticalCenter: parent.verticalCenter
@@ -36,10 +38,10 @@ Rectangle {
         Text {
             visible: wb.label !== ""
             text: wb.label
-            color: wb.filled ? Quick.theme.bgBase : Quick.theme.textPrimary
+            color: wb.filled ? Quick.theme.accentPrimary : Quick.theme.textSecondary
             font.family: Quick.sans
             font.pixelSize: 12
-            font.weight: Font.DemiBold
+            font.bold: wb.filled
             anchors.verticalCenter: parent.verticalCenter
         }
     }

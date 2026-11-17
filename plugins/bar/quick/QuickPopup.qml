@@ -34,7 +34,7 @@ PopupWindow {
     property int panelWidth: 360
 
     implicitWidth: panelWidth
-    implicitHeight: column.implicitHeight + 28
+    implicitHeight: column.implicitHeight + 32
     color: "transparent"
     grabFocus: true
     visible: open
@@ -53,7 +53,7 @@ PopupWindow {
 
     Rectangle {
         anchors.fill: parent
-        radius: 18
+        radius: 16
         color: Quick.theme.bgBase
         border.color: Quick.theme.bgBorder
         border.width: 1
@@ -62,8 +62,8 @@ PopupWindow {
 
         ColumnLayout {
             id: column
-            x: 14; y: 14
-            width: parent.width - 28
+            x: 16; y: 16
+            width: parent.width - 32
             spacing: 12
 
             // ---- its header ------------------------------------------------------------
@@ -71,30 +71,16 @@ PopupWindow {
                 visible: pop.title !== ""
                 Layout.fillWidth: true
                 spacing: 10
-                Rectangle {
-                    visible: pop.glyph !== ""
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    radius: 10
-                    color: Quick.theme.bgSurface
-                    Text {
-                        anchors.centerIn: parent
-                        text: pop.glyph
-                        color: Quick.theme.accentPrimary
-                        font.family: Quick.mono
-                        font.pixelSize: 17
-                    }
-                }
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 0
+                    spacing: 2
                     Text {
                         Layout.fillWidth: true
-                        text: pop.title
-                        color: Quick.theme.textPrimary
-                        font.family: Quick.sans
+                        text: (pop.glyph !== "" ? pop.glyph + "  " : "") + pop.title
+                        color: Quick.theme.accentPrimary
+                        font.family: Quick.mono
                         font.pixelSize: 14
-                        font.weight: Font.DemiBold
+                        font.bold: true
                         elide: Text.ElideRight
                     }
                     Text {
