@@ -4,7 +4,8 @@ import "root:/plugins/atelier"
 
 // Themes and Layouts buttons: a left click opens the theme picker over the blurred
 // desktop (Themes) or the control center's Arranging windows page (Layouts). Right and
-// middle click do what the control center's Theme picker page says.
+// middle click do what the Bar page says: one of them may open Atelier's quick panel
+// (AtelierQuick.qml).
 Rectangle {
   id: btn
   // the bar this button sits in (Bar.qml)
@@ -26,7 +27,7 @@ Rectangle {
   height: 24
   width: row.implicitWidth + 16
   radius: 12
-  color: active ? btn.bar.theme.bgSelected : (area.containsMouse ? btn.bar.theme.bgHover : btn.bar.chipColor)
+  color: active || quick.visible ? btn.bar.theme.bgSelected : (area.containsMouse ? btn.bar.theme.bgHover : btn.bar.chipColor)
   border.width: active ? 1 : 0
   border.color: btn.bar.theme.accentPrimary
   Behavior on color { ColorAnimation { duration: 120 } }
@@ -58,9 +59,24 @@ Rectangle {
     cursorShape: Qt.PointingHandCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
     onClicked: mouse => {
+      const action = mouse.button === Qt.RightButton ? btn.rightAction : btn.middleAction;
       if (mouse.button === Qt.LeftButton) AtelierHost.toggle(btn.tab, btn, btn.screenName);
-      else if (mouse.button === Qt.RightButton) AtelierHost.act(btn.rightAction);
-      else AtelierHost.act(btn.middleAction);
+      else if (action === "quick") btn.toggleQuick();
+      else AtelierHost.act(action);
     }
+  }
+
+  // its quick panel (AtelierQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = btn.QsWindow.window;
+    btn.bar.toggleWidgetPopup("atelier-" + btn.tab, w ? w.screen : null);
+  }
+  AtelierQuick {
+    id: quick
+    bar: btn.bar
+    anchorItem: btn
+    open: btn.bar.widgetPopup === "atelier-" + btn.tab && !!btn.QsWindow.window
+          && btn.QsWindow.window.screen === btn.bar.popupScreen
+    onDismissed: btn.bar.widgetPopup = ""
   }
 }

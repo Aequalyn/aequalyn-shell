@@ -8,6 +8,6 @@ AtelierBarButton {
   icon: "󰉦"
   label: bar.theme && bar.theme.wallpaperMode ? "Wallpaper" : (bar.theme && bar.theme.committed ? bar.theme.committed.name : "")
   showName: AequalynSettings.atelierCfg.atelierShowName !== false
-  rightAction: AequalynSettings.atelierCfg.atelierRightClick || "next-wallpaper"
+  rightAction: AequalynSettings.atelierCfg.atelierRightClick || "quick"
   middleAction: AequalynSettings.atelierCfg.atelierMiddleClick || "random-wallpaper"
 }
