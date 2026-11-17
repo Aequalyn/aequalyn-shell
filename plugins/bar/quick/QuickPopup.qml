@@ -1,0 +1,133 @@
+// A quick panel: what a bar widget's right click opens, under it. Every one looks the
+// same: a header (its icon, name and a line of state, and round buttons on the right),
+// what it shows and does, and, last, a button to its settings in the control center.
+//
+//   QuickPopup {
+//       anchorItem: widget
+//       open: ...                  // the owner says when (Bar.qml: widgetPopup)
+//       onDismissed: ...           // a click outside or Esc: the owner closes it
+//       glyph: "\u{F051B}"; title: "Timer"; sub: "Ends at 14:30"
+//       settingsLabel: "Timer settings"; onSettingsClicked: ...
+//       actions: [ QuickRound { ... } ]
+//       QuickWide { ... }          // the body, top to bottom
+//   }
+//
+// Its parts are in this folder (QuickRound, QuickTile, QuickLevel, QuickWide, QuickCard,
+// QuickLabel), the same the gear's quick panel is made of.
+import QtQuick
+import QtQuick.Layouts
+import Quickshell
+
+PopupWindow {
+    id: pop
+    required property Item anchorItem
+    property bool open: false
+    signal dismissed()
+
+    property string glyph: ""
+    property string title: ""
+    property string sub: ""
+    property string settingsLabel: ""
+    signal settingsClicked()
+    property alias actions: actionsRow.data
+    default property alias content: body.data
+    property int panelWidth: 360
+
+    implicitWidth: panelWidth
+    implicitHeight: column.implicitHeight + 28
+    color: "transparent"
+    grabFocus: true
+    visible: open
+    // closed from outside (a click elsewhere): the owner is told, and `visible` follows
+    // `open` again
+    onVisibleChanged: if (!visible && open) { pop.dismissed(); pop.visible = Qt.binding(() => pop.open) }
+
+    anchor.item: anchorItem
+    anchor.rect.x: 0
+    anchor.rect.y: 0
+    anchor.rect.width: anchorItem ? anchorItem.width : 0
+    anchor.rect.height: anchorItem ? anchorItem.height + 8 : 0
+    anchor.edges: Edges.Bottom
+    anchor.gravity: Edges.Bottom
+    anchor.adjustment: PopupAdjustment.Slide
+
+    Rectangle {
+        anchors.fill: parent
+        radius: 18
+        color: Quick.theme.bgBase
+        border.color: Quick.theme.bgBorder
+        border.width: 1
+        focus: true
+        Keys.onEscapePressed: pop.dismissed()
+
+        ColumnLayout {
+            id: column
+            x: 14; y: 14
+            width: parent.width - 28
+            spacing: 12
+
+            // ---- its header ------------------------------------------------------------
+            RowLayout {
+                visible: pop.title !== ""
+                Layout.fillWidth: true
+                spacing: 10
+                Rectangle {
+                    visible: pop.glyph !== ""
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 10
+                    color: Quick.theme.bgSurface
+                    Text {
+                        anchors.centerIn: parent
+                        text: pop.glyph
+                        color: Quick.theme.accentPrimary
+                        font.family: Quick.mono
+                        font.pixelSize: 17
+                    }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Text {
+                        Layout.fillWidth: true
+                        text: pop.title
+                        color: Quick.theme.textPrimary
+                        font.family: Quick.sans
+                        font.pixelSize: 14
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+                    Text {
+                        visible: pop.sub !== ""
+                        Layout.fillWidth: true
+                        text: pop.sub
+                        color: Quick.theme.textMuted
+                        font.family: Quick.sans
+                        font.pixelSize: 11
+                        elide: Text.ElideRight
+                    }
+                }
+                RowLayout {
+                    id: actionsRow
+                    spacing: 6
+                }
+            }
+
+            // ---- what it shows ----------------------------------------------------------
+            ColumnLayout {
+                id: body
+                Layout.fillWidth: true
+                spacing: 12
+            }
+
+            // ---- its settings -----------------------------------------------------------
+            QuickWide {
+                visible: pop.settingsLabel !== ""
+                Layout.fillWidth: true
+                accent: true
+                label: pop.settingsLabel
+                onClicked: pop.settingsClicked()
+            }
+        }
+    }
+}

@@ -12,6 +12,7 @@ import Quickshell.Hyprland
 import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import "root:/settings"
+import "root:/plugins/bar/quick"
 import  "../../style/Shapes.js" as Shapes
 import  "../../style/BarLooks.js" as BarLooks
 
@@ -24,6 +25,15 @@ Scope {
   property bool powerProfileVisible: false
   property bool bluetoothPopupVisible: false
   property bool quickPanelVisible: false
+  // the quick panel a widget's right click opened ("" for none): one at a time, and
+  // never with the gear's (quick/QuickPopup.qml)
+  property string widgetPopup: ""
+  function toggleWidgetPopup(id, scr) {
+    const open = root.togglePopup(root.widgetPopup === id, scr);
+    root.widgetPopup = open ? id : "";
+    if (open) root.quickPanelVisible = false;
+  }
+  onQuickPanelVisibleChanged: if (quickPanelVisible) root.widgetPopup = ""
   // every screen has its own bar, but the popups above share one switch: they open only on
   // the screen they were opened from
   property var popupScreen: null
@@ -47,6 +57,19 @@ Scope {
     context: Qt.ApplicationShortcut
     enabled: root.quickPanelVisible
     onActivated: root.quickPanelVisible = false
+  }
+
+  Shortcut {
+    sequence: "Escape"
+    context: Qt.ApplicationShortcut
+    enabled: root.widgetPopup !== ""
+    onActivated: root.widgetPopup = ""
+  }
+
+  // every quick panel takes the bar's palette and font
+  Component.onCompleted: {
+    Quick.theme = Qt.binding(() => root.theme);
+    Quick.mono = Qt.binding(() => root.font);
   }
 
   // ---- the bar's look (Atelier -> Bar) ------------------------------------
@@ -87,6 +110,13 @@ Scope {
       const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
       const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
       root.quickPanelVisible = root.togglePopup(root.quickPanelVisible, scr);
+    }
+    // a widget's quick panel on the focused screen, as its right click opens it
+    // (`qs ipc call bar popup media`: media, timer, focus, weather, netSpeed)
+    function popup(id: string): void {
+      const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
+      const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
+      root.toggleWidgetPopup(id, scr);
     }
   }
 

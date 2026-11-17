@@ -44,7 +44,7 @@ Rectangle {
     id: quick
     bar: settingsButton.bar
     anchorItem: settingsButton
-    visible: settingsButton.bar.quickPanelVisible && !!settingsButton.QsWindow.window
+    open: settingsButton.bar.quickPanelVisible && !!settingsButton.QsWindow.window
              && settingsButton.QsWindow.window.screen === settingsButton.bar.popupScreen
   }
 }
