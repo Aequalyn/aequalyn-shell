@@ -49,7 +49,7 @@ function fileFor(id) {
 var plugins = {
     media: "media", timer: "timer", focus: "focus", weather: "weather", netspeed: "netSpeed",
     plume: "plume", altscape: "altscape", atelier: "atelier", layouts: "atelier",
-    caffeine: "idleInhibitor", appsmenu: "appLauncher", power: "powerMenu"
+    caffeine: "idleInhibitor", appsmenu: "appLauncher", power: "powerMenu", clipscape: "clipscape"
 };
 function pluginFor(id) { return Object.prototype.hasOwnProperty.call(plugins, id) ? plugins[id] : ""; }
 // the widgets of plugin `pid`, first the one put on the bar when it is turned on
@@ -62,6 +62,7 @@ var quick = {
     media: "right", timer: "right", focus: "right", weather: "right", netspeed: "left",
     plume: "right", altscape: "right", caffeine: "right", appsmenu: "right", power: "right",
     network: "left", bluetooth: "left", battery: "left", volume: "right", brightness: "left",
-    cpu: "left", temperature: "left", calendar: "left", screenshot: "right", screenrecorder: "right"
+    cpu: "left", temperature: "left", calendar: "left", screenshot: "right", screenrecorder: "right",
+    clipscape: "right"
 };
 function quickDefault(id) { return Object.prototype.hasOwnProperty.call(quick, id) ? quick[id] : "none"; }
