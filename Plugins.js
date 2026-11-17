@@ -18,5 +18,6 @@ var list = [
     { id: "docks",          label: "Docks",          source: "plugins/docks/DocksService.qml" },
     { id: "plume",          label: "Cursor and pointer effects", source: "plugins/plume/Service.qml" },
     { id: "altscape",       label: "Window switcher", source: "plugins/altscape/Altscape.qml" },
+    { id: "media",          label: "Media",          source: "plugins/media/qml/Service.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];

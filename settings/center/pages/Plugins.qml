@@ -25,7 +25,8 @@ CcPage {
         powerMenu: "Lock, log out, restart, shut down.",
         docks: "Your apps at the edges of the screen.",
         plume: "Plume: your own cursor, and trails and halos around the pointer.",
-        altscape: "Alt + Tab shows every window, in twelve layouts."
+        altscape: "Alt + Tab shows every window, in twelve layouts.",
+        media: "What is playing on the bar: the title, the cover, the buttons and a live visualizer."
     })
 
     CcSection {
