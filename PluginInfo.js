@@ -55,7 +55,13 @@ var info = {
     palette:        { icon: "\u{F0349}", group: "key",        keys: "Super + Shift + Space", page: "",
                       about: "Every setting, plugin and action in one search." },
     sysmon:         { icon: "\u{F0EE0}", group: "key",        keys: "Super + Shift + Esc",  page: "",
-                      about: "How busy the computer is, and what uses the most." }
+                      about: "How busy the computer is, and what uses the most." },
+    screenText:     { icon: "\u{F0E40}", group: "key",        keys: "Super + Alt + X",      page: "",
+                      about: "Box any text on the screen and it is copied as text. Needs tesseract." },
+    timer:          { icon: "\u{F051B}", group: "key",        keys: "Super + Alt + T",      page: "",
+                      about: "A countdown, a pomodoro or a stopwatch, shown on the bar while it runs." },
+    focus:          { icon: "\u{F0F6E}", group: "key",        keys: "Super + Alt + F",      page: "",
+                      about: "Do not disturb for a while, with a message when the time is up." }
 };
 
 var groups = [

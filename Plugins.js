@@ -27,5 +27,8 @@ var list = [
     { id: "keyHints",      label: "Key hints",         source: "plugins/keyHints/KeyHints.qml" },
     { id: "palette",       label: "Command palette",   source: "plugins/palette/Palette.qml" },
     { id: "sysmon",        label: "System monitor",    source: "plugins/sysmon/SystemMonitor.qml" },
+    { id: "screenText",    label: "Screen text",       source: "plugins/screenText/ScreenText.qml" },
+    { id: "timer",         label: "Timer",             source: "plugins/timer/Timer.qml" },
+    { id: "focus",         label: "Focus",             source: "plugins/focus/Focus.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
