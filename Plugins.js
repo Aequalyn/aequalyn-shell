@@ -32,5 +32,9 @@ var list = [
     { id: "focus",         label: "Focus",             source: "plugins/focus/Focus.qml" },
     { id: "weather",       label: "Weather",           source: "plugins/weather/Weather.qml" },
     { id: "netSpeed",      label: "Network speed",     source: "plugins/netSpeed/NetSpeed.qml" },
+    { id: "nightLight",    label: "Night light",       source: "plugins/nightLight/NightLight.qml" },
+    { id: "batteryGuard",  label: "Battery guard",     source: "plugins/batteryGuard/BatteryGuard.qml" },
+    { id: "breaks",        label: "Break reminder",    source: "plugins/breaks/Breaks.qml" },
+    { id: "diskWatch",     label: "Disk watch",        source: "plugins/diskWatch/DiskWatch.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];

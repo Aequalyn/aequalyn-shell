@@ -65,7 +65,15 @@ var info = {
     weather:        { icon: "\u{F0599}", group: "screen",     keys: "",                     page: ""     ,
                       about: "The weather where you are, on the bar, and the next days." },
     netSpeed:       { icon: "\u{F06F3}", group: "screen",     keys: "",                     page: "",
-                      about: "How fast things come in and go out, on the bar." }
+                      about: "How fast things come in and go out, on the bar." },
+    nightLight:     { icon: "\u{F0594}", group: "background", keys: "",                     page: ""     ,
+                      about: "Warmer colours in the evening, on a schedule or by hand." },
+    batteryGuard:   { icon: "\u{F0083}", group: "background", keys: "",                     page: ""     ,
+                      about: "A message when the battery runs low, nearly empty, or is full." },
+    breaks:         { icon: "\u{F0208}", group: "background", keys: "",                     page: ""     ,
+                      about: "Every 20 minutes, a reminder to rest your eyes." },
+    diskWatch:      { icon: "\u{F02CA}", group: "background", keys: "",                     page: ""     ,
+                      about: "A message when a disk is nearly full." }
 };
 
 var groups = [
