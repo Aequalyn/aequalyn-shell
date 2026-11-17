@@ -19,5 +19,10 @@ var list = [
     { id: "plume",          label: "Cursor and pointer effects", source: "plugins/plume/Service.qml" },
     { id: "altscape",       label: "Window switcher", source: "plugins/altscape/Altscape.qml" },
     { id: "media",          label: "Media",          source: "plugins/media/qml/Service.qml" },
+    // the built-in pack: off until you turn them on (Plugins), each its own folder
+    { id: "calculator",    label: "Calculator",        source: "plugins/calculator/Calculator.qml" },
+    { id: "colorPicker",   label: "Color picker",      source: "plugins/colorPicker/ColorPicker.qml" },
+    { id: "emoji",         label: "Emoji",             source: "plugins/emoji/Emoji.qml" },
+    { id: "notes",         label: "Quick notes",       source: "plugins/notes/Notes.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
