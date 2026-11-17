@@ -9,7 +9,7 @@ Scope {
     id: root
     property var theme: null
     KitStore { id: store; pluginId: "diskWatch"; defaults: ({ percent: 10 }) }
-    readonly property var settingsStore: store      // for the Everyday tools page
+    readonly property var settingsStore: store      // for its settings on the Plugins page
     property var told: ({})
     property var disks: []
     KitRun {

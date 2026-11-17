@@ -9,7 +9,7 @@ Scope {
     id: root
     property var theme: null
     KitStore { id: store; pluginId: "batteryGuard"; defaults: ({ low: 20, critical: 10, full: true }) }
-    readonly property var settingsStore: store      // for the Everyday tools page
+    readonly property var settingsStore: store      // for its settings on the Plugins page
     property string told: ""             // the last thing it told: "", "low", "critical", "full"
     property int level: -1
     property string status: ""

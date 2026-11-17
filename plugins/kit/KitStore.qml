@@ -34,7 +34,7 @@ Item {
         id: file
         path: store.pluginId !== "" ? store.path : ""
         printErrors: false
-        // another part of the shell may write it too (the Everyday tools page)
+        // another part of the shell may write it too (the Plugins page)
         watchChanges: true
         onFileChanged: reload()
         onLoaded: {

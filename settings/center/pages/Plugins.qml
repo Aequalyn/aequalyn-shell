@@ -3,18 +3,40 @@
 // key that calls it up and, when it has one, opens its own page. A switch applies at
 // once: the plugin loads or leaves without a restart. What each card says comes from
 // PluginInfo.js; the list itself is Plugins.js.
+//
+// The built-in pack's plugins are here too, marked Built-in. Opening one (its card)
+// shows it alone, Plugins › Name: its switch, its key, and its settings when it has
+// any (PluginSettings.qml).
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import "root:/settings"
 import "../../../Plugins.js" as PluginRegistry
 import "../../../PluginInfo.js" as PluginInfo
+import "root:/plugins/kit"
 import ".."
 
 CcPage {
     id: page
-    title: "Plugins"
-    sub: "The parts of your desktop. Turn off what you don't use: it leaves at once, and comes back when you turn it on."
+    // a plugin opened on its own (Plugins › Name), or "" for them all
+    property string detail: ""
+    readonly property var detailEntry: detail !== "" ? (PluginRegistry.list.find(p => p.id === detail) || null) : null
+    title: detailEntry ? detailEntry.label : "Plugins"
+    sub: detailEntry ? "Plugins › " + detailEntry.label + (PluginInfo.of(detail).pack ? " · built in" : "")
+        : "The parts of your desktop. Turn off what you don't use: it leaves at once, and comes back when you turn it on."
+    plugin: detail
+    function open(id) {
+        const i = PluginInfo.of(id)
+        if (i.page !== "") Cc.go(i.page)
+        else page.detail = id
+    }
+    // asked to open on one (a plugin's own link to its settings)
+    Component.onCompleted: if (KitHost.pendingDetail !== "") { page.detail = KitHost.pendingDetail; KitHost.pendingDetail = "" }
+    Connections {
+        target: KitHost
+        function onDetailRequested(id) { page.detail = id; KitHost.pendingDetail = "" }
+    }
+    onVisibleChanged: if (!visible) page.detail = ""
 
     // this window itself is a plugin too, but turning it off here would lock you out
     readonly property var plugins: PluginRegistry.list.filter(p => p.id !== "settings")
@@ -25,6 +47,7 @@ CcPage {
     property string filter: "all"
     function shows(p) {
         const i = PluginInfo.of(p.id);
+        if (page.filter === "pack") return i.pack === true;
         if (page.filter === "on") return page.isOn(p.id);
         if (page.filter === "off") return !page.isOn(p.id);
         if (page.filter === "keys") return i.keys !== "";
@@ -32,13 +55,33 @@ CcPage {
         return true;
     }
 
+    // ---- one plugin, opened -----------------------------------------------------------
+    CcButton {
+        visible: page.detail !== ""
+        text: "All plugins"; icon: "\u{F004D}"
+        onClicked: page.detail = ""
+    }
+    PluginSettings {
+        visible: page.detail !== ""
+        plugin: page.detail
+    }
+    CcNote {
+        visible: page.detail !== "" && PluginInfo.of(page.detail).settings !== true
+        text: PluginInfo.of(page.detail).keys !== ""
+            ? "Nothing to set here. " + PluginInfo.of(page.detail).keys + " calls it up while it is on."
+            : "Nothing to set here: it works by itself while it is on."
+    }
+
+    // ---- them all ---------------------------------------------------------------------
     CcChoice {
+        visible: page.detail === ""
         options: [
             { key: "all", label: "All " + page.plugins.length },
             { key: "on", label: "On " + page.onCount },
             { key: "off", label: "Off " + (page.plugins.length - page.onCount) },
             { key: "keys", label: "Has a shortcut " + page.plugins.filter(p => PluginInfo.of(p.id).keys !== "").length },
-            { key: "page", label: "Has its own page " + page.plugins.filter(p => PluginInfo.of(p.id).page !== "").length }
+            { key: "page", label: "Has its own page " + page.plugins.filter(p => PluginInfo.of(p.id).page !== "").length },
+            { key: "pack", label: "Built-in pack " + page.plugins.filter(p => PluginInfo.of(p.id).pack === true).length }
         ]
         current: page.filter
         onChosen: key => page.filter = key
@@ -50,7 +93,7 @@ CcPage {
             id: group
             required property var modelData
             readonly property var members: page.plugins.filter(p => PluginInfo.of(p.id).group === group.modelData.key && page.shows(p))
-            visible: members.length > 0
+            visible: page.detail === "" && members.length > 0
             title: modelData.title + " · " + members.length
             hint: modelData.hint
             GridLayout {
@@ -71,10 +114,11 @@ CcPage {
     }
 
     CcNote {
-        visible: page.plugins.filter(p => page.shows(p)).length === 0
+        visible: page.detail === "" && page.plugins.filter(p => page.shows(p)).length === 0
         text: "Nothing here with this filter."
     }
     CcNote {
+        visible: page.detail === ""
         text: "Make your own: a plugin is a folder under plugins/ in the shell's folder, a line in Plugins.js and one in PluginInfo.js. PLUGINS.md there sets out how, so it looks and works like these."
     }
 
@@ -86,7 +130,7 @@ CcPage {
         readonly property bool on: page.isOn(plugin.id)
         implicitHeight: 92
         radius: 12
-        color: cardArea.containsMouse && info.page !== "" ? Cc.theme.bgHover : Cc.theme.bgSurface
+        color: cardArea.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSurface
         border.width: 1
         border.color: on ? Cc.alpha(Cc.theme.accentPrimary, 0.35) : Cc.theme.bgBorder
         Accessible.role: Accessible.CheckBox
@@ -97,8 +141,8 @@ CcPage {
             id: cardArea
             anchors.fill: parent
             hoverEnabled: true
-            cursorShape: card.info.page !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: if (card.info.page !== "") Cc.go(card.info.page)
+            cursorShape: Qt.PointingHandCursor
+            onClicked: page.open(card.plugin.id)
         }
 
         RowLayout {
@@ -170,8 +214,23 @@ CcPage {
                         font.family: Cc.sans
                         font.pixelSize: 10
                     }
+                    Rectangle {
+                        visible: card.info.pack === true
+                        implicitWidth: packText.implicitWidth + 12
+                        implicitHeight: 18
+                        radius: 9
+                        color: Cc.alpha(Cc.theme.accentPrimary, 0.14)
+                        Text {
+                            id: packText
+                            anchors.centerIn: parent
+                            text: "Built-in"
+                            color: Cc.theme.accentPrimary
+                            font.family: Cc.sans
+                            font.pixelSize: 10
+                        }
+                    }
                     Text {
-                        visible: card.info.page !== ""
+                        visible: card.info.page !== "" || card.info.settings === true
                         text: "Settings  ›"
                         color: Cc.theme.accentPrimary
                         font.family: Cc.sans

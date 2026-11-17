@@ -8,6 +8,9 @@
 //          "background"  works out of sight
 //   keys   the shortcuts that call it up, as shown on its card ("" for none)
 //   page   its control center page (Pages.js), "" for none
+//   pack   one of the built-in pack (plugins/kit), off until turned on
+//   settings  a pack plugin's settings show on the Plugins page when it is opened
+//          (settings/center/PluginSettings.qml)
 // A plugin missing here still shows, with its label and a plain icon; adding a plugin
 // is a line in Plugins.js and, for a proper card, one here. See PLUGINS.md.
 var info = {
@@ -42,45 +45,45 @@ var info = {
     plume:          { icon: "\u{F01C0}", group: "background", keys: "",                     page: "cursor",
                       about: "Your own cursor, and trails and halos around the pointer." },
     // ---- the built-in pack ----
-    calculator:     { icon: "\u{F00EC}", group: "key",        keys: "Super + =",            page: "",
+    calculator:     { icon: "\u{F00EC}", group: "key",        keys: "Super + =",            page: "", pack: true,
                       about: "Type a sum, see the answer as you type; Enter copies it." },
-    colorPicker:    { icon: "\u{F0266}", group: "key",        keys: "Super + Shift + P",    page: "",
+    colorPicker:    { icon: "\u{F0266}", group: "key",        keys: "Super + Shift + P",    page: "", pack: true,
                       about: "Click any pixel on the screen; its colour is copied as #rrggbb." },
-    emoji:          { icon: "\u{F0785}", group: "key",        keys: "Super + .",            page: "",
+    emoji:          { icon: "\u{F0785}", group: "key",        keys: "Super + .",            page: "", pack: true,
                       about: "Find an emoji by name; Enter copies it." },
-    notes:          { icon: "\u{F0219}", group: "key",        keys: "Super + Alt + N",      page: "",
+    notes:          { icon: "\u{F0219}", group: "key",        keys: "Super + Alt + N",      page: "", pack: true,
                       about: "One page to jot things down, saved as you type to ~/Documents/Notes.md." },
-    keyHints:       { icon: "\u{F030C}", group: "key",        keys: "Super + /",            page: "",
+    keyHints:       { icon: "\u{F030C}", group: "key",        keys: "Super + /",            page: "", pack: true,
                       about: "Every key binding, searchable: what to press and what it does." },
-    palette:        { icon: "\u{F0349}", group: "key",        keys: "Super + Shift + Space", page: "",
+    palette:        { icon: "\u{F0349}", group: "key",        keys: "Super + Shift + Space", page: "", pack: true,
                       about: "Every setting, plugin and action in one search." },
-    sysmon:         { icon: "\u{F0EE0}", group: "key",        keys: "Super + Shift + Esc",  page: "",
+    sysmon:         { icon: "\u{F0EE0}", group: "key",        keys: "Super + Shift + Esc",  page: "", pack: true,
                       about: "How busy the computer is, and what uses the most." },
-    screenText:     { icon: "\u{F0E40}", group: "key",        keys: "Super + Alt + X",      page: "",
+    screenText:     { icon: "\u{F0E40}", group: "key",        keys: "Super + Alt + X",      page: "", pack: true,
                       about: "Box any text on the screen and it is copied as text. Needs tesseract." },
-    timer:          { icon: "\u{F051B}", group: "key",        keys: "Super + Alt + T",      page: "",
+    timer:          { icon: "\u{F051B}", group: "key",        keys: "Super + Alt + T",      page: "", pack: true,
                       about: "A countdown, a pomodoro or a stopwatch, shown on the bar while it runs." },
-    focus:          { icon: "\u{F0F6E}", group: "key",        keys: "Super + Alt + F",      page: "",
+    focus:          { icon: "\u{F0F6E}", group: "key",        keys: "Super + Alt + F",      page: "", pack: true,
                       about: "Do not disturb for a while, with a message when the time is up." },
-    weather:        { icon: "\u{F0599}", group: "screen",     keys: "",                     page: "tools",
+    weather:        { icon: "\u{F0599}", group: "screen",     keys: "",                     page: "", pack: true, settings: true,
                       about: "The weather where you are, on the bar, and the next days." },
-    netSpeed:       { icon: "\u{F06F3}", group: "screen",     keys: "",                     page: "",
+    netSpeed:       { icon: "\u{F06F3}", group: "screen",     keys: "",                     page: "", pack: true,
                       about: "How fast things come in and go out, on the bar." },
-    nightLight:     { icon: "\u{F0594}", group: "background", keys: "",                     page: "tools",
+    nightLight:     { icon: "\u{F0594}", group: "background", keys: "",                     page: "", pack: true, settings: true,
                       about: "Warmer colours in the evening, on a schedule or by hand." },
-    batteryGuard:   { icon: "\u{F0083}", group: "background", keys: "",                     page: "tools",
+    batteryGuard:   { icon: "\u{F0083}", group: "background", keys: "",                     page: "", pack: true, settings: true,
                       about: "A message when the battery runs low, nearly empty, or is full." },
-    breaks:         { icon: "\u{F0208}", group: "background", keys: "",                     page: "tools",
+    breaks:         { icon: "\u{F0208}", group: "background", keys: "",                     page: "", pack: true, settings: true,
                       about: "Every 20 minutes, a reminder to rest your eyes." },
-    diskWatch:      { icon: "\u{F02CA}", group: "background", keys: "",                     page: "tools",
+    diskWatch:      { icon: "\u{F02CA}", group: "background", keys: "",                     page: "", pack: true, settings: true,
                       about: "A message when a disk is nearly full." },
-    aiAsk:          { icon: "\u{F0B79}", group: "key",        keys: "Super + Alt + Space",  page: "tools",
+    aiAsk:          { icon: "\u{F0B79}", group: "key",        keys: "Super + Alt + Space",  page: "", pack: true, settings: true,
                       about: "A question, answered by your AI agent, without a terminal." },
-    aiCommand:      { icon: "\u{F018D}", group: "key",        keys: "Super + Alt + E",      page: "tools",
+    aiCommand:      { icon: "\u{F018D}", group: "key",        keys: "Super + Alt + E",      page: "", pack: true, settings: true,
                       about: "Say what to do; your AI agent writes the command. It runs only when you say." },
-    aiClipboard:    { icon: "\u{F014F}", group: "key",        keys: "Super + Alt + V",      page: "tools",
+    aiClipboard:    { icon: "\u{F014F}", group: "key",        keys: "Super + Alt + V",      page: "", pack: true, settings: true,
                       about: "Sum up, explain, translate or fix the text you copied." },
-    aiTidy:         { icon: "\u{F0257}", group: "key",        keys: "Super + Alt + D",      page: "tools",
+    aiTidy:         { icon: "\u{F0257}", group: "key",        keys: "Super + Alt + D",      page: "", pack: true, settings: true,
                       about: "Sorts Downloads into folders, after you approve the plan. Never deletes." }
 };
 
