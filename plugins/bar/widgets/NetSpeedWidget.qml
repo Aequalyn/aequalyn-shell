@@ -2,9 +2,8 @@ import QtQuick
 import Quickshell
 import "root:/plugins/kit"
 
-// Network speed: what comes in and goes out right now. A click, or a right click,
-// opens its quick panel.
-// Hidden while its plugin is off (Plugins), or while there is nothing to show.
+// Network speed: what comes in and goes out right now. Any click but the middle one
+// opens its quick panel. Not on the bar while its plugin is off.
 Rectangle {
   id: root
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
@@ -29,11 +28,9 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    acceptedButtons: Qt.LeftButton | Qt.RightButton
-    onClicked: (mouse) => {
-      if (mouse.button === Qt.RightButton) root.toggleQuick();
-      else root.toggleQuick();
-    }
+    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+    // it has nothing else to do: any click but the middle one opens its quick panel
+    onClicked: (mouse) => { if (root.bar.clickRole("netspeed", mouse.button) !== "middle") root.toggleQuick(); }
   }
 
   // its quick panel (NetSpeedQuick.qml)
