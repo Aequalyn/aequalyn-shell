@@ -253,6 +253,7 @@ CcPage {
                 }
             }
         }
+        CcNote { text: "The Themes and Layouts buttons choose theirs below, with their other clicks." }
     }
     // the widgets on the bar with a quick panel, whose plugin is on
     readonly property var quickWidgets: AequalynSettings.pluginOrder.filter(id => Widgets.quickDefault(id) !== "none"
@@ -264,7 +265,7 @@ CcPage {
         title: "The Themes and Layouts buttons"
         Repeater {
             model: [
-                { key: "atelier", title: "Themes button", sub: "A click opens the theme picker.", right: "next-wallpaper", middle: "random-wallpaper" },
+                { key: "atelier", title: "Themes button", sub: "A click opens the theme picker.", right: "quick", middle: "random-wallpaper" },
                 { key: "layouts", title: "Layouts button", sub: "A click opens Arranging windows.", right: "next-layout", middle: "prev-layout" }
             ]
             delegate: CcSection {
@@ -299,7 +300,7 @@ CcPage {
     readonly property var buttonActions: [
         { key: "next-layout", label: "Next layout" }, { key: "prev-layout", label: "Previous layout" },
         { key: "next-wallpaper", label: "Next wallpaper" }, { key: "random-wallpaper", label: "Random wallpaper" },
-        { key: "themes", label: "Themes" }, { key: "none", label: "Nothing" }
+        { key: "themes", label: "Themes" }, { key: "quick", label: "Its quick panel" }, { key: "none", label: "Nothing" }
     ]
 
     readonly property var regionKeys: ["left", "center", "right"]
