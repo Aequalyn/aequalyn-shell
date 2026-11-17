@@ -18,6 +18,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../style/BarLooks.js" as BarLooks
+import "../plugins/bar/widgets/Widgets.js" as Widgets
 
 QtObject {
     id: root
@@ -546,6 +547,18 @@ QtObject {
         if (on && i < 0) cur.push(id)
         if (!on && i >= 0) cur.splice(i, 1)
         root.enabledPlugins = cur
+        // turned on: its widget onto the bar (right side, before the gear), unless one of
+        // its widgets is there already
+        if (on) {
+            const ws = Widgets.widgetsOf(id)
+            const placed = root.barLeft.concat(root.barCenter, root.barRight)
+            if (ws.length > 0 && !ws.some(w => placed.indexOf(w) >= 0)) {
+                const right = root.barRight.slice()
+                const gear = right.indexOf("settingsbutton")
+                right.splice(gear >= 0 ? gear : right.length, 0, ws[0])
+                root.barRight = right
+            }
+        }
         root.save()
     }
 
