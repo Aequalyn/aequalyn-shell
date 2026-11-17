@@ -26,6 +26,12 @@ Scope {
         NotificationService.doNotDisturb = root.wasQuiet
         if (timeUp) KitHost.notify("Focus time is over", "Messages that came meanwhile are in the corner.")
     }
+    // a few more minutes (the bar widget's quick panel)
+    function extend(minutes) {
+        if (!root.on) return
+        root.until += minutes * 60000
+        tick()
+    }
     function tick() {
         if (!root.on) return
         root.left = Math.max(0, Math.ceil((root.until - Date.now()) / 60000))
