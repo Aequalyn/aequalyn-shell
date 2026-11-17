@@ -6,12 +6,11 @@ Item {
   id: calendarButton
   implicitWidth: 28
   implicitHeight: 24
-  property bool open: false
 
   Rectangle {
     anchors.fill: parent
     radius: 8
-    color: calendarMouse.containsMouse || calendarButton.open ? bar.theme.bgSelected : bar.chipColor
+    color: calendarMouse.containsMouse || quick.visible ? bar.theme.bgSelected : bar.chipColor
     Text {
       anchors.centerIn: parent
       text: "\u{F0ED7}"
@@ -24,16 +23,26 @@ Item {
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onClicked: calendarButton.open = !calendarButton.open
+      acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+      onClicked: (mouse) => {
+        const role = calendarButton.bar.clickRole("calendar", mouse.button);
+        if (role === "quick") calendarButton.toggleQuick();
+        else if (role !== "middle") calendarButton.bar.openPage("clock");
+      }
     }
   }
 
-  CalendarPopup {
-    id: popup
+  // its quick panel (CalendarQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = calendarButton.QsWindow.window;
+    calendarButton.bar.toggleWidgetPopup("calendar", w ? w.screen : null);
+  }
+  CalendarQuick {
+    id: quick
     bar: calendarButton.bar
     anchorItem: calendarButton
-    visible: calendarButton.open
-    onVisibleChanged: if (!visible) calendarButton.open = false
-    onDismissed: calendarButton.open = false
+    open: calendarButton.bar.widgetPopup === "calendar" && !!calendarButton.QsWindow.window
+          && calendarButton.QsWindow.window.screen === calendarButton.bar.popupScreen
+    onDismissed: calendarButton.bar.widgetPopup = ""
   }
 }
