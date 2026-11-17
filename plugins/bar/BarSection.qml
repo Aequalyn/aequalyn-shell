@@ -7,6 +7,7 @@
 // width (the CPU reading does every few seconds).
 import QtQuick
 import "root:/settings"
+import "root:/style/Wheel.js" as Wheel
 
 Item {
   id: section
@@ -77,7 +78,7 @@ Item {
     target: null
     enabled: section.overflowing && !section.band.dragging
     onWheel: event => {
-      const d = event.angleDelta.x !== 0 ? event.angleDelta.x : event.angleDelta.y;
+      const d = Wheel.amount(event);
       section.scrollBy(-d / 2);
     }
   }

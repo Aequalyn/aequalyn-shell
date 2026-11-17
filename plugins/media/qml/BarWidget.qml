@@ -6,6 +6,7 @@ import "js/Visuals.js" as Visuals
 import "js/Schema.js" as Schema
 import "js/Cover.js" as CoverColors
 import "js/Style.js" as PlateStyle
+import "root:/style/Wheel.js" as Wheel
 
 // Media on the bar: what is playing, a live visualizer, the cover and the buttons, on
 // a plate of its own if you like. Shown by the bar's media widget
@@ -414,7 +415,9 @@ Item {
 
                 onWheel: function(wheel) {
                     if (!root.service || root.cfg.wheelAction === "none") return
-                    const up = wheel.angleDelta.y > 0
+                    const s = Wheel.step(wheel, root.wheelAcc)
+                    if (s === 0) return
+                    const up = s > 0
                     if (root.cfg.wheelAction === "style") root.stepStyle(up ? -1 : 1)
                     else if (root.cfg.wheelAction === "volume") root.service.nudgeVolume(up ? 0.05 : -0.05)
                     else root.service.runAction(up ? "previous" : "next")
@@ -622,6 +625,8 @@ Item {
     // the click you chose (the bar's Bar page) asks the bar for Media's quick panel
     // (bar/widgets/MediaQuick.qml)
     signal quickRequested()
+    // a touchpad swipe, added up into steps (style/Wheel.js)
+    property var wheelAcc: ({ v: 0 })
     function roleOf(button) {
         if (root.bar && typeof root.bar.clickRole === "function") return root.bar.clickRole("media", button)
         return button === Qt.RightButton ? "quick" : button === Qt.MiddleButton ? "middle" : "main"

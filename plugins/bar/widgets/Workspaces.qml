@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import "root:/settings"
+import "root:/style/Wheel.js" as Wheel
 
 Item {
   required property var bar
@@ -117,7 +118,9 @@ Item {
           anchors.fill: parent
           onClicked: wsPill.modelData.activate()
           onWheel: (wheel) => {
-            const dir = wheel.angleDelta.y > 0 ? "e-1" : "e+1";
+            const s = Wheel.step(wheel, bar.wheelAcc);
+            if (s === 0) return;
+            const dir = s > 0 ? "e-1" : "e+1";
             wsScrollProc.command = ["hyprctl", "dispatch",
               "hl.dsp.focus({ workspace = \"" + dir + "\" })"];
             wsScrollProc.running = true;

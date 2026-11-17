@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
+import "root:/style/Wheel.js" as Wheel
 
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
@@ -54,7 +55,9 @@ Rectangle {
     onWheel: (wheel) => {
       const sink = Pipewire.defaultAudioSink;
       if (!sink || !sink.audio) return;
-      const delta = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
+      const s = Wheel.step(wheel, bar.wheelAcc);
+      if (s === 0) return;
+      const delta = s * 0.05;
       sink.audio.volume = Math.max(0, Math.min(1.5, sink.audio.volume + delta));
     }
   }

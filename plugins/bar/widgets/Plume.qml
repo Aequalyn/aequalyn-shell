@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import "root:/plugins/plume"
+import "root:/style/Wheel.js" as Wheel
 
 // Plume's button: a pointer, lit while its trails and halos are on.
 //   left click    effects on / off            right click   its quick panel (PlumeQuick.qml)
@@ -44,7 +45,8 @@ Rectangle {
       else s.setSetting("enabled", !plumeButton.on);
     }
     onWheel: (wheel) => {
-      if (plumeButton.svc && wheel.angleDelta.y !== 0) plumeButton.svc.stepLook(wheel.angleDelta.y < 0 ? 1 : -1);
+      const s = Wheel.step(wheel, bar.wheelAcc);
+      if (plumeButton.svc && s !== 0) plumeButton.svc.stepLook(-s);
     }
   }
 

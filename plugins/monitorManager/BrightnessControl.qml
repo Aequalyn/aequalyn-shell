@@ -5,6 +5,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
+import "root:/style/Wheel.js" as Wheel
 
 ColumnLayout {
   id: ctl
@@ -107,7 +108,8 @@ ColumnLayout {
       onPositionChanged: mouse => { if (pressed) ctl.set(at(mouse.x)); }
       onReleased: ctl.dragging = false
       onCanceled: ctl.dragging = false
-      onWheel: wheel => ctl.set(ctl.percent + (wheel.angleDelta.y > 0 ? 5 : -5))
+      property var acc: ({ v: 0 })
+      onWheel: wheel => { const s = Wheel.step(wheel, acc); if (s !== 0) ctl.set(ctl.percent + s * 5); }
     }
   }
 

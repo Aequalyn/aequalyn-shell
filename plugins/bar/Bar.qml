@@ -29,6 +29,8 @@ Scope {
   // the quick panel a widget's right click opened ("" for none): one at a time, and
   // never with the gear's (quick/QuickPopup.qml)
   property string widgetPopup: ""
+  // a touchpad swipe over a widget, added up into steps (style/Wheel.js)
+  property var wheelAcc: ({ v: 0 })
   function toggleWidgetPopup(id, scr) {
     const open = root.togglePopup(root.widgetPopup === id, scr);
     root.widgetPopup = open ? id : "";
