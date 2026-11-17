@@ -12,7 +12,7 @@ var groups = [
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker", "lockscreens"] },
     { title: "Windows", pages: ["arrange", "windows", "switcher", "screens", "input", "cursor"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound", "media"] },
-    { title: "System",  pages: ["apps", "webapps", "store", "clipboard", "aiTools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
+    { title: "System",  pages: ["apps", "webapps", "store", "clipboard", "aiTools", "tools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
 
 var pages = {
@@ -83,6 +83,9 @@ var pages = {
     media:     { label: "Media", icon: "\u{F075A}", file: "Media",
                  words: ["Now playing", "Music visualizer", "Music controls", "Album cover", "Follow a player", "Media looks"],
                  also: "mpris player spotify music song album cover art visualizer spectrum bars audio playback pause next previous" },
+    tools:     { label: "Everyday tools", icon: "\u{F0BC3}", file: "Tools",
+                 words: ["Weather place", "Night light", "Break reminder", "Battery warnings", "Disk nearly full", "Which AI agent answers", "AI helpers"],
+                 also: "built-in pack weather wttr night light warm schedule battery low full breaks eyes 20-20-20 disk space ai ask command clipboard tidy downloads agent claude codex" },
     clock:     { label: "Clock", icon: "\u{F0954}", file: "Clock",
                  words: ["24-hour clock", "Show seconds"],
                  also: "time date am pm" },
