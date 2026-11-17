@@ -1,64 +1,30 @@
-// Clipboard: the Clipscape history, its keybind, and a way to clear it.
+// Clipboard: Clipscape's settings, with the keybind underneath.
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import "root:/settings"
+import "root:/plugins/clipscape"
+import "root:/plugins/clipscape/qml/panel" as ClipPanel
 import ".."
 
 CcPage {
     id: page
-    title: "Clipboard"
-    sub: "Everything you copy is kept by Clipscape. Search it with Super + Ctrl + V, or clear it here."
-
-    property int clipCount: -1
-    property bool armed: false
-
-    function refresh() {
-        statusProc.command = ["sh", "-c", "qs ipc call clipscape status 2>/dev/null || true"]
-        statusProc.running = true
-    }
-    Component.onCompleted: refresh()
-
-    Process {
-        id: statusProc
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const d = JSON.parse(String(text || "{}"))
-                    page.clipCount = Number(d.clips) || 0
-                } catch (e) { page.clipCount = -1 }
-            }
-        }
-    }
+    title: "Clipboard Settings"
 
     CcSection {
-        title: "History"
-        hint: page.clipCount >= 0 ? page.clipCount + (page.clipCount === 1 ? " clip saved." : " clips saved.") : ""
 
-        CcRow {
-            icon: "\u{F0E09}"
-            title: "Clear clipboard cache"
-            sub: page.armed ? "Click again to delete the whole history." : "Deletes every saved clip. Pinned clips go too."
-            action: page.armed ? "Confirm" : "Clear history"
-            danger2: true
-            onActivated: {
-                if (!page.armed) {
-                    page.armed = true
-                    armTimer.restart()
-                    return
-                }
-                page.armed = false
-                armTimer.stop()
-                Cc.ipc(["clipscape", "clearAll"], false)
-                clearTimer.restart()
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 600
+            radius: 14
+            color: "transparent"
+            clip: true
+
+            ClipPanel.SettingsView {
+                anchors.fill: parent
+                svc: ClipscapeService
             }
         }
-        CcNote {
-            text: "This empties the Clipscape history stored in ~/.local/state/aequalyn-clipscape. It does not change the current clipboard contents."
-        }
-        Timer { id: armTimer; interval: 4000; onTriggered: page.armed = false }
-        Timer { id: clearTimer; interval: 700; onTriggered: page.refresh() }
     }
 
     CcSection {

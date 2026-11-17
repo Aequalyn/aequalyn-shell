@@ -5,7 +5,7 @@ import "../controls"
 
 // The Settings tab:
 //   * a search box that looks through every setting;
-//   * one underlined tab per group in Schema.js, and About last;
+//   * one underlined tab per group in Schema.js;
 //   * that group's settings (tiles, segmented bars, sliders, switches), or every
 //     match while searching.
 // Every change is applied instantly and saved through the SettingsStore.
@@ -14,12 +14,12 @@ Item {
 
     property var svc: null
     readonly property var ui: svc ? svc.ui : null
-    readonly property int group: ui ? Math.max(0, Math.min(Schema.groups.length, ui.settingsGroup)) : 0
+    readonly property int group: ui ? Math.max(0, Math.min(Schema.groups.length - 1, ui.settingsGroup)) : 0
     readonly property string filter: searchBox.text
     property bool confirmReset: false
+    property bool confirmClear: false
 
     readonly property bool searching: filter.trim() !== ""
-    readonly property bool onAbout: group === Schema.groups.length && !searching
 
     function rad(k) { return ui.r(k) }
 
@@ -216,7 +216,7 @@ Item {
                     font.family: ui.fontName
                     font.pixelSize: ui.fs(12)
                     font.weight: Font.DemiBold
-                    text: Schema.groups.concat([{ title: "About" }]).map((g) => g.title)
+                    text: Schema.groups.map((g) => g.title)
                         .reduce((a, b) => (b.length > a.length ? b : a), "")
                 }
                 readonly property real tabW: Math.ceil(widest.width) + ui.px(24)
@@ -225,7 +225,7 @@ Item {
                 spacing: 0
 
                 Repeater {
-                    model: Schema.groups.concat([{ title: "About" }])
+                    model: Schema.groups
                     delegate: Item {
                         readonly property bool on: index === root.group && !root.searching
                         Layout.fillWidth: true
@@ -269,17 +269,8 @@ Item {
         }
 
         // ---- the settings of the active tab -------------------------------------------
-        // the last tab: About
-        AboutPage {
-            svc: root.svc
-            visible: root.onAbout
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-        }
-
         Flickable {
             id: flick
-            visible: !root.onAbout
             Layout.fillWidth: true
             Layout.fillHeight: true
             contentWidth: width
@@ -363,6 +354,56 @@ Item {
                                 }
                             }
                         }
+                    }
+
+                    // The last option in History: empty the whole history.
+                    Rectangle {
+                        visible: !root.searching && root.group === 0 && !!root.svc
+                        Layout.fillWidth: true
+                        Layout.topMargin: ui.px(16)
+                        Layout.bottomMargin: ui.px(16)
+                        implicitHeight: clearCol.implicitHeight + ui.px(20)
+                        radius: ui.r(1.4)
+                        color: ui.tint(0.05)
+
+                        ColumnLayout {
+                            id: clearCol
+                            anchors.fill: parent
+                            anchors.margins: ui.px(12)
+                            spacing: ui.px(6)
+                            Txt {
+                                ui: root.ui
+                                text: "Clear clipboard cache"
+                                font.pixelSize: ui.fs(11)
+                                font.weight: Font.DemiBold
+                            }
+                            Txt {
+                                ui: root.ui
+                                text: root.confirmClear
+                                    ? "Click again to delete every saved clip, including pinned ones."
+                                    : "Deletes every saved clip, including pinned ones. The current clipboard is left alone."
+                                font.pixelSize: ui.fs(9)
+                                opacity: 0.6
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+                            Item { Layout.preferredHeight: ui.px(2) }
+                            Btn {
+                                ui: root.ui
+                                kind: "danger"
+                                text: root.confirmClear ? "Confirm clear" : "Clear history"
+                                onClicked: {
+                                    if (!root.confirmClear) {
+                                        root.confirmClear = true
+                                        clearTimer.restart()
+                                        return
+                                    }
+                                    root.confirmClear = false
+                                    if (root.svc && root.svc.clips) root.svc.clips.clearAll()
+                                }
+                            }
+                        }
+                        Timer { id: clearTimer; interval: 4000; onTriggered: root.confirmClear = false }
                     }
                 }
             }
