@@ -1,0 +1,5 @@
+singleton KitHost 1.0 KitHost.qml
+KitPanel 1.0 KitPanel.qml
+KitStore 1.0 KitStore.qml
+KitRun 1.0 KitRun.qml
+KitAi 1.0 KitAi.qml
