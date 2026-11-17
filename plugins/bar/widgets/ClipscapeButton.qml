@@ -1,4 +1,5 @@
-// Clipscape in the bar. Clicking it opens the same picker as Super + Ctrl + V.
+// Clipscape in the bar. A click opens the same picker as Super + Ctrl + V; the click
+// you choose on the Bar page (a right click unless you change it), its quick panel.
 import QtQuick
 import Quickshell
 import "root:/plugins/clipscape"
@@ -15,7 +16,7 @@ Rectangle {
     width: 28
     height: 24
     radius: 8
-    color: area.containsMouse ? bar.theme.bgSelected : bar.chipColor
+    color: area.containsMouse || quick.visible ? bar.theme.bgSelected : bar.chipColor
 
     readonly property var svc: ClipscapeService
     readonly property var cfg: svc.cfg
@@ -50,11 +51,28 @@ Rectangle {
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         onClicked: mouse => {
+            const role = button.bar.clickRole("clipscape", mouse.button)
+            if (role === "quick") { button.toggleQuick(); return }
+            if (role === "right") { button.bar.openPage("clipboard"); return }
             if (mouse.button === Qt.MiddleButton && cfg && cfg.middleClick === "pause") {
                 svc.togglePaused()
             } else if (mouse.button !== Qt.MiddleButton || !cfg || cfg.middleClick !== "none") {
                 svc.openPicker("")
             }
         }
+    }
+
+    // its quick panel (ClipscapeQuick.qml)
+    function toggleQuick() {
+        const w = button.QsWindow.window
+        button.bar.toggleWidgetPopup("clipscape", w ? w.screen : null)
+    }
+    ClipscapeQuick {
+        id: quick
+        bar: button.bar
+        anchorItem: button
+        open: button.bar.widgetPopup === "clipscape" && !!button.QsWindow.window
+              && button.QsWindow.window.screen === button.bar.popupScreen
+        onDismissed: button.bar.widgetPopup = ""
     }
 }
