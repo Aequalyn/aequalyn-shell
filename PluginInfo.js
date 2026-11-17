@@ -73,7 +73,15 @@ var info = {
     breaks:         { icon: "\u{F0208}", group: "background", keys: "",                     page: ""     ,
                       about: "Every 20 minutes, a reminder to rest your eyes." },
     diskWatch:      { icon: "\u{F02CA}", group: "background", keys: "",                     page: ""     ,
-                      about: "A message when a disk is nearly full." }
+                      about: "A message when a disk is nearly full." },
+    aiAsk:          { icon: "\u{F0B79}", group: "key",        keys: "Super + Alt + Space",  page: ""     ,
+                      about: "A question, answered by your AI agent, without a terminal." },
+    aiCommand:      { icon: "\u{F018D}", group: "key",        keys: "Super + Alt + E",      page: ""     ,
+                      about: "Say what to do; your AI agent writes the command. It runs only when you say." },
+    aiClipboard:    { icon: "\u{F014F}", group: "key",        keys: "Super + Alt + V",      page: ""     ,
+                      about: "Sum up, explain, translate or fix the text you copied." },
+    aiTidy:         { icon: "\u{F0257}", group: "key",        keys: "Super + Alt + D",      page: ""     ,
+                      about: "Sorts Downloads into folders, after you approve the plan. Never deletes." }
 };
 
 var groups = [
