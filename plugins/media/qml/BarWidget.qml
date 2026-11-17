@@ -404,7 +404,7 @@ Item {
 
                 onClicked: function(mouse) {
                     if (mouse.button === Qt.RightButton) {
-                        root.toggleSettings()
+                        root.quickRequested()
                         return
                     }
                     if (!root.service) return
@@ -546,7 +546,7 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onClicked: function(mouse) {
-                    if (mouse.button === Qt.RightButton) root.toggleSettings()
+                    if (mouse.button === Qt.RightButton) root.quickRequested()
                     else if (root.service) root.service.runAction("playPause")
                 }
             }
@@ -616,4 +616,6 @@ Item {
 
     // ---- the settings: the control center's Media page ------------------------------
     function toggleSettings() { MediaHost.openSettings() }
+    // a right click: the bar opens Media's quick panel (bar/widgets/MediaQuick.qml)
+    signal quickRequested()
 }

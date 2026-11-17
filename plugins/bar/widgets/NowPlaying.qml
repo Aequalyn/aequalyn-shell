@@ -39,9 +39,15 @@ Rectangle {
       width: Math.min(implicitWidth, 200)
     }
   }
+  // a right click: Media's quick panel (MediaQuick.qml)
+  signal quickRequested()
   MouseArea {
     anchors.fill: parent
     cursorShape: Qt.PointingHandCursor
-    onClicked: bar.activePlayer.togglePlaying()
+    acceptedButtons: Qt.LeftButton | Qt.RightButton
+    onClicked: (mouse) => {
+      if (mouse.button === Qt.RightButton) parent.quickRequested();
+      else if (bar.activePlayer) bar.activePlayer.togglePlaying();
+    }
   }
 }
