@@ -19,6 +19,7 @@ import QtQuick.Controls
 import "root:/settings"
 import "center"
 import "center/Pages.js" as Pages
+import "../Plugins.js" as PluginRegistry
 import "root:/style/backdrop"
 
 Scope {
@@ -98,6 +99,15 @@ Scope {
     IpcHandler {
         target: "aequalyn"
         function settings(): void { root.panelVisible = !root.panelVisible }
+        // a plugin on or off, at once: `qs ipc call aequalyn plugin docks off`
+        function plugin(id: string, state: string): string {
+            if (id === "settings") return "the control center stays on";
+            if (!PluginRegistry.list.some(p => p.id === id)) return "no plugin " + id;
+            const on = state === "toggle" ? AequalynSettings.enabledPlugins.indexOf(id) < 0 : state === "on";
+            if (state !== "on" && state !== "off" && state !== "toggle") return "say on, off or toggle";
+            AequalynSettings.togglePlugin(id, on);
+            return id + " " + (on ? "on" : "off");
+        }
         function openSettings(): void { root.panelVisible = true }
         function closeSettings(): void { root.panelVisible = false }
         function page(name: string): void { root.open(name) }

@@ -24,12 +24,17 @@ Item {
     readonly property var enabledIds: (AequalynSettings.enabledPlugins && AequalynSettings.enabledPlugins.length)
         ? AequalynSettings.enabledPlugins : allPlugins.map(p => p.id)
 
+    // One loader per plugin, on while the plugin is: turning one on or off in the
+    // control center loads or drops that plugin alone, at once, without a restart.
     Repeater {
-        model: pm.allPlugins.filter(p => pm.enabledIds.indexOf(p.id) >= 0)
+        model: pm.allPlugins
         delegate: Loader {
             id: loader
             required property var modelData
-            source: modelData.source
+            readonly property bool wanted: pm.enabledIds.indexOf(modelData.id) >= 0
+            active: wanted
+            source: wanted ? modelData.source : ""
+            property var openHandler: null       // Atelier's link to the theme switcher
             onLoaded: {
                 const it = loader.item;
                 if (!it) return;
@@ -40,7 +45,8 @@ Item {
                 try { it.theme = Qt.binding(() => pm.theme); } catch (e) {}
                 if (modelData.id === "docks" && it.shellTheme !== undefined) it.shellTheme = Qt.binding(() => pm.theme);
                 if (modelData.id === "atelier" && pm.themeSwitcher) {
-                    pm.themeSwitcher.onOpenRequested.connect((collection) => { if (it.open) it.open(collection); });
+                    loader.openHandler = (collection) => { if (loader.item && loader.item.open) loader.item.open(collection); };
+                    pm.themeSwitcher.onOpenRequested.connect(loader.openHandler);
                 }
                 // cross-plugin wiring: docks follow the bar's visibility
                 if (modelData.id === "docks") {
@@ -52,6 +58,19 @@ Item {
                 const n = Object.assign({}, pm.items);
                 n[modelData.id] = it;
                 pm.items = n;
+            }
+            // turned off: forget it, and unhook what it was hooked to
+            onItemChanged: {
+                if (loader.item) return;
+                if (loader.openHandler && pm.themeSwitcher) {
+                    pm.themeSwitcher.onOpenRequested.disconnect(loader.openHandler);
+                    loader.openHandler = null;
+                }
+                if (pm.items[modelData.id] !== undefined) {
+                    const n = Object.assign({}, pm.items);
+                    delete n[modelData.id];
+                    pm.items = n;
+                }
             }
             onStatusChanged: if (status === Loader.Error) console.error("Plugin failed to load:", modelData.id, source)
         }
