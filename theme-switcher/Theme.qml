@@ -342,6 +342,27 @@ Singleton {
         applySystemColorScheme(!isLightColor(t.bgBase));
         applyHyprlandBorders(t);
         if (kdeIntegrationEnabled) applyKdeTheme(t);
+        applyNautilusPalette(t);
+        applyBrowserTheme(t);
+    }
+
+    // Nautilus/libadwaita is not reachable through a GTK theme, so regenerate
+    // its palette CSS from this exact palette. Its extension watches the file
+    // and reloads it in place; no restart is needed.
+    function applyNautilusPalette(t) {
+        nautilusProc.command = ["sh", "-c",
+            'printf \'%s\' "$1" | aequalyn-nautilus-palette - >/dev/null 2>&1 || true',
+            "sh", JSON.stringify(t)];
+        nautilusProc.running = true;
+    }
+
+    // Keep the browser policy in step with the bar's base colour that was just
+    // applied. Called at startup too, so never prompt: the toggle asks once.
+    function applyBrowserTheme(t) {
+        browserProc.command = ["sh", "-c",
+            'aequalyn-browser-theme sync --color "$1" >/dev/null 2>&1 || true',
+            "sh", String(t.bgBase || "")];
+        browserProc.running = true;
     }
 
     // Activate a theme: its colours, then (aequalyn-themes set) its first wallpaper,
@@ -479,6 +500,8 @@ Singleton {
     Process { id: colorSchemeProc; running: false }
     Process { id: hyprlandProc; running: false }
     Process { id: paletteProc; running: false }
+    Process { id: nautilusProc; running: false }
+    Process { id: browserProc; running: false }
     // KDE addition start
     Process {
         id: kdeThemeProc

@@ -25,6 +25,8 @@ QtObject {
     // ---- Appearance -------------------------------------------------------
     property string themeMode: "wallpaper"   // "wallpaper" | "theme" | "light"
     property bool themeApps: true
+    // Publish the active accent to Chromium-based browsers via a managed policy.
+    property bool themeBrowser: false
     property int barHeight: 32
     property int barOpacity: 100
     // widest the bar's regions get before they scroll, in % of the bar's width, so it's the
@@ -47,6 +49,7 @@ QtObject {
     property bool showTray: true
     property bool showBluetooth: true
     property bool showSettingsButton: true
+    property bool showClipscape: true
     property bool showAppsMenu: true
     property bool showPower: true
     property bool showScreenRecorder: true
@@ -204,7 +207,7 @@ QtObject {
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
     property var barCenter: ["clock", "media", "title"]
-    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "settingsbutton"]
+    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
@@ -220,6 +223,7 @@ QtObject {
         screenshot: "Screenshot",
         appsmenu: "Apps menu (Arch)",
         settingsbutton: "Settings button",
+        clipscape: "Clipscape (clipboard history)",
         caffeine: "Caffeine (idle inhibit)",
         plume: "Cursor effects (Plume)",
         altscape: "Window switcher",
@@ -236,6 +240,7 @@ QtObject {
         battery: "showBattery", temperature: "showTemperature",
         tray: "showTray", power: "showPower", screenrecorder: "showScreenRecorder", screenshot: "showScreenshot", title: "showTitle",
         appsmenu: "showAppsMenu", settingsbutton: "showSettingsButton",
+        clipscape: "showClipscape",
         caffeine: "showCaffeine",
         atelier: "showAtelier", layouts: "showLayouts"
     })
@@ -378,6 +383,7 @@ QtObject {
             appearance: {
                 themeMode: root.themeMode,
                 themeApps: root.themeApps,
+                themeBrowser: root.themeBrowser,
                 pluginOrder: root.pluginOrder,
                 barLeft: root.barLeft,
                 barCenter: root.barCenter,
@@ -402,6 +408,7 @@ QtObject {
                 showTray: root.showTray,
                 showBluetooth: root.showBluetooth,
                 showSettingsButton: root.showSettingsButton,
+                showClipscape: root.showClipscape,
                 showAppsMenu: root.showAppsMenu,
                 showPower: root.showPower,
                 showScreenRecorder: root.showScreenRecorder,
@@ -515,6 +522,14 @@ QtObject {
         root.save()
         if (key === "themeApps" || key === "themeMode")
             root.pendingRetheme = true
+        if (key === "themeBrowser") {
+            // Publish/withdraw the browser policy as soon as the toggle changes.
+            // --prompt lets the helper ask for sudo once, then installs a narrow
+            // passwordless rule so later theme changes need no interaction.
+            root.browserProc.command = ["sh", "-c",
+                'aequalyn-browser-theme ' + (value ? "on --prompt" : "off --prompt") + ' >/dev/null 2>&1 || true']
+            root.browserProc.running = true
+        }
         if (root.powerKeys.indexOf(key) >= 0)
             root.applyIdle()
     }
@@ -540,6 +555,7 @@ QtObject {
 
         root.themeMode = pick(a.themeMode, root.themeMode)
         root.themeApps = pick(a.themeApps, root.themeApps)
+        root.themeBrowser = pick(a.themeBrowser, root.themeBrowser)
         root.barHeight = pick(a.barHeight, root.barHeight)
         root.barOpacity = pick(a.barOpacity, root.barOpacity)
         root.barSidePercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barSidePercent, root.barSidePercent)) || 0)))
@@ -561,6 +577,7 @@ QtObject {
         root.showTray = pick(a.showTray, root.showTray)
         root.showBluetooth = pick(a.showBluetooth, root.showBluetooth)
         root.showSettingsButton = pick(a.showSettingsButton, root.showSettingsButton)
+        root.showClipscape = pick(a.showClipscape, root.showClipscape)
         root.showAppsMenu = pick(a.showAppsMenu, root.showAppsMenu)
         root.showPower = pick(a.showPower, root.showPower)
         root.showScreenRecorder = pick(a.showScreenRecorder, root.showScreenRecorder)
@@ -677,6 +694,7 @@ QtObject {
     property Process hyprProc: Process { running: false }
     property Process themeProc: Process { running: false }
     property Process idleProc: Process { running: false }
+    property Process browserProc: Process { running: false }
 
     // Optional SDDM lock-screen theme pack: installed marker OR any non-default
     // theme present (covers pre-feature installs and manually added themes).
