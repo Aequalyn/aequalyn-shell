@@ -381,6 +381,17 @@ QtObject {
     property int screenOffMinutes: 6
     property bool suspendEnabled: true
     property int suspendMinutes: 15
+    // how the screen looks while locked: "classic" (made from the wallpaper) or one of
+    // the designs in ~/.config/hypr/lockscreens, applied by bin/aequalyn-lockscreen
+    property string lockStyle: "classic"
+    function setLockStyle(name) {
+        if (!/^[a-z0-9-]+$/.test(String(name))) return
+        root.lockStyle = name
+        root.save()
+        root.lockStyleProc.command = [Quickshell.env("HOME") + "/.local/bin/aequalyn-lockscreen", "apply", name]
+        root.lockStyleProc.running = true
+    }
+    property Process lockStyleProc: Process { running: false }
 
     readonly property var powerKeys: [
         "lockEnabled", "lockMinutes",
@@ -483,7 +494,8 @@ QtObject {
                 screenOffEnabled: root.screenOffEnabled,
                 screenOffMinutes: root.screenOffMinutes,
                 suspendEnabled: root.suspendEnabled,
-                suspendMinutes: root.suspendMinutes
+                suspendMinutes: root.suspendMinutes,
+                lockStyle: root.lockStyle
             }
         }
     }
@@ -692,6 +704,7 @@ QtObject {
 
         root.lockEnabled = pick(p.lockEnabled, root.lockEnabled)
         root.lockMinutes = pick(p.lockMinutes, root.lockMinutes)
+        root.lockStyle = /^[a-z0-9-]+$/.test(String(p.lockStyle)) ? String(p.lockStyle) : root.lockStyle
         root.screenOffEnabled = pick(p.screenOffEnabled, root.screenOffEnabled)
         root.screenOffMinutes = pick(p.screenOffMinutes, root.screenOffMinutes)
         root.suspendEnabled = pick(p.suspendEnabled, root.suspendEnabled)
