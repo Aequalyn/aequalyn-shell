@@ -23,7 +23,7 @@ QtObject {
 
     readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/aequalyn"
     readonly property string historyPath: stateDir + "/clipboard-history.json"
-    readonly property string captureScript: Quickshell.env("HOME") + "/.config/quickshell/clipboard/capture.sh"
+    readonly property string captureScript: Quickshell.env("HOME") + "/.config/quickshell/plugins/clipboard/capture.sh"
 
     // Display rows: newest first, filtered by the search text.
     readonly property var displayRows: {
