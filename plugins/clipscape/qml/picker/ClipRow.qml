@@ -26,9 +26,20 @@ Rectangle {
 
     height: detailed ? ui.px(50) : ui.px(34)
     radius: ui.r(2)
-    color: selected ? ui.accentTint(0.16) : ui.cardFill(hot)
-    border.width: selected ? 1 : ui.cardBorder
-    border.color: selected ? ui.accentTint(0.55) : ui.tint(0.12)
+    // the chosen row as in the Applications menu: lifted, with an accent bar at its left
+    color: selected ? ui.accentTint(0.12) : ui.cardFill(hot)
+    border.width: selected ? 0 : ui.cardBorder
+    border.color: ui.tint(0.12)
+    Rectangle {
+        visible: row.selected
+        width: 3
+        height: Math.min(24, row.height - 10)
+        radius: 2
+        color: ui.accent
+        anchors.left: parent.left
+        anchors.leftMargin: 2
+        anchors.verticalCenter: parent.verticalCenter
+    }
 
     KindIcon {
         id: icon

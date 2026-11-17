@@ -316,14 +316,25 @@ Item {
         anchors.fill: parent
         spacing: ui.px(10)
 
-        // search
+        // its name, as every Aequalyn panel has it (the Applications menu's heading)
+        Txt {
+            ui: view.ui
+            Layout.fillWidth: true
+            text: "\u{F014C}  Clipboard"
+            color: ui.accent
+            font.pixelSize: ui.fs(14)
+            font.bold: true
+        }
+
+        // search: the Applications menu's line, its edge in the accent while it listens
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: ui.px(34)
+            implicitHeight: ui.px(44)
             radius: ui.r(2)
             color: ui.tint(0.05)
             border.width: 1
-            border.color: view.query !== "" ? ui.accentTint(0.5) : ui.tint(0.08)
+            border.color: view.active ? ui.accent : ui.tint(0.08)
+            Behavior on border.color { ColorAnimation { duration: 150 } }
 
             Txt { id: lens; ui: view.ui; anchors.left: parent.left; anchors.leftMargin: ui.px(12); anchors.verticalCenter: parent.verticalCenter; text: "󰍉"; opacity: 0.55; font.pixelSize: ui.fs(14) }
             Txt {

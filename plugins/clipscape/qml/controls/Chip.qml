@@ -14,7 +14,9 @@ Rectangle {
     implicitWidth: lbl.implicitWidth + ui.px(16)
     implicitHeight: ui.px(24)
     radius: ui.r(1.5)
-    color: on ? Qt.rgba(tone.r, tone.g, tone.b, 0.22) : ui.tint(area.containsMouse ? 0.12 : 0.06)
+    // as the Applications menu's chips: the chosen one on a lifted fill, its edge and
+    // words in the accent
+    color: on ? Qt.rgba(tone.r, tone.g, tone.b, 0.12) : ui.tint(area.containsMouse ? 0.12 : 0.06)
     border.width: 1
     border.color: on ? tone : ui.tint(0.10)
     Behavior on color { enabled: ui.animations; ColorAnimation { duration: 90 } }
@@ -24,7 +26,7 @@ Rectangle {
         ui: root.ui
         anchors.centerIn: parent
         text: root.label
-        color: root.on ? ui.onText(root.tone) : ui.fg
+        color: root.on ? root.tone : ui.fg
         font.pixelSize: ui.fs(11)
         font.weight: root.on ? Font.DemiBold : Font.Normal
         opacity: root.on ? 1.0 : 0.8
