@@ -122,7 +122,8 @@ Item {
     property real position: 0
     readonly property real songLength: {
         const p = service ? service.player : null
-        try { return p && p.lengthSupported !== false && Number(p.length) > 0 ? Number(p.length) : 0 } catch (e) { return 0 }
+        // a live stream reports an endless length: no length then, and no seek bar
+        try { return p && p.lengthSupported !== false && Number(p.length) > 0 && Number(p.length) < 7 * 86400 ? Number(p.length) : 0 } catch (e) { return 0 }
     }
     readonly property bool seekShown: cfg.seekBar === "always" || (cfg.seekBar === "hover" && mediaMouse.containsMouse)
     function readPosition() {
