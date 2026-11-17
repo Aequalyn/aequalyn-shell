@@ -36,7 +36,7 @@ PopupWindow {
     implicitWidth: panelWidth
     implicitHeight: column.implicitHeight + 32
     color: "transparent"
-    grabFocus: true
+    grabFocus: !Quick.byKey
     visible: open
     // closed from outside (a click elsewhere): the owner is told, and `visible` follows
     // `open` again

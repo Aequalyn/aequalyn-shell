@@ -31,7 +31,8 @@ Scope {
   property string widgetPopup: ""
   // a touchpad swipe over a widget, added up into steps (style/Wheel.js)
   property var wheelAcc: ({ v: 0 })
-  function toggleWidgetPopup(id, scr) {
+  function toggleWidgetPopup(id, scr, byKey) {
+    Quick.byKey = byKey === true;
     const open = root.togglePopup(root.widgetPopup === id, scr);
     root.widgetPopup = open ? id : "";
     if (open) root.quickPanelVisible = false;
@@ -123,6 +124,7 @@ Scope {
     function quick(): void {
       const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
       const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
+      Quick.byKey = true;
       root.quickPanelVisible = root.togglePopup(root.quickPanelVisible, scr);
     }
     // a widget's quick panel on the focused screen, as its right click opens it
@@ -130,7 +132,7 @@ Scope {
     function popup(id: string): void {
       const name = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : "";
       const scr = Quickshell.screens.find(s => s.name === name) || Quickshell.screens[0] || null;
-      root.toggleWidgetPopup(id, scr);
+      root.toggleWidgetPopup(id, scr, true);
     }
   }
 

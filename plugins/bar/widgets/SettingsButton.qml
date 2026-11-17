@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import QtQuick.Controls
 import ".."
+import "root:/plugins/bar/quick"
 
 // The gear at the right of the bar: a left click opens the quick panel under it (Wi-Fi,
 // Bluetooth, brightness, volume, what is playing...), a right click the whole control
@@ -35,6 +36,7 @@ Rectangle {
         bar.openSettings();
       } else {
         const w = settingsButton.QsWindow.window;
+        Quick.byKey = false;
         bar.quickPanelVisible = bar.togglePopup(bar.quickPanelVisible, w ? w.screen : null);
       }
     }
