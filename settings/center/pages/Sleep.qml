@@ -110,7 +110,15 @@ CcPage {
         { key: "vertical", label: "Vertical", about: "The time turned on its side down a dark strip on the left." },
         { key: "duo", label: "Duo", about: "Hours and minutes side by side, the minutes in the accent colour, split by a line." },
         { key: "card", label: "Card", about: "Your picture (~/.face), your name and the password on one card at the bottom." },
-        { key: "nowplaying", label: "Now playing", about: "A large clock, and the song that is playing under it, at the bottom." }
+        { key: "nowplaying", label: "Now playing", about: "The song's cover, large, with its title and artist, and whether it plays." },
+        { key: "binary", label: "Binary", about: "The time in dots, hours over minutes, for those who read them." },
+        { key: "words", label: "Words", about: "The time as you'd say it, \"twenty past eleven\", large on the left." },
+        { key: "day", label: "Day", about: "The time, and a bar of how much of today has already gone." },
+        { key: "calendar", label: "Calendar", about: "The time beside this month's calendar, on one card." },
+        { key: "weather", label: "Weather", about: "The time and the sky where you are, looked up every half hour." },
+        { key: "quote", label: "Quote", about: "A short line to read, a different one each day, over a deep blur." },
+        { key: "avatar", label: "Avatar", about: "Your picture (~/.face) large in a ring of your two accents, your name under it." },
+        { key: "battery", label: "Battery", about: "The time, the battery as a bar of blocks, and how long it has been on." }
     ]
     readonly property var lockNow: lockStyles.find(x => x.key === AequalynSettings.lockStyle) || lockStyles[0]
     CcSection {
