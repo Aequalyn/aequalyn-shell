@@ -247,12 +247,6 @@ PanelWindow {
     onTriggered: { if (!previewHover.hovered) win.previewSlot = null; win.hoverSlot = null; }
   }
 
-  HyprlandFocusGrab {
-    windows: [menuPop, addPop]
-    active: win.menuSlot !== null || win.addOpen || win.setOpen
-    onCleared: { win.menuSlot = null; win.addOpen = false; }
-  }
-
   Item {
     id: stage
     anchors.fill: parent
@@ -543,11 +537,14 @@ PanelWindow {
             onExited: { hoverDelay.stop(); hoverLeave.restart(); }
 
             onPressed: m => {
+              if (m.button !== Qt.RightButton) { startPos = along(m); moved = false; }
+            }
+            // open on click, not press: the popups use grabFocus, so opening on
+            // press lets the release of that same click dismiss them at once
+            onClicked: m => {
               if (m.button === Qt.RightButton) {
                 win.previewSlot = null; win.addOpen = false;
                 win.menuSlot = slot;
-              } else {
-                startPos = along(m); moved = false;
               }
             }
 
@@ -625,7 +622,9 @@ PanelWindow {
           anchors.fill: parent
           hoverEnabled: true
           acceptedButtons: Qt.LeftButton | Qt.RightButton
-          onPressed: m => {
+          // grabFocus popups must be opened on click: on press, the release
+          // of the same click lands outside the popup and closes it instantly
+          onClicked: m => {
             win.previewSlot = null; win.menuSlot = null;
             if (m.button === Qt.RightButton || win.full) { win.addOpen = false; win.openSettings(); }
             else win.addOpen = !win.addOpen;
