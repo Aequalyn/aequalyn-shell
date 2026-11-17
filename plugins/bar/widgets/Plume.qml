@@ -3,9 +3,10 @@ import Quickshell
 import "root:/plugins/plume"
 
 // Plume's button: a pointer, lit while its trails and halos are on.
-//   left click    effects on / off            right click   the control center's Cursor page
+//   left click    effects on / off            right click   its quick panel (PlumeQuick.qml)
 //   middle click  find the pointer            scroll        the next or the previous ready made look
-// Hidden while the Plume plugin is turned off.
+// The quick panel can take another click instead (Bar page); the Cursor page is in it.
+// Not on the bar while the Plume plugin is turned off.
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
@@ -19,7 +20,7 @@ Rectangle {
   height: 24
   width: 26
   radius: 12
-  color: plumeArea.containsMouse ? bar.theme.bgSelected : bar.chipColor
+  color: plumeArea.containsMouse || quick.visible ? bar.theme.bgSelected : bar.chipColor
   Text {
     anchors.centerIn: parent
     text: "\u{F01C0}"
@@ -36,12 +37,28 @@ Rectangle {
     onClicked: (mouse) => {
       const s = plumeButton.svc;
       if (!s) return;
-      if (mouse.button === Qt.RightButton) PlumeHost.openSettings();
-      else if (mouse.button === Qt.MiddleButton) s.find();
+      const role = plumeButton.bar.clickRole("plume", mouse.button);
+      if (role === "quick") plumeButton.toggleQuick();
+      else if (role === "right") PlumeHost.openSettings();
+      else if (role === "middle") s.find();
       else s.setSetting("enabled", !plumeButton.on);
     }
     onWheel: (wheel) => {
       if (plumeButton.svc && wheel.angleDelta.y !== 0) plumeButton.svc.stepLook(wheel.angleDelta.y < 0 ? 1 : -1);
     }
+  }
+
+  // its quick panel (PlumeQuick.qml), on the click you chose (Bar page)
+  function toggleQuick() {
+    const w = plumeButton.QsWindow.window;
+    plumeButton.bar.toggleWidgetPopup("plume", w ? w.screen : null);
+  }
+  PlumeQuick {
+    id: quick
+    bar: plumeButton.bar
+    anchorItem: plumeButton
+    open: plumeButton.wanted && plumeButton.bar.widgetPopup === "plume" && !!plumeButton.QsWindow.window
+          && plumeButton.QsWindow.window.screen === plumeButton.bar.popupScreen
+    onDismissed: plumeButton.bar.widgetPopup = ""
   }
 }
