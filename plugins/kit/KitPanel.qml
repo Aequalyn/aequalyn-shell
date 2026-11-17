@@ -1,6 +1,7 @@
 // The built-in pack's panel: a keyboard-first window over the shell's backdrop, the
-// same for every plugin that uses it. A line to type in, a list to move through, and
-// keys at the bottom:
+// same for every plugin that uses it, and drawn like the Applications menu (its name
+// in the accent colour, the search line, how many there are, the rows with a bar on
+// the chosen one, and the keys at the bottom):
 //   type        search, or the plugin's own input     ↑ ↓ / Tab   move
 //   Enter       the plugin's action on the row        Esc         clear, then close
 // A plugin sets `items` ({ icon, title, sub, hint, swatch }) and answers `activated`;
@@ -10,6 +11,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
 import "root:/style/backdrop"
+import "../../Plugins.js" as Registry
 
 Scope {
     id: kp
@@ -27,9 +29,20 @@ Scope {
     property string status: ""                  // one line under the list
     property var hints: [["↑ ↓", "move"], ["Enter", "use"], ["Esc", "close"]]
     property Component body: null
-    property real panelWidth: 660
+    property real panelWidth: 580
     property real panelHeight: 480
     property bool multiline: false               // Enter adds a line; Ctrl + Enter is the action
+    // the line over the list ("12 results"); "" for none
+    property string countText: kp.items.length + (kp.items.length === 1 ? " result" : " results")
+    // small buttons at the right of the keys: [{ key, label }], answered by `action`
+    property var actions: []
+    signal action(string key)
+    readonly property string font: "JetBrainsMono Nerd Font"
+    // its name over the search line: `title`, or the plugin's own (Plugins.js)
+    readonly property string heading: kp.title !== "" ? kp.title
+        : ((Registry.list.find(p => p.id === kp.name) || { label: kp.name }).label)
+    // the keys as the Applications menu writes them
+    function keyText(k) { return ({ "Enter": "⏎", "Esc": "esc", "↑ ↓": "↑↓", "Tab": "tab" })[k] || k }
     signal activated(var item, int index, int modifiers)
     signal keyPressed(var event)
 
@@ -44,6 +57,8 @@ Scope {
     readonly property color c_bg: theme ? theme.bgBase : "#141414"
     readonly property color c_surface: theme ? theme.bgSurface : "#1e1e1e"
     readonly property color c_hover: theme ? theme.bgHover : "#2a2a2a"
+    readonly property color c_selected: theme ? theme.bgSelected : "#283457"
+    readonly property color c_text2: theme ? theme.textSecondary : "#c0c0c0"
     readonly property color c_border: theme ? theme.bgBorder : "#333333"
     readonly property color c_text: theme ? theme.textPrimary : "#e0e0e0"
     readonly property color c_muted: theme ? theme.textMuted : "#8a8a8a"
@@ -84,7 +99,7 @@ Scope {
         MouseArea {
             anchors.fill: parent
             onClicked: kp.open = false
-            Backdrop { id: veil; open: kp.open; theme: kp.theme; tintAlpha: 0.35 }
+            Backdrop { id: veil; open: kp.open; theme: kp.theme; tintAlpha: kp.theme ? kp.theme.bgOverlay.a : 0.35 }
         }
 
         Rectangle {
@@ -105,50 +120,56 @@ Scope {
                 anchors.margins: 16
                 spacing: 12
 
-                // the line: the plugin's name, and what you type
-                RowLayout {
+                // its name
+                Text {
                     Layout.fillWidth: true
-                    spacing: 10
-                    Text {
-                        text: kp.icon
-                        color: kp.c_accent
-                        font.family: "JetBrainsMono Nerd Font"
-                        font.pixelSize: 18
-                    }
-                    Text {
-                        visible: !kp.input
-                        Layout.fillWidth: true
-                        text: kp.title
-                        color: kp.c_text
-                        font.family: "sans-serif"
-                        font.pixelSize: 15
-                        font.weight: Font.DemiBold
-                    }
-                    Rectangle {
-                        visible: kp.input
-                        Layout.fillWidth: true
-                        implicitHeight: kp.multiline ? 0 : 38
-                        radius: 10
-                        color: kp.c_surface
-                        border.width: 1
-                        border.color: field.activeFocus ? kp.c_accent : kp.c_border
+                    text: (kp.icon !== "" ? kp.icon + "  " : "") + kp.heading
+                    color: kp.c_accent
+                    font.pixelSize: 14
+                    font.family: kp.font
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+
+                // the search line
+                Rectangle {
+                    visible: kp.input && !kp.multiline
+                    Layout.fillWidth: true
+                    implicitHeight: 44
+                    radius: 10
+                    color: kp.c_surface
+                    border.width: 1
+                    border.color: field.activeFocus ? kp.c_accent : kp.c_border
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        spacing: 10
+                        Text {
+                            text: "\u{F0349}"
+                            color: kp.c_muted
+                            font.pixelSize: 16
+                            font.family: kp.font
+                            Layout.alignment: Qt.AlignVCenter
+                        }
                         TextInput {
                             id: field
-                            visible: !kp.multiline
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            verticalAlignment: TextInput.AlignVCenter
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
                             color: kp.c_text
                             selectionColor: kp.tint(kp.c_accent, 0.4)
-                            font.family: "sans-serif"
-                            font.pixelSize: 14
+                            font.family: kp.font
+                            font.pixelSize: 15
                             clip: true
                             text: kp.query
                             onTextEdited: kp.query = text
                             Keys.onPressed: event => kp.handle(event)
+                            Accessible.role: Accessible.EditableText
+                            Accessible.name: kp.placeholder
                             Text {
-                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.fill: parent
+                                verticalAlignment: Text.AlignVCenter
                                 visible: field.text === ""
                                 text: kp.placeholder
                                 color: kp.c_muted
@@ -156,6 +177,15 @@ Scope {
                             }
                         }
                     }
+                }
+
+                // how many there are
+                Text {
+                    visible: kp.body === null && kp.countText !== "" && kp.items.length > 0
+                    text: kp.countText
+                    color: kp.c_muted
+                    font.pixelSize: 11
+                    font.family: kp.font
                 }
 
                 // the list
@@ -168,50 +198,67 @@ Scope {
                     spacing: 2
                     model: kp.items
                     currentIndex: kp.current
-                    highlightMoveDuration: 80
+                    highlightMoveDuration: 150
+                    highlightMoveVelocity: -1
                     boundsBehavior: Flickable.StopAtBounds
-                    delegate: Rectangle {
+                    onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                    highlight: Rectangle {
+                        radius: 8
+                        color: kp.c_selected
+                        Rectangle {
+                            width: 3
+                            height: 24
+                            radius: 2
+                            color: kp.c_accent
+                            anchors.left: parent.left
+                            anchors.leftMargin: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    delegate: Item {
                         id: row
                         required property var modelData
                         required property int index
                         readonly property bool on: index === kp.current
                         width: ListView.view.width
-                        height: modelData.sub ? 48 : 38
-                        radius: 9
-                        color: on ? kp.tint(kp.c_accent, 0.16) : (rowArea.containsMouse ? kp.c_hover : "transparent")
+                        height: 44
+                        Accessible.role: Accessible.Button
+                        Accessible.name: (modelData.title || "") + (modelData.sub ? " - " + modelData.sub : "")
                         RowLayout {
                             anchors.fill: parent
-                            anchors.leftMargin: 10
+                            anchors.leftMargin: 12
                             anchors.rightMargin: 12
-                            spacing: 10
+                            spacing: 12
                             Rectangle {
                                 visible: !!row.modelData.swatch
-                                Layout.preferredWidth: 22
-                                Layout.preferredHeight: 22
+                                Layout.preferredWidth: 26
+                                Layout.preferredHeight: 26
                                 radius: 6
                                 color: row.modelData.swatch || "transparent"
                                 border.width: 1
                                 border.color: kp.c_border
                             }
                             Text {
-                                visible: !row.modelData.swatch && !!row.modelData.icon
-                                Layout.preferredWidth: 24
+                                visible: !row.modelData.swatch
+                                Layout.preferredWidth: 28
                                 horizontalAlignment: Text.AlignHCenter
                                 text: row.modelData.icon || ""
-                                color: row.on ? kp.c_accent : kp.c_muted
-                                font.family: "JetBrainsMono Nerd Font"
-                                font.pixelSize: 16
+                                color: kp.c_accent
+                                font.family: kp.font
+                                font.pixelSize: 20
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
                                 spacing: 1
                                 Text {
                                     Layout.fillWidth: true
                                     text: row.modelData.title || ""
                                     textFormat: Text.PlainText
-                                    color: kp.c_text
-                                    font.family: "sans-serif"
+                                    color: row.on ? kp.c_text : kp.c_text2
+                                    font.family: kp.font
                                     font.pixelSize: 13
+                                    font.bold: row.on
                                     elide: Text.ElideRight
                                 }
                                 Text {
@@ -220,7 +267,7 @@ Scope {
                                     text: row.modelData.sub || ""
                                     textFormat: Text.PlainText
                                     color: kp.c_muted
-                                    font.family: "sans-serif"
+                                    font.family: kp.font
                                     font.pixelSize: 11
                                     elide: Text.ElideRight
                                 }
@@ -230,15 +277,15 @@ Scope {
                                 text: row.modelData.hint || ""
                                 textFormat: Text.PlainText
                                 color: kp.c_muted
-                                font.family: "JetBrainsMono Nerd Font"
+                                font.family: kp.font
                                 font.pixelSize: 11
                             }
                         }
                         MouseArea {
-                            id: rowArea
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
+                            onPositionChanged: kp.current = row.index
                             onClicked: { kp.current = row.index; kp.activated(row.modelData, row.index, 0) }
                         }
                     }
@@ -247,8 +294,8 @@ Scope {
                         visible: kp.items.length === 0
                         text: kp.emptyText
                         color: kp.c_muted
-                        font.family: "sans-serif"
-                        font.pixelSize: 13
+                        font.family: kp.font
+                        font.pixelSize: 14
                     }
                 }
 
@@ -269,34 +316,33 @@ Scope {
                     text: kp.status
                     textFormat: Text.PlainText
                     color: kp.c_muted
-                    font.family: "sans-serif"
+                    font.family: kp.font
                     font.pixelSize: 11
                     wrapMode: Text.WordWrap
                     maximumLineCount: 3
                     elide: Text.ElideRight
                 }
 
-                // the keys
-                Row {
-                    spacing: 14
+                // the keys, and its small buttons
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 16
                     Repeater {
                         model: kp.hints
                         delegate: Row {
                             required property var modelData
-                            spacing: 6
+                            spacing: 4
                             Rectangle {
-                                width: keyLabel.implicitWidth + 12
-                                height: 20
-                                radius: 5
+                                width: keyLabel.implicitWidth + 8
+                                height: 18
+                                radius: 4
                                 color: kp.c_surface
-                                border.width: 1
-                                border.color: kp.c_border
                                 Text {
                                     id: keyLabel
                                     anchors.centerIn: parent
-                                    text: modelData[0]
-                                    color: kp.c_text
-                                    font.family: "JetBrainsMono Nerd Font"
+                                    text: kp.keyText(modelData[0])
+                                    color: kp.c_muted
+                                    font.family: kp.font
                                     font.pixelSize: 10
                                 }
                             }
@@ -304,8 +350,35 @@ Scope {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: modelData[1]
                                 color: kp.c_muted
-                                font.family: "sans-serif"
-                                font.pixelSize: 11
+                                font.family: kp.font
+                                font.pixelSize: 10
+                            }
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
+                    Repeater {
+                        model: kp.actions
+                        delegate: Rectangle {
+                            id: act
+                            required property var modelData
+                            width: actLabel.implicitWidth + 16
+                            height: 20
+                            radius: 6
+                            color: actArea.containsMouse ? kp.c_hover : kp.c_surface
+                            Text {
+                                id: actLabel
+                                anchors.centerIn: parent
+                                text: act.modelData.label
+                                color: kp.c_accent
+                                font.family: kp.font
+                                font.pixelSize: 10
+                            }
+                            MouseArea {
+                                id: actArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: kp.action(act.modelData.key)
                             }
                         }
                     }
