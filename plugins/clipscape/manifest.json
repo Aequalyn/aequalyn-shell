@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "aequalyn.clipscape",
+  "name": "Clipscape",
+  "version": "1.0.1",
+  "author": "Aequalyn",
+  "license": "MIT",
+  "description": "Clipboard history for Aequalyn on Super+Ctrl+V: search, pins, previews, edits and privacy.",
+  "kinds": [
+    "service",
+    "overlay",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "qml/Service.qml",
+    "overlay": "qml/Picker.qml"
+  },
+  "barWidget": {
+    "displayName": "Clipscape",
+    "category": "Productivity",
+    "description": "Clipboard history with search, pins and previews",
+    "aliases": [
+      "clipboard",
+      "clips",
+      "history",
+      "paste",
+      "copy",
+      "snippets"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

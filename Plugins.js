@@ -13,7 +13,7 @@ var list = [
     { id: "osd",            label: "On-screen display", source: "plugins/osd/OSD.qml" },
     { id: "monitorManager", label: "Monitor manager", source: "plugins/monitorManager/MonitorManager.qml" },
     { id: "idleInhibitor",  label: "Idle inhibitor", source: "plugins/idleInhibitor/CaffeineToggle.qml" },
-    { id: "clipboard",      label: "Clipboard history", source: "plugins/clipboard/ClipboardPanel.qml" },
+    { id: "clipscape",      label: "Clipscape clipboard", source: "plugins/clipscape/Clipscape.qml" },
     { id: "powerMenu",      label: "Power menu",     source: "plugins/powerMenu/PowerMenu.qml" },
     { id: "docks",          label: "Docks",          source: "plugins/docks/DocksService.qml" },
     { id: "plume",          label: "Cursor and pointer effects", source: "plugins/plume/Service.qml" },

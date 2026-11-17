@@ -12,7 +12,7 @@ var groups = [
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker", "lockscreens"] },
     { title: "Windows", pages: ["arrange", "windows", "switcher", "screens", "input", "cursor"] },
     { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
-    { title: "System",  pages: ["apps", "webapps", "store", "aiTools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
+    { title: "System",  pages: ["apps", "webapps", "store", "clipboard", "aiTools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
 
 var pages = {
@@ -73,6 +73,9 @@ var pages = {
     store:     { label: "Store", icon: "\u{F034A}", file: "Store",
                   words: ["Install a package", "Install from the AUR", "Arch packages", "AUR packages"],
                   also: "store install software package aur pacman yay app application" },
+    clipboard: { label: "Clipboard", icon: "\u{F0336}", file: "Clipboard",
+                 words: ["Clear clipboard cache", "Clear clipboard history", "Clipboard shortcut", "Super + Ctrl + V"],
+                 also: "clipscape clips copy paste history cache clear keybind super ctrl v" },
     aiTools:   { label: "AI tools", icon: "\u{F06A9}", file: "AiTools",
                  words: ["Install a coding agent", "Update an AI CLI", "Remove an AI CLI", "Claude Code", "Codex", "Copilot CLI", "Gemini CLI", "OpenCode", "Qwen Code", "Kilo Code", "Cline", "Crush", "Amp"],
                  also: "ai artificial intelligence coding agent cli terminal claude codex copilot gemini opencode qwen kilo cline crush amp developer development programming mise node npm" },

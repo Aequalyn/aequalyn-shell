@@ -31,7 +31,8 @@ var files = {
     brightness:     "Brightness.qml",
     bluetooth:      "Bluetooth.qml",
     temperature:    "Temperature.qml",
-    settingsbutton: "SettingsButton.qml"
+    settingsbutton: "SettingsButton.qml",
+    clipscape:      "ClipscapeButton.qml"
 };
 
 // the file for a widget id, or "" for an id the bar doesn't know (a hand-edited settings.json)
