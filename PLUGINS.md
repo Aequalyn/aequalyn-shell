@@ -92,7 +92,48 @@ destruction. Everything that uses it checks for `null`: the plugin may be off.
 A bar widget is a file in `plugins/bar/widgets/` with `required property var bar` (the
 bar's theme, font and size), registered in `Widgets.js`. Say
 `readonly property bool wanted: false` when there is nothing to show: the bar hides the
-whole slot. A left click does the plugin's main thing; a right click opens its page.
+whole slot. A left click does the plugin's main thing; a right click opens its quick
+panel.
+
+### Its quick panel
+
+What a right click on its widget opens, under it: the same look as the gear's quick
+panel, from the parts in `plugins/bar/quick/` (`QuickPopup`, `QuickCard`, `QuickTile`,
+`QuickWide`, `QuickRound`, `QuickLevel`, `QuickLabel`). They take the bar's colours by
+themselves.
+
+```qml
+// plugins/bar/widgets/<Name>Quick.qml
+QuickPopup {
+    id: q
+    required property var bar
+    glyph: "\u{F051B}"; title: "Name"; sub: "A line of its state"
+    settingsLabel: "Name settings"                    // always the last button
+    onSettingsClicked: { q.dismissed(); KitHost.openSettings("<id>") }
+    actions: [ QuickRound { small: true; glyph: "..."; tip: "..." } ]   // in its header
+    QuickCard { ... }                                 // then its body, top to bottom
+}
+```
+
+The widget hosts it, and the bar keeps one open at a time (`bar.widgetPopup`):
+
+```qml
+function toggleQuick() {
+    const w = root.QsWindow.window;
+    root.bar.toggleWidgetPopup("<id>", w ? w.screen : null);
+}
+NameQuick {
+    id: quick
+    bar: root.bar
+    anchorItem: root
+    open: root.bar.widgetPopup === "<id>" && !!root.QsWindow.window
+          && root.QsWindow.window.screen === root.bar.popupScreen
+    onDismissed: root.bar.widgetPopup = ""
+}
+```
+
+Show what it is doing now first, then what you can do, then a new start; keep it to
+one screen. `qs ipc call bar popup <id>` opens it from a key.
 
 ## Its page in the control center
 
