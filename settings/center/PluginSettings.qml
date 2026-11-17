@@ -17,9 +17,8 @@ ColumnLayout {
     readonly property var store: { const s = KitHost.get(plugin); return s ? s.settingsStore : null }
     function val(key, fallback) { return ps.store ? ps.store.get(key) : fallback }
     function put(key, value) { if (ps.store) ps.store.set(key, value) }
-    readonly property bool ai: ["aiAsk", "aiCommand", "aiClipboard", "aiTidy"].indexOf(plugin) >= 0
     // which of these has settings here
-    readonly property bool has: ai || ["weather", "diskWatch", "batteryGuard", "nightLight", "breaks"].indexOf(plugin) >= 0
+    readonly property bool has: ["weather", "diskWatch", "batteryGuard", "nightLight", "breaks"].indexOf(plugin) >= 0
 
     CcNote {
         visible: ps.has && !ps.on
@@ -138,26 +137,6 @@ ColumnLayout {
             from: 10; to: 90; step: 5
             format: v => Math.round(v) + " min"
             onCommitted: v => ps.put("minutes", Math.round(v))
-        }
-    }
-
-    // ---- the AI helpers: which agent answers (one choice for all four) -------------------
-    KitStore { id: aiStore; pluginId: "ai"; defaults: ({ agent: "auto" }) }
-    KitAi { id: aiProbe }
-    CcSection {
-        visible: ps.ai
-        title: "Which AI agent answers"
-        hint: aiProbe.installed.length === 0
-            ? "None is installed yet. Install one on the AI tools page; the AI helpers use it at once."
-            : "One choice for all four AI helpers. They ask an agent installed here, as you, and send only what you give them when you press Enter."
-        CcChoice {
-            options: [{ key: "auto", label: "The first installed" }].concat(aiProbe.installed.map(a => ({ key: a, label: aiProbe.labels[a] })))
-            current: String(aiStore.get("agent"))
-            onChosen: key => aiStore.set("agent", key)
-        }
-        CcButton {
-            text: "AI tools"; icon: "\u{F06A9}"
-            onClicked: Cc.go("aiTools")
         }
     }
 }
