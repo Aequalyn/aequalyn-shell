@@ -183,11 +183,11 @@ QtObject {
     property var enabledPlugins: [
         "bar", "appLauncher", "defaultApps", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
-        "docks", "plume", "altscape", "programsMenu", "settings"
+        "docks", "plume", "altscape", "programsMenu", "media", "settings"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps"]
+    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps", "media"]
     property var pluginsKnown: []
 
     // ---- Dock -------------------------------------------------------------
@@ -214,7 +214,7 @@ QtObject {
 
     // Friendly names for the settings list.
     readonly property var pluginLabels: ({
-        clock: "Clock & date", calendar: "Calendar", workspaces: "Workspaces", media: "Now playing",
+        clock: "Clock & date", calendar: "Calendar", workspaces: "Workspaces", media: "Media",
         title: "Window title", volume: "Audio / volume", brightness: "Brightness",
         cpu: "CPU usage", network: "Network", bluetooth: "Bluetooth",
         battery: "Battery", temperature: "Temperature", tray: "System tray",
@@ -282,7 +282,8 @@ QtObject {
         function uniq(list) {
             const out = []
             for (let i = 0; i < list.length; i++) {
-                const id = list[i]
+                // a widget renamed since: the old id stands for the new one
+                const id = list[i] === "omaudix" ? "media" : list[i]
                 if (!id || seen[id]) continue
                 seen[id] = true
                 out.push(id)
@@ -629,9 +630,12 @@ QtObject {
         root.backdropCfg = root._merge(root.backdropDefaults, d.backdrop)
         // the plugins: worked out whole and set once (every change rebuilds them all)
         {
-            let on = Array.isArray(d.plugins) ? d.plugins.slice()
-                : (Array.isArray(root.enabledPlugins) ? root.enabledPlugins.slice() : [])
-            const known = Array.isArray(d.pluginsKnown) ? d.pluginsKnown.slice() : []
+            // plugins renamed since: the old id stands for the new one
+            const renamed = { omaudix: "media" }
+            const rename = list => list.map(x => renamed[x] || x).filter((x, i, all) => all.indexOf(x) === i)
+            let on = rename(Array.isArray(d.plugins) ? d.plugins.slice()
+                : (Array.isArray(root.enabledPlugins) ? root.enabledPlugins.slice() : []))
+            const known = rename(Array.isArray(d.pluginsKnown) ? d.pluginsKnown.slice() : [])
             const fresh = root.newPlugins.filter(id => known.indexOf(id) < 0)
             for (const id of fresh) if (on.indexOf(id) < 0) on.push(id)
             if (dk.enabled === false) on = on.filter(x => x !== "docks")

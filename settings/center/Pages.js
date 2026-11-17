@@ -11,7 +11,7 @@ var groups = [
     { title: "",        pages: ["home"] },
     { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker", "lockscreens"] },
     { title: "Windows", pages: ["arrange", "windows", "switcher", "screens", "input", "cursor"] },
-    { title: "Connect", pages: ["wifi", "bluetooth", "sound"] },
+    { title: "Connect", pages: ["wifi", "bluetooth", "sound", "media"] },
     { title: "System",  pages: ["apps", "webapps", "store", "clipboard", "aiTools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
 ];
 
@@ -80,6 +80,9 @@ var pages = {
     aiTools:   { label: "AI tools", icon: "\u{F06A9}", file: "AiTools",
                  words: ["Install a coding agent", "Update an AI CLI", "Remove an AI CLI", "Claude Code", "Codex", "Copilot CLI", "Gemini CLI", "OpenCode", "Qwen Code", "Kilo Code", "Cline", "Crush", "Amp"],
                  also: "ai artificial intelligence coding agent cli terminal claude codex copilot gemini opencode qwen kilo cline crush amp developer development programming mise node npm" },
+    media:     { label: "Media", icon: "\u{F075A}", file: "Media",
+                 words: ["Now playing", "Music visualizer", "Music controls", "Album cover", "Follow a player", "Media looks"],
+                 also: "mpris player spotify music song album cover art visualizer spectrum bars audio playback pause next previous" },
     clock:     { label: "Clock", icon: "\u{F0954}", file: "Clock",
                  words: ["24-hour clock", "Show seconds"],
                  also: "time date am pm" },

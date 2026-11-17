@@ -1,47 +1,28 @@
 import QtQuick
 import Quickshell
+import "root:/plugins/media"
+import "root:/plugins/media/qml" as MediaPlugin
 
-Rectangle {
+// The bar's media widget. While the Media plugin is on: its widget (a live visualizer,
+// the title, the cover and the buttons, on a plate of its own if you like; every
+// setting on the control center's Media page). With the plugin off: the plain Now
+// playing chip (NowPlaying.qml). Either way, nothing playing hides the slot.
+Item {
+  id: media
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
-  height: 24
-  width: nowPlayingContent.width + 16
-  radius: 12
-  color: bar.chipColor
-  // nothing playing: the bar hides the whole slot (see `wanted` on the slots)
-  readonly property bool wanted: bar.activePlayer !== null
-  visible: wanted
-  Row {
-    id: nowPlayingContent
+  readonly property bool rich: !!MediaHost.svc
+  readonly property bool wanted: loader.item ? loader.item.wanted !== false && (!media.rich || loader.item.shouldShow) : false
+  implicitWidth: loader.item ? loader.item.implicitWidth || loader.item.width : 0
+  implicitHeight: loader.item ? loader.item.implicitHeight || loader.item.height : 24
+  width: implicitWidth
+  height: implicitHeight
+
+  Loader {
+    id: loader
     anchors.verticalCenter: parent.verticalCenter
-    anchors.left: parent.left
-    anchors.leftMargin: 8
-    spacing: 6
-    Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: bar.activePlayer && bar.activePlayer.isPlaying ? "󰐊" : "󰏤"
-      color: bar.theme.accentPrimary
-      font.pixelSize: 14
-      font.family: bar.font
-    }
-    Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: {
-        if (!bar.activePlayer) return "";
-        const artist = bar.activePlayer.trackArtist || "";
-        const title = bar.activePlayer.trackTitle || "";
-        return artist ? artist + " - " + title : title;
-      }
-      color: bar.theme.textPrimary
-      font.pixelSize: 11
-      font.family: bar.font
-      elide: Text.ElideRight
-      width: Math.min(implicitWidth, 200)
-    }
+    sourceComponent: media.rich ? richC : plainC
   }
-  MouseArea {
-    anchors.fill: parent
-    cursorShape: Qt.PointingHandCursor
-    onClicked: bar.activePlayer.togglePlaying()
-  }
+  Component { id: richC; MediaPlugin.BarWidget { bar: media.bar } }
+  Component { id: plainC; NowPlaying { bar: media.bar } }
 }

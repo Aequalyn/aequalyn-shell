@@ -1,0 +1,619 @@
+import QtQuick
+import Quickshell
+import "root:/plugins/media"
+import "bar"
+import "js/Visuals.js" as Visuals
+import "js/Schema.js" as Schema
+import "js/Cover.js" as CoverColors
+import "js/Style.js" as PlateStyle
+
+// Media on the bar: what is playing, a live visualizer, the cover and the buttons, on
+// a plate of its own if you like. Shown by the bar's media widget
+// (plugins/bar/widgets/Media.qml) while the Media plugin is on; every setting is on
+// the control center's Media page, which a right click (or the gear) opens.
+Item {
+    id: root
+
+    // the bar this sits in (plugins/bar/Bar.qml): theme, font, size
+    required property var bar
+    readonly property var settings: ({})
+    readonly property real barSize: bar ? bar.barSize : 32
+    readonly property bool vertical: bar && (bar.position === "left" || bar.position === "right")
+
+    readonly property var service: MediaHost.svc
+    readonly property bool hasMedia: service ? service.hasMedia : false
+    readonly property bool playing: service ? service.playing : false
+    readonly property bool stopped: service ? service.stopped : true
+
+    // ---- settings ---------------------------------------------------------------
+    // Every setting, checked: the defaults, then this widget's entry in shell.json,
+    // then what was changed in the settings panel (saved by the service).
+    readonly property var cfg: Schema.resolve(root.settings, service ? service.local : null)
+
+    // Album art URL, empty when nothing is playing.
+    readonly property string albumArt: service ? service.albumArt : ""
+
+    // ---- derived state -----------------------------------------------------
+    readonly property string effStyle: service && service.styleOverride !== "" ? service.styleOverride : cfg.vizStyle
+    // On the bar while a song is playing or paused; "Hide the widget" can keep it
+    // there always, or only while music plays. It leaves a moment after the music
+    // does, so skipping a song or a player starting up doesn't make it blink.
+    readonly property bool wantShow: cfg.hideWhen === "never" ? true
+        : (cfg.hideWhen === "paused" ? hasMedia && playing : !stopped)
+    property bool shouldShow: wantShow
+    onWantShowChanged: {
+        if (wantShow) { hideLater.stop(); shouldShow = true }
+        else hideLater.restart()
+    }
+    Timer {
+        id: hideLater
+        interval: 1500
+        onTriggered: root.shouldShow = root.wantShow
+    }
+    readonly property bool vizLeft: cfg.vizSide === "left" || cfg.vizSide === "both"
+    readonly property bool vizRight: cfg.vizSide === "right" || cfg.vizSide === "both"
+    readonly property real vizHeight: (18)
+    readonly property real vizItemWidth: Visuals.isSquare(effStyle) ? vizHeight + (2) : cfg.vizWidth
+    readonly property color fg: bar ? bar.theme.textPrimary : "#e0e0e0"
+    readonly property color accent: bar ? bar.theme.accentPrimary : "#7aa2f7"
+    // the right one faces the left one when both show, unless told otherwise
+    readonly property string rightOrient: cfg.vizRightOrient !== "auto" ? cfg.vizRightOrient
+        : (cfg.vizSide === "both" ? "mirrored" : "normal")
+    readonly property string fontName: bar ? bar.font : "JetBrainsMono Nerd Font"
+
+    readonly property string label: {
+        if (!service || !service.hasMedia) return "Nothing playing"
+        const t = service.title, a = service.artist, sep = cfg.separator
+        if (cfg.textFormat === "title") return t !== "" ? t : a
+        if (cfg.textFormat === "artist") return a !== "" ? a : t
+        if (t === "" || a === "") return t !== "" ? t : a
+        return cfg.textFormat === "title-artist" ? t + sep + a : a + sep + t
+    }
+
+    // ---- effects ----------------------------------------------------------------------
+    // While nothing plays the visualizer can stay still, breathe, or show a thin line.
+    readonly property bool idle: !playing
+    property var idleLevels: []
+    Timer {
+        interval: 80
+        repeat: true
+        running: root.shouldShow && root.idle && root.cfg.idleMode === "breathe"
+        property real t: 0
+        onTriggered: {
+            t += 0.08
+            const scope = Visuals.isScope(root.effStyle), out = []
+            for (let i = 0; i < 20; i++)
+                out.push(scope ? 0.22 * Math.sin(t * 2 + i * 0.35) * (0.6 + 0.4 * Math.sin(t))
+                               : 0.1 + 0.08 * (1 + Math.sin(t + i * 0.45)) * (0.7 + 0.3 * Math.sin(t * 0.6)))
+            root.idleLevels = out
+        }
+    }
+    readonly property var vizLevels: {
+        const live = service ? service.levels : []
+        if (!idle) return live
+        if (cfg.idleMode === "breathe") return idleLevels
+        if (cfg.idleMode === "line") {
+            const out = []
+            for (let i = 0; i < 20; i++) out.push(Visuals.isScope(effStyle) ? 0 : 0.05)
+            return out
+        }
+        return live
+    }
+
+    // the low end, for the cover and the plate to move with
+    readonly property bool beatCover: cfg.beat === "cover" || cfg.beat === "both"
+    readonly property bool beatPlate: cfg.beat === "plate" || cfg.beat === "both"
+    property real bass: 0
+    readonly property real bassNow: {
+        if (cfg.beat === "off" || !playing) return 0
+        const l = service ? service.levels : []
+        const q = Math.max(1, Math.floor(l.length / 4))
+        let sum = 0
+        for (let i = 0; i < q && i < l.length; i++) sum += Math.abs(l[i])
+        return Math.min(1, sum / q * 1.3)
+    }
+    onBassNowChanged: bass = bassNow
+    Behavior on bass { NumberAnimation { duration: 90 } }
+
+    // where the song is, for the progress line
+    property real position: 0
+    readonly property real songLength: {
+        const p = service ? service.player : null
+        try { return p && p.lengthSupported !== false && Number(p.length) > 0 ? Number(p.length) : 0 } catch (e) { return 0 }
+    }
+    readonly property bool seekShown: cfg.seekBar === "always" || (cfg.seekBar === "hover" && mediaMouse.containsMouse)
+    function readPosition() {
+        const p = service ? service.player : null
+        if (!p) { position = 0; return }
+        try {
+            // the player only reports its position when asked
+            if (typeof p.positionChanged === "function") p.positionChanged()
+            position = Number(p.position) || 0
+        } catch (e) { position = 0 }
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.shouldShow && root.cfg.seekBar !== "off" && root.songLength > 0 && (root.playing || root.seekShown)
+        onTriggered: root.readPosition()
+    }
+    function seekTo(frac) {
+        const p = service ? service.player : null
+        if (!p || !(songLength > 0)) return
+        try {
+            if (p.canSeek === false) return
+            p.position = Math.max(0, Math.min(1, frac)) * songLength
+            readPosition()
+        } catch (e) { }
+    }
+
+    // ---- the plate ------------------------------------------------------------------
+    function rgbOf(c) { return [c.r * 255, c.g * 255, c.b * 255] }
+    // the bar's own color: what the bar says, else the theme's bar color
+    readonly property color barColor: {
+        if (bar && bar.barBackground !== undefined && bar.barBackground !== null) return bar.barBackground
+        return bar && bar.theme ? bar.theme.bgBase : "#141414"
+    }
+    readonly property bool plateOn: cfg.plate === true
+    readonly property string barEdge: {
+        const p = bar ? String(bar.position || "") : ""
+        return ["top", "bottom", "left", "right"].indexOf(p) >= 0 ? p : (vertical ? "left" : "top")
+    }
+    // across the bar: a share of its thickness; along it: the content, its room and
+    // whatever the ends take
+    readonly property real plateThick: Math.max(12, Math.round(barSize * cfg.plateHeight / 100))
+    readonly property real plateRoom: plateOn
+        ? cfg.platePad + PlateStyle.endRoom(cfg, plateThick, Math.max(1, (plateThick - vizHeight) / 2)) : 0
+    readonly property real contentLength: vertical ? verticalContent.implicitHeight : horizontalContent.implicitWidth
+    readonly property real plateLength: contentLength + 2 * plateRoom + (4)
+
+    visible: shouldShow
+    implicitWidth: shouldShow
+        ? (vertical ? barSize : (plateOn ? plateLength + (4) : horizontalContent.implicitWidth + (10))) : 0
+    implicitHeight: shouldShow
+        ? (vertical ? (plateOn ? plateLength + (4) : verticalContent.implicitHeight + (10)) : barSize) : 0
+
+    Plate {
+        visible: root.plateOn
+        opacity: root.beatPlate ? 0.7 + 0.3 * root.bass : 1
+        z: -1
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        cfg: root.cfg
+        edge: root.barEdge
+        plateWidth: root.plateLength
+        plateHeight: root.plateThick
+        room: Math.floor((root.barSize - root.plateThick) / 2)
+        pal: ({
+            bg: root.rgbOf(root.barColor),
+            fg: root.rgbOf(root.fg), ac: root.rgbOf(root.accent),
+            border: root.service ? root.service.borderColors : [],
+            borderAngle: root.service ? root.service.borderAngle : 0
+        })
+    }
+
+    // ---- talk to the shared service ------------------------------------------
+    readonly property bool wantsViz: shouldShow && cfg.vizSide !== "hidden"
+    property var registeredWith: null
+
+    readonly property string configKey: [effStyle, cfg.barCount, cfg.fps, cfg.sensitivity, cfg.smoothing, cfg.engine].join("|")
+
+    // (both run once more when the widget is complete: a service handed over while it is
+    // being made comes before its settings)
+    function pushConfig() {
+        if (!service || !cfg || registeredWith !== service) return
+        service.configure({
+            style: effStyle, bars: cfg.barCount, fps: cfg.fps,
+            gain: cfg.sensitivity, smooth: cfg.smoothing, engine: cfg.engine
+        })
+    }
+
+    function syncRegistration() {
+        const want = wantsViz ? service : null
+        if (registeredWith === want) return
+        if (registeredWith) {
+            try { registeredWith.unregister() } catch (e) { }
+        }
+        registeredWith = want
+        if (want) {
+            want.register()
+            pushConfig()
+        }
+    }
+
+    // Tell the shared service which player to follow.
+    function pushPlayer() {
+        if (!service || !cfg) return
+        service.preferred = cfg.player
+        service.pauseOthers = cfg.pauseOthers
+    }
+
+    // Wheel over the widget: step through the styles and keep the choice.
+    function stepStyle(step) {
+        const list = Visuals.keys
+        let i = list.indexOf(effStyle)
+        if (i < 0) i = 0
+        const next = list[(i + (step < 0 ? list.length - 1 : 1)) % list.length]
+        if (service) service.setSetting("vizStyle", next)
+    }
+
+    readonly property string playerKey: cfg.player + "|" + cfg.pauseOthers
+    onWantsVizChanged: syncRegistration()
+    onServiceChanged: { syncRegistration(); pushPlayer() }
+    onPlayerKeyChanged: pushPlayer()
+    onConfigKeyChanged: Qt.callLater(pushConfig)
+    Component.onCompleted: { syncRegistration(); pushPlayer() }
+    Component.onDestruction: {
+        if (registeredWith) {
+            try { registeredWith.unregister() } catch (e) { }
+        }
+    }
+
+    // Tooltips for the small buttons are driven here so they can be dismissed on
+    // click (the built-in ones could stay stuck on screen after a press).
+    function tip(item, on, text) {
+        if (!bar) return
+        if (on && typeof bar.showTooltip === "function") bar.showTooltip(item, text)
+        else if (!on && typeof bar.hideTooltip === "function") bar.hideTooltip(item)
+    }
+
+    function tooltipLine() {
+        if (!service || !service.hasMedia) return "Nothing playing"
+        return service.artist !== "" && service.title !== ""
+            ? service.title + " — " + service.artist : label
+    }
+
+    // ---- horizontal layout --------------------------------------------------
+    Row {
+        id: horizontalContent
+        visible: !root.vertical
+        anchors.centerIn: parent
+        spacing: root.cfg.compactText ? (1) : (6)
+
+        Controls {
+            visible: root.cfg.showControls && root.cfg.controlsSide === "left"
+            bar: root.bar
+            service: root.service
+            showPrevious: root.cfg.showPrevious
+            showPlayPause: root.cfg.showPlayPause
+            showNext: root.cfg.showNext
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        Item {
+            id: mediaArea
+            width: mediaRow.implicitWidth
+            height: Math.max((24), mediaRow.implicitHeight)
+            anchors.verticalCenter: parent.verticalCenter
+
+            Row {
+                id: mediaRow
+                anchors.centerIn: parent
+                spacing: (6)
+
+        Cover {
+                    width: root.cfg.coverSize
+                    height: root.cfg.coverSize
+                    source: root.albumArt
+                    ink: root.fg
+                    shape: root.cfg.coverShape
+                    spin: root.cfg.coverSpin
+                    spinTime: root.cfg.spinTime
+                    playing: root.playing
+                    scale: root.beatCover ? 1 + 0.14 * root.bass : 1
+                    visible: root.cfg.coverSide === "left"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Visualizer {
+                    width: root.vizItemWidth
+                    height: root.vizHeight
+                    levels: root.vizLevels
+                    glow: root.cfg.vizGlow
+                    vizStyle: root.effStyle
+                    colorMode: root.cfg.colorMode
+                    customColor: root.cfg.customColor
+                    customColor2: root.cfg.customColor2
+                    foreground: root.fg
+                    accent: root.accent
+                    themeColors: root.service ? root.service.themePalette : []
+                    borderColors: root.service ? root.service.borderColors : []
+                    coverColors: root.service ? root.service.coverColors : []
+                    count: root.cfg.barCount
+                    visible: root.vizLeft
+                    orient: root.cfg.vizLeftOrient
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+        Cover {
+                    width: root.cfg.coverSize
+                    height: root.cfg.coverSize
+                    source: root.albumArt
+                    ink: root.fg
+                    shape: root.cfg.coverShape
+                    spin: root.cfg.coverSpin
+                    spinTime: root.cfg.spinTime
+                    playing: root.playing
+                    scale: root.beatCover ? 1 + 0.14 * root.bass : 1
+                    visible: root.cfg.coverSide === "center"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                MarqueeText {
+                    id: marquee
+                    visible: root.cfg.showText
+                    transform: Translate { id: slideIn }
+                    // compact: only as wide as the title, up to textWidth;
+                    // longer titles fill textWidth and scroll as before
+                    width: !root.cfg.showText ? 0
+                        : root.cfg.compactText ? Math.min(root.cfg.textWidth, Math.ceil(marquee.naturalWidth) + 1)
+                        : root.cfg.textWidth
+                    text: root.label
+                    color: root.fg
+                    fontFamily: root.fontName
+                    fontPixelSize: 10
+                    direction: root.cfg.scrollDirection
+                    speed: root.cfg.scrollSpeed
+                    pause: root.cfg.scrollPause
+                    align: root.cfg.textAlign
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Visualizer {
+                    width: root.vizItemWidth
+                    height: root.vizHeight
+                    levels: root.vizLevels
+                    glow: root.cfg.vizGlow
+                    vizStyle: root.effStyle
+                    colorMode: root.cfg.colorMode
+                    customColor: root.cfg.customColor
+                    customColor2: root.cfg.customColor2
+                    foreground: root.fg
+                    accent: root.accent
+                    themeColors: root.service ? root.service.themePalette : []
+                    borderColors: root.service ? root.service.borderColors : []
+                    coverColors: root.service ? root.service.coverColors : []
+                    count: root.cfg.barCount
+                    visible: root.vizRight
+                    orient: root.rightOrient
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+        Cover {
+                    width: root.cfg.coverSize
+                    height: root.cfg.coverSize
+                    source: root.albumArt
+                    ink: root.fg
+                    shape: root.cfg.coverShape
+                    spin: root.cfg.coverSpin
+                    spinTime: root.cfg.spinTime
+                    playing: root.playing
+                    scale: root.beatCover ? 1 + 0.14 * root.bass : 1
+                    visible: root.cfg.coverSide === "right"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            MouseArea {
+                id: mediaMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+
+                onClicked: function(mouse) {
+                    if (mouse.button === Qt.RightButton) {
+                        root.toggleSettings()
+                        return
+                    }
+                    if (!root.service) return
+                    if (mouse.button === Qt.MiddleButton) root.service.runAction("next")
+                    else if (root.cfg.clickAction === "playPause") root.service.runAction("playPause")
+                    else if (root.cfg.clickAction === "next") root.service.runAction("next")
+                }
+
+                onWheel: function(wheel) {
+                    if (!root.service || root.cfg.wheelAction === "none") return
+                    const up = wheel.angleDelta.y > 0
+                    if (root.cfg.wheelAction === "style") root.stepStyle(up ? -1 : 1)
+                    else if (root.cfg.wheelAction === "volume") root.service.nudgeVolume(up ? 0.05 : -0.05)
+                    else root.service.runAction(up ? "previous" : "next")
+                }
+
+                onEntered: if (root.bar && typeof root.bar.showTooltip === "function") root.bar.showTooltip(root, root.tooltipLine())
+                onExited: if (root.bar && typeof root.bar.hideTooltip === "function") root.bar.hideTooltip(root)
+            }
+
+            // the progress line under the title; a click on it jumps there
+            Item {
+                id: seekLine
+                visible: root.seekShown && root.cfg.showText && root.songLength > 0
+                x: mediaRow.x + marquee.x
+                width: marquee.width
+                height: 6
+                y: mediaRow.y + marquee.y + marquee.height - 1
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    height: 2
+                    radius: 1
+                    color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.18)
+                    Rectangle {
+                        width: parent.width * Math.max(0, Math.min(1, root.position / Math.max(1, root.songLength)))
+                        height: parent.height
+                        radius: 1
+                        color: root.accent
+                    }
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.topMargin: -2
+                    anchors.bottomMargin: -2
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: function(mouse) { root.seekTo(mouse.x / Math.max(1, width)) }
+                }
+            }
+        }
+
+        Controls {
+            visible: root.cfg.showControls && root.cfg.controlsSide === "right"
+            bar: root.bar
+            service: root.service
+            showPrevious: root.cfg.showPrevious
+            showPlayPause: root.cfg.showPlayPause
+            showNext: root.cfg.showNext
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        IconButton {
+            id: gearH
+            visible: root.cfg.showGear
+            iconText: "󰒓"
+            foreground: root.fg
+            fontFamily: root.fontName
+            iconSize: 12
+            horizontalPadding: (3)
+            verticalPadding: (2)
+            anchors.verticalCenter: parent.verticalCenter
+            HoverHandler { onHoveredChanged: root.tip(gearH, hovered, "Media settings") }
+            onClicked: {
+                root.tip(gearH, false, "")
+                root.toggleSettings()
+            }
+        }
+    }
+
+    // ---- vertical bar: play button plus a rotated visualizer ---------------------
+    Column {
+        id: verticalContent
+        visible: root.vertical
+        anchors.centerIn: parent
+        spacing: (3)
+
+        Cover {
+            width: root.cfg.coverSize
+            height: root.cfg.coverSize
+            source: root.albumArt
+            ink: root.fg
+            shape: root.cfg.coverShape
+            spin: root.cfg.coverSpin
+            spinTime: root.cfg.spinTime
+            playing: root.playing
+            visible: root.cfg.coverSide !== "hidden"
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
+        IconButton {
+            visible: root.cfg.showControls && root.cfg.showPlayPause
+            iconText: root.playing ? "󰏤" : "󰐊"
+            foreground: root.fg
+            fontFamily: root.fontName
+            iconSize: 12
+            horizontalPadding: (3)
+            verticalPadding: (2)
+            onClicked: if (root.service) root.service.runAction("playPause")
+        }
+
+        Item {
+            visible: root.cfg.vizSide !== "hidden"
+            width: (20)
+            height: (54)
+
+            Visualizer {
+                anchors.centerIn: parent
+                width: parent.height
+                height: parent.width
+                rotation: 90
+                levels: root.vizLevels
+                glow: root.cfg.vizGlow
+                vizStyle: root.effStyle
+                orient: root.cfg.vizLeftOrient
+                colorMode: root.cfg.colorMode
+                customColor: root.cfg.customColor
+                customColor2: root.cfg.customColor2
+                foreground: root.fg
+                accent: root.accent
+                themeColors: root.service ? root.service.themePalette : []
+                borderColors: root.service ? root.service.borderColors : []
+                coverColors: root.service ? root.service.coverColors : []
+                count: 12
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onClicked: function(mouse) {
+                    if (mouse.button === Qt.RightButton) root.toggleSettings()
+                    else if (root.service) root.service.runAction("playPause")
+                }
+            }
+        }
+
+        IconButton {
+            id: gearV
+            visible: root.cfg.showGear
+            iconText: "󰒓"
+            foreground: root.fg
+            fontFamily: root.fontName
+            iconSize: 12
+            horizontalPadding: (3)
+            verticalPadding: (2)
+            HoverHandler { onHoveredChanged: root.tip(gearV, hovered, "Media settings") }
+            onClicked: {
+                root.tip(gearV, false, "")
+                root.toggleSettings()
+            }
+        }
+    }
+
+    // a new song: the title fades or slides in
+    ParallelAnimation {
+        id: arrive
+        NumberAnimation { target: marquee; property: "opacity"; from: 0; to: 1; duration: 320; easing.type: Easing.OutCubic }
+        NumberAnimation { target: slideIn; property: "x"; from: root.cfg.textChange === "slide" ? 14 : 0; to: 0; duration: 320; easing.type: Easing.OutCubic }
+    }
+    property string lastTitle: ""
+    onLabelChanged: {
+        if (cfg.textChange !== "none" && lastTitle !== "" && label !== lastTitle) arrive.restart()
+        lastTitle = label
+    }
+
+    // ---- the cover's colors ------------------------------------------------------
+    // For the Cover color mode: the cover drawn small, and its main colors handed to
+    // the service. Only while that mode is on.
+    Canvas {
+        id: coverSampler
+        width: 16
+        height: 16
+        opacity: 0.01
+        z: -1
+        renderTarget: Canvas.Image
+        readonly property string url: root.cfg.colorMode === "cover" && root.albumArt !== "" ? root.albumArt : ""
+        // the cover being read; the one before it is let go, as the canvas would
+        // otherwise keep every cover it was ever handed
+        property string held: ""
+        onUrlChanged: {
+            if (held !== "" && held !== url) unloadImage(held)
+            held = url
+            if (url === "") return
+            if (!isImageLoaded(url)) loadImage(url)
+            requestPaint()
+        }
+        onImageLoaded: requestPaint()
+        onPaint: {
+            if (url === "" || !isImageLoaded(url) || !root.service) return
+            const ctx = getContext("2d")
+            ctx.reset()
+            ctx.drawImage(url, 0, 0, width, height)
+            let data = []
+            try { data = ctx.getImageData(0, 0, width, height).data } catch (e) { data = [] }
+            root.service.coverColors = CoverColors.colorsOf(data, 3)
+        }
+    }
+
+    // ---- the settings: the control center's Media page ------------------------------
+    function toggleSettings() { MediaHost.openSettings() }
+}
