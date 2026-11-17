@@ -1,6 +1,7 @@
 // One widget's place in a bar region: loads the widget's file (widgets/Widgets.js), keeps
-// a little room around it, hides when the widget is switched off or has nothing to show,
-// and lets you drag it to another place, another region, or off the bar.
+// a little room around it, hides when the widget is switched off, its plugin is off, or
+// it has nothing to show, and lets you drag it to another place, another region, or off
+// the bar.
 import QtQuick
 import "root:/settings"
 import "widgets"
@@ -16,6 +17,9 @@ Item {
   property var screen                  // the screen this bar is on
 
   readonly property string file: Widgets.fileFor(modelData)
+  // a widget of a plugin that is off is not loaded at all (Widgets.js: plugins)
+  readonly property string plugin: Widgets.pluginFor(modelData)
+  readonly property bool pluginOn: plugin === "" || AequalynSettings.enabledPlugins.indexOf(plugin) >= 0
   readonly property bool beingDragged: band.dragging && band.dragRegion === region && band.dragIndex === index
   // BarDecor measures these slots and only counts the ones that say whether they're hovered
   readonly property bool hovered: hh.hovered
@@ -24,12 +28,13 @@ Item {
   height: band.height
   opacity: beingDragged ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
   // a widget with nothing to show (`wanted: false`) or an unknown id takes no room and gets no shape
-  visible: (file !== "" && AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
+  visible: (file !== "" && pluginOn && AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
            || beingDragged
 
   Loader {
     id: loader
     anchors.centerIn: parent
+    active: slot.pluginOn
     visible: AequalynSettings.pluginVisible(slot.modelData)
     HoverHandler { id: hh }
     // setSource hands the widget its bar before its bindings first run

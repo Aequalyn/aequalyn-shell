@@ -43,3 +43,21 @@ var files = {
 function fileFor(id) {
     return Object.prototype.hasOwnProperty.call(files, id) ? files[id] : "";
 }
+
+// The widgets that belong to a plugin (Plugins.js): while it is off, the widget is not
+// on the bar at all.
+var plugins = {
+    media: "media", timer: "timer", focus: "focus", weather: "weather", netspeed: "netSpeed",
+    plume: "plume", altscape: "altscape", atelier: "atelier", layouts: "atelier",
+    caffeine: "idleInhibitor", appsmenu: "appLauncher", power: "powerMenu"
+};
+function pluginFor(id) { return Object.prototype.hasOwnProperty.call(plugins, id) ? plugins[id] : ""; }
+
+// The widgets with a quick panel (widgets/<Name>Quick.qml), and the click that opens it
+// unless you choose another on the Bar page (AequalynSettings.barClicks). The Themes and
+// Layouts buttons choose theirs with their other clicks.
+var quick = {
+    media: "right", timer: "right", focus: "right", weather: "right", netspeed: "left",
+    plume: "right", altscape: "right", caffeine: "right", appsmenu: "right", power: "right"
+};
+function quickDefault(id) { return Object.prototype.hasOwnProperty.call(quick, id) ? quick[id] : "none"; }

@@ -3,17 +3,15 @@ import Quickshell
 import "root:/plugins/media"
 import "root:/plugins/media/qml" as MediaPlugin
 
-// The bar's media widget. While the Media plugin is on: its widget (a live visualizer,
-// the title, the cover and the buttons, on a plate of its own if you like; every
-// setting on the control center's Media page). With the plugin off: the plain Now
-// playing chip (NowPlaying.qml). Either way, nothing playing hides the slot, and a
-// right click opens Media's quick panel (MediaQuick.qml).
+// The bar's media widget: Media's own (a live visualizer, the title, the cover and the
+// buttons, on a plate of its own if you like; every setting on the control center's
+// Media page). With the Media plugin off it is not on the bar; nothing playing hides
+// the slot. The click you chose opens Media's quick panel (MediaQuick.qml).
 Item {
   id: media
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
-  readonly property bool rich: !!MediaHost.svc
-  readonly property bool wanted: loader.item ? loader.item.wanted !== false && (!media.rich || loader.item.shouldShow) : false
+  readonly property bool wanted: !!MediaHost.svc && !!loader.item && loader.item.shouldShow
   implicitWidth: loader.item ? loader.item.implicitWidth || loader.item.width : 0
   implicitHeight: loader.item ? loader.item.implicitHeight || loader.item.height : 24
   width: implicitWidth
@@ -22,10 +20,9 @@ Item {
   Loader {
     id: loader
     anchors.verticalCenter: parent.verticalCenter
-    sourceComponent: media.rich ? richC : plainC
+    active: !!MediaHost.svc
+    sourceComponent: MediaPlugin.BarWidget { bar: media.bar; onQuickRequested: media.toggleQuick() }
   }
-  Component { id: richC; MediaPlugin.BarWidget { bar: media.bar; onQuickRequested: media.toggleQuick() } }
-  Component { id: plainC; NowPlaying { bar: media.bar; onQuickRequested: media.toggleQuick() } }
 
   // gone from the bar: its quick panel closes too
   onWantedChanged: if (!wanted && media.bar.widgetPopup === "media") media.bar.widgetPopup = ""
