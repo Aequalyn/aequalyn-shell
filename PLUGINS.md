@@ -1,0 +1,153 @@
+# Writing an Aequalyn plugin
+
+Every part of the Aequalyn desktop is a plugin: the bar, the docks, the launcher, the
+pickers, the window switcher, Media. Yours can sit next to them, or replace one of
+them, and look and work like they do. This page is the standard the built-in plugins
+follow. Nothing here is enforced; following it is what makes a plugin feel built in.
+
+## The shape of a plugin
+
+```
+plugins/<id>/
+├── <Name>.qml          the entry: what Plugins.js loads (a service, a panel, both)
+├── <Name>Host.qml      a singleton: the link to the running plugin (see below)
+├── qmldir              lists the singleton and the types others import
+├── core/ js/ panel/    its own parts, each folder with a qmldir if imported by root:/
+└── bin/ helper/        programs it runs, if any
+```
+
+- `<id>` is short, lowercase or camelCase, and never changes: it names the folder, the
+  IPC target, the settings folder and the entry in `Plugins.js`.
+- Import across folders with `root:/` (`import "root:/plugins/<id>"`). A folder imported
+  that way needs a `qmldir` listing its types: the shell only knows the types of folders
+  it can find.
+- Load a part of your plugin as a component, not by a file path, so the shell sees it:
+  `Loader { sourceComponent: Component { Overlay { } } }`.
+
+## Registering it
+
+Two lines, and it shows everywhere:
+
+1. `Plugins.js`: `{ id: "<id>", label: "Short name", source: "plugins/<id>/<Name>.qml" }`.
+   The plugin manager loads it, and the control center's Plugins page shows it.
+2. `PluginInfo.js`: `<id>: { icon, group, keys, page, about }`.
+   - `icon`: a Nerd Font glyph.
+   - `group`: `"screen"` (always on the desktop), `"key"` (called up by a key or a
+     click) or `"background"` (works out of sight).
+   - `keys`: the shortcut that calls it up, as people read it: `"Super + Shift + C"`.
+   - `page`: its control center page (`Pages.js`), `""` for none.
+   - `about`: one plain sentence: what it does for you.
+
+To turn a new built-in plugin on for people who already have a settings file, add its
+id to `newPlugins` in `settings/AequalynSettings.qml`.
+
+## Its life
+
+- The plugin manager loads it when it is turned on and drops it when it is turned off,
+  at once, without a restart. Clean up in `Component.onDestruction`: stop the
+  processes you started, give back what you changed (a cursor, a key binding), and
+  clear your host's `svc`.
+- If your entry has a `theme` property, it receives the shell's palette (`bgBase`,
+  `bgSurface`, `textPrimary`, `textMuted`, `accentPrimary`, ...). Take every colour from
+  it: when the theme changes, so does your plugin.
+
+## The host singleton
+
+Other parts of the shell (a bar button, the control center) reach your plugin through
+one singleton, never by searching for it:
+
+```qml
+pragma Singleton
+import QtQuick
+import Quickshell
+import "root:/settings/center"
+
+Singleton {
+    property var svc: null                        // set by the plugin while it runs
+    function openSettings() { Cc.go("<page>") }   // its control center page
+}
+```
+
+The plugin sets `<Name>Host.svc = root` in `Component.onCompleted` and clears it on
+destruction. Everything that uses it checks for `null`: the plugin may be off.
+
+## Settings
+
+- A plugin with few settings keeps them in `settings/AequalynSettings.qml`, saved in
+  `~/.config/aequalyn/settings.json`.
+- A plugin with many keeps its own file in `~/.local/state/aequalyn/<id>/` and saves as
+  you change things. If it once had another name, copy its files over once, never over
+  newer ones.
+
+## Commands and keys
+
+- An `IpcHandler { target: "<id>" }` gives it commands:
+  `qs ipc call <id> toggle`. Name them as verbs: `toggle`, `open`, `next`, `status`.
+- Key bindings call those commands from the Hyprland config:
+  `hl.bind(M .. " + X", hl.dsp.exec_cmd("qs ipc call <id> toggle"))`.
+- Put the key in `PluginInfo.js` too, so its card and page show it.
+
+## On the bar
+
+A bar widget is a file in `plugins/bar/widgets/` with `required property var bar` (the
+bar's theme, font and size), registered in `Widgets.js`. Say
+`readonly property bool wanted: false` when there is nothing to show: the bar hides the
+whole slot. A left click does the plugin's main thing; a right click opens its page.
+
+## Its page in the control center
+
+`settings/center/pages/<Name>.qml`, listed in `settings/center/Pages.js` (its group,
+label, icon, and the words people may search for):
+
+```qml
+CcPage {
+    id: page
+    title: "Name"
+    plugin: "<id>"          // the plugin's strip: what it does, its key, its switch
+    sub: "One sentence: what this page sets."
+    tabs: ["General", "Look"]
+    readonly property var svc: NameHost.svc
+
+    CcSection {
+        visible: page.tab === 0
+        title: "A group of settings"
+        hint: "What they change."
+        CcToggle { title: "Something on or off"; sub: "What it does when on." }
+        CcChoice { options: [...]; current: ...; onChosen: key => ... }
+        CcSlider { title: "An amount"; ... }
+    }
+}
+```
+
+- `plugin: "<id>"` opens the page with the plugin's own strip, the same on every
+  plugin's page. When the plugin is off, say so on the page, and wait: the settings
+  apply once it is back on.
+- Build the settings from the control center's own parts (`CcSection`, `CcToggle`,
+  `CcChoice`, `CcSlider`, `CcRow`, `CcField`, `CcButton`, `CcNote`, `CcMore`). A plugin
+  that brings its own rows puts them in `CcPluginRows`, which shows them at the size
+  every plugin's settings have.
+- A page with many settings splits them into tabs, a few groups each. Things people
+  rarely change go in a `CcMore`. A reset goes last, in a `CcMore` named "Start over",
+  and asks twice.
+
+## How it reads and feels
+
+- Keyboard first. Everything a mouse can do, keys can: arrows move, Enter applies, Esc
+  closes or goes back, typing searches.
+- Plain words. Say what a setting does for the person, in a sentence: "Keeps the
+  screen awake while it is on", not "Inhibit idle". No jargon, no exclamation marks.
+- One look. Colours from the theme, `Cc.sans` for words and `Cc.mono` for keys and
+  numbers, the control center's radii and spacing. A full-screen panel uses the
+  shell's backdrop (`style/backdrop`), so it opens and closes like the others.
+- Quiet when idle. Draw nothing and run nothing that isn't needed: timers and
+  processes only while they matter.
+
+## Checklist
+
+- [ ] A folder under `plugins/`, a `qmldir` in each folder imported by `root:/`
+- [ ] A line in `Plugins.js` and one in `PluginInfo.js`
+- [ ] Loads and unloads cleanly while the shell runs
+- [ ] Colours from the theme; nothing hard-coded but fallbacks
+- [ ] An `IpcHandler` named after its id
+- [ ] Its page: `plugin: "<id>"`, the control center's parts, a note while it is off
+- [ ] Every action reachable by keyboard
