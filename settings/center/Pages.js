@@ -12,11 +12,11 @@
 // of the one chosen (two levels, so neither list ever grows long). Home stands apart.
 var categories = [
     { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "cursor", "lockscreens"] },
-    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "clock", "dock", "media", "clipboard"] },
+    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "dock", "media", "clipboard"] },
     { key: "windows", title: "Windows", icon: "\u{F05AF}", pages: ["arrange", "windows", "switcher"] },
     { key: "devices", title: "Devices", icon: "\u{F0379}", pages: ["screens", "sound", "input", "bluetooth", "wifi"] },
     { key: "apps",    title: "Apps",    icon: "\u{F003B}", pages: ["apps", "webapps", "store", "aiTools"] },
-    { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["sleep", "plugins", "updates", "backup", "about"] }
+    { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["sleep", "clock", "plugins", "updates", "backup", "about"] }
 ];
 // the same, as the flat groups other parts of the shell read
 var groups = [{ title: "", pages: ["home"] }].concat(categories.map(function (c) { return { title: c.title, pages: c.pages }; }));
