@@ -1,7 +1,9 @@
 // Media's quick panel: the click you choose on the bar's media widget (a right click
 // unless you change it). What is playing (the cover, the song, how far in), the
 // buttons, the player's own volume, which player the bar follows, and the visualizer
-// and its looks; last, Media's page in the control center.
+// and how it looks on the bar: the visualizer, its colours, the cover's place and shape
+// and its turning, and the ready-made looks. The cover here is drawn as on the bar, live:
+// it takes the shape and turns as chosen. Last, Media's page in the control center.
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -10,6 +12,8 @@ import "root:/plugins/bar/quick"
 import "root:/plugins/media"
 import "root:/plugins/media/qml/js/Visuals.js" as Visuals
 import "root:/plugins/media/qml/js/Schema.js" as Schema
+import "root:/plugins/media/qml/js/Colors.js" as Colors
+import "root:/plugins/media/qml/bar" as MediaBar
 
 QuickPopup {
     id: q
@@ -73,26 +77,20 @@ QuickPopup {
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
-            Rectangle {
+            // the cover as the bar draws it: its shape, and turning while it plays
+            Item {
                 Layout.preferredWidth: 72
                 Layout.preferredHeight: 72
-                radius: 12
-                color: Quick.theme.bgSelected
-                clip: true
-                Text {
-                    anchors.centerIn: parent
-                    text: "\u{F075A}"
-                    color: Quick.theme.accentPrimary
-                    font.family: Quick.mono
-                    font.pixelSize: 26
-                }
-                Image {
+                MediaBar.Cover {
                     anchors.fill: parent
                     source: q.svc && q.svc.coverOrLogo !== "" ? q.svc.coverOrLogo
                           : q.player && q.player.trackArtUrl ? q.player.trackArtUrl : ""
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    visible: status === Image.Ready
+                    ink: Quick.theme.textPrimary
+                    shape: q.cfg ? q.cfg.coverShape : "square"
+                    spin: q.cfg ? q.cfg.coverSpin : "off"
+                    spinTime: q.cfg ? q.cfg.spinTime : 8
+                    playing: q.playing
+                    corner: 12
                 }
             }
             ColumnLayout {
@@ -198,20 +196,60 @@ QuickPopup {
         }
     }
 
-    // ---- the visualizer and its looks -------------------------------------------------
-    QuickLabel { visible: !!q.svc; text: "On the bar" }
+    // ---- how it looks on the bar: each change shows on the bar at once ---------------
+    function set(key, value) { if (q.svc) q.svc.setSetting(key, value) }
+    QuickLabel { visible: !!q.svc; text: "Visualizer" }
+    QuickChips {
+        visible: !!q.svc
+        options: Visuals.keys.map(k => ({ key: k, label: Visuals.labels[k] || k }))
+        current: q.vizStyle
+        onChosen: key => { q.svc.styleOverride = ""; q.set("vizStyle", key) }
+    }
+    QuickLabel { visible: !!q.svc; text: "Colours" }
+    QuickChips {
+        visible: !!q.svc
+        options: Colors.keys.map(k => ({ key: k, label: Colors.labels[k] || k }))
+        current: q.cfg ? q.cfg.colorMode : ""
+        onChosen: key => q.set("colorMode", key)
+    }
+    QuickLabel { visible: !!q.svc; text: "Cover on the bar" }
+    QuickChips {
+        visible: !!q.svc
+        options: [{ key: "hidden", label: "Hidden" }, { key: "left", label: "Left" },
+                  { key: "center", label: "Before the title" }, { key: "right", label: "Right" }]
+        current: q.cfg ? q.cfg.coverSide : ""
+        onChosen: key => q.set("coverSide", key)
+    }
     RowLayout {
         visible: !!q.svc
         Layout.fillWidth: true
-        spacing: 8
-        QuickRound { glyph: "\u{F0141}"; tip: "The visualizer before"; onClicked: q.stepStyle(-1) }
-        QuickWide {
-            glyph: "\u{F0E70}"
-            label: Visuals.labels[q.vizStyle] || "Visualizer"
-            onClicked: q.stepStyle(1)
+        spacing: 12
+        QuickChips {
+            Layout.fillWidth: false
+            Layout.preferredWidth: contentWidth
+            options: [{ key: "square", label: "Square" }, { key: "circle", label: "Round" }]
+            current: q.cfg ? q.cfg.coverShape : ""
+            onChosen: key => q.set("coverShape", key)
         }
-        QuickRound { glyph: "\u{F0142}"; tip: "The next visualizer"; onClicked: q.stepStyle(1) }
+        QuickChips {
+            enabled: !!q.cfg && q.cfg.coverShape === "circle"
+            opacity: enabled ? 1 : 0.4
+            options: [{ key: "off", label: "Still" }, { key: "left", label: "\u{F0453} Left" }, { key: "right", label: "Right \u{F0450}" }]
+            current: q.cfg ? q.cfg.coverSpin : ""
+            onChosen: key => q.set("coverSpin", key)
+        }
     }
+    QuickLevel {
+        visible: !!q.cfg && q.cfg.coverShape === "circle" && q.cfg.coverSpin !== "off"
+        glyph: "\u{F0450}"
+        tip: "How fast it turns"
+        textWidth: 70
+        // left is slow, right is fast: 30 to 2 seconds a turn
+        value: q.cfg ? (30 - q.cfg.spinTime) / 28 : 0
+        format: v => Math.round(30 - v * 28) + " s/turn"
+        onMoved: v => q.set("spinTime", Math.round(30 - v * 28))
+    }
+    QuickLabel { visible: !!q.svc; text: "Ready-made looks" }
     RowLayout {
         visible: !!q.svc
         Layout.fillWidth: true
