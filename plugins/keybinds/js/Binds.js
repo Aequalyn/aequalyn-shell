@@ -576,16 +576,63 @@ function reservedRows(reserved) {
 
 // ------------------------------------------------------------------ your keys
 
-// the key a bind is on now: yours, or the one Aequalyn ships
-function currentKey(bind, overrides) {
-    const o = overrides && overrides[bind.id];
+// The page's whole state, as saved in overrides.json: the shipped binds whose
+// keys you moved (Aequalyn's own -> yours), the ones you deleted, and the
+// binds you made yourself (a name and a command, on a key of yours). An older
+// file is a plain map of moved keys only.
+function newState() {
+    return { changed: {}, removed: [], custom: [] };
+}
+
+function hasControl(s) { return /[\u0000-\u001f]/.test(String(s || "")) }
+
+function labelOfCustom(c) {
+    return c.label && String(c.label).trim() !== "" ? String(c.label)
+        : "Run: " + String(c.command).split(/\s+/)[0];
+}
+
+// one file's worth of state, old shape or new
+function readState(text) {
+    let raw;
+    try { raw = JSON.parse(String(text || "{}")) } catch (e) { raw = {} }
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) raw = {};
+    const st = newState();
+    if (raw.changed !== undefined || raw.removed !== undefined || raw.custom !== undefined) {
+        const ch = raw.changed && typeof raw.changed === "object" && !Array.isArray(raw.changed) ? raw.changed : {};
+        for (const k in ch) st.changed[normalize(k)] = normalize(ch[k]);
+        const rm = Array.isArray(raw.removed) ? raw.removed : [];
+        for (let i = 0; i < rm.length; i++) {
+            const id = normalize(rm[i]);
+            if (id !== "" && st.removed.indexOf(id) < 0) st.removed.push(id);
+        }
+        const cu = Array.isArray(raw.custom) ? raw.custom : [];
+        for (let i = 0; i < cu.length; i++) {
+            const c = cu[i] && typeof cu[i] === "object" ? cu[i] : null;
+            if (!c || !c.command || hasControl(c.command) || hasControl(c.label)) continue;
+            const keys = normalize(c.keys);
+            if (keys === "") continue;
+            st.custom.push({ keys: keys, label: String(c.label || ""), command: String(c.command) });
+        }
+        return st;
+    }
+    // an older file: { "SUPER + Q": "SUPER + SHIFT + Q" }
+    for (const k in raw) st.changed[normalize(k)] = normalize(raw[k]);
+    return st;
+}
+
+// the key a bind is on now: yours, the one Aequalyn ships, or "" once deleted
+function currentKey(bind, state) {
+    if (state && state.removed && state.removed.indexOf(bind.id) >= 0) return "";
+    const o = state && state.changed ? state.changed[bind.id] : undefined;
     return o && o !== bind.id ? o : bind.id;
 }
 
 // a chord, against everything else that uses it. null when it is free; the
-// holder's name when it is not; "modifier" when a key alone would be taken from
-// every app.
-function conflict(chord, exceptId, binds, overrides, reserved) {
+// string "modifier" when a key alone would be taken from every app; otherwise
+// the name of the key's holder, in plain words. `except` spares the one being
+// edited: { id: a shipped bind's id } while its key is being changed, or
+// { custom: a made bind's own key } while that is being moved.
+function conflict(chord, except, binds, state, reserved) {
     const id = normalize(chord);
     if (id === "") return "nothing was pressed";
     const parts = id.split(" + ");
@@ -594,11 +641,16 @@ function conflict(chord, exceptId, binds, overrides, reserved) {
     const okBare = key.indexOf("XF86") === 0 || key === "PRINT" || /^F\d{1,2}$/.test(key);
     if (bare && !okBare) return "modifier";
     if (reserved && reserved[id]) return reserved[id];
-    if (binds) {
+    if (binds && state) {
         for (let i = 0; i < binds.length; i++) {
             const b = binds[i];
-            if (b.id === exceptId) continue;
-            if (normalize(currentKey(b, overrides)) === id) return b.label;
+            if (except && except.id && b.id === except.id) continue;
+            const cur = currentKey(b, state);
+            if (cur !== "" && normalize(cur) === id) return b.label;
+        }
+        for (let c = 0; c < state.custom.length; c++) {
+            if (except && except.custom && state.custom[c].keys === except.custom) continue;
+            if (normalize(state.custom[c].keys) === id) return labelOfCustom(state.custom[c]);
         }
     }
     return null;
@@ -606,29 +658,58 @@ function conflict(chord, exceptId, binds, overrides, reserved) {
 
 // ------------------------------------------------------------------ the block
 
-// the marked block, from your overrides: every unbind first, then every bind,
-// so a key that moves from one bind to another is never caught in between.
-// The mark (@@MARK@@) is the plugin's own helper, which keybinds-sync fills
-// in from where it really is: the block works only while the plugin is there.
-// Returns { text, skipped }: a skip is an override that no longer fits (its
-// bind is gone, or its key is taken), kept in the state but not written.
-function blockLua(binds, overrides) {
-    const changed = [];
+// the marked block, from your state: every unbind first, then every bind, so
+// a key that moves from one bind to another is never caught in between. A
+// deleted shipped bind is only unbound; a bind you made is bound to your key
+// with its command; the mark (@@MARK@@) is the plugin's own helper, which
+// keybinds-sync fills in from where it really is: the block works only while
+// the plugin is there.
+// Returns { text, skipped }: a skip is a change that no longer fits (its bind
+// is gone, or its key is taken), kept in the state but not written.
+function blockLua(binds, state) {
     const skipped = [];
     const seenTargets = {};
+    const removed = [];
+    const changed = [];
+    const custom = [];
+
     for (let i = 0; i < binds.length; i++) {
         const b = binds[i];
-        const to = overrides ? overrides[b.id] : undefined;
-        if (to === undefined || to === null || to === b.id) continue;
+        const isRemoved = state.removed.indexOf(b.id) >= 0;
+        const to = state.changed[b.id];
+        if (isRemoved) { removed.push(b); continue; }   // a delete wins over a moved key
+        if (to === undefined || to === null) continue;
         const norm = normalize(to);
         if (norm === b.id) { skipped.push({ id: b.id, why: "it is already Aequalyn's own key" }); continue; }
-        if (conflict(norm, b.id, binds, overrides, null)) {
+        if (conflict(norm, { id: b.id }, binds, state, null)) {
             skipped.push({ id: b.id, why: "the key is used by another bind" });
             continue;
         }
         if (seenTargets[norm]) { skipped.push({ id: b.id, why: "two binds want the same key" }); continue; }
         seenTargets[norm] = true;
         changed.push({ bind: b, to: norm });
+    }
+    // deletes of binds Aequalyn no longer ships: noted, not written
+    for (let r = 0; r < state.removed.length; r++) {
+        const id = state.removed[r];
+        let ships = false;
+        for (let i = 0; i < binds.length; i++) if (binds[i].id === id) ships = true;
+        if (!ships) skipped.push({ id: id, why: "Aequalyn no longer ships it" });
+    }
+    for (let c = 0; c < state.custom.length; c++) {
+        const e = state.custom[c];
+        const norm = normalize(e.keys);
+        if (norm === "" || hasControl(e.command) || (!e.label && !e.command)) {
+            skipped.push({ id: norm, why: "it says nothing to run" });
+            continue;
+        }
+        if (conflict(norm, { custom: e.keys }, binds, state, null)) {
+            skipped.push({ id: norm, why: "the key is used by another bind" });
+            continue;
+        }
+        if (seenTargets[norm]) { skipped.push({ id: norm, why: "two binds want the same key" }); continue; }
+        seenTargets[norm] = true;
+        custom.push({ keys: norm, label: labelOfCustom(e), command: e.command });
     }
 
     const L = [];
@@ -640,15 +721,28 @@ function blockLua(binds, overrides) {
     L.push("local kb_mark = io.open(\"@@MARK@@\", \"r\")");
     L.push("if kb_mark then");
     L.push("  kb_mark:close()");
-    if (changed.length > 0) {
-        L.push("  -- first take back the keys Aequalyn ships with");
-        for (let c = 0; c < changed.length; c++) {
-            L.push("  pcall(hl.unbind, " + luaStr(changed[c].bind.id) + ")  -- " + changed[c].bind.label);
+    if (changed.length > 0 || removed.length > 0 || custom.length > 0) {
+        if (removed.length > 0 || changed.length > 0) {
+            L.push("  -- first take back the keys Aequalyn ships with");
+            for (let r = 0; r < removed.length; r++)
+                L.push("  pcall(hl.unbind, " + luaStr(removed[r].chord) + ")  -- deleted: " + removed[r].label);
+            for (let c = 0; c < changed.length; c++)
+                L.push("  pcall(hl.unbind, " + luaStr(changed[c].bind.chord) + ")  -- " + changed[c].bind.label);
         }
-        L.push("  -- then give their actions your own keys");
-        for (let c = 0; c < changed.length; c++) {
-            const b = changed[c].bind;
-            L.push("  hl.bind(" + luaStr(changed[c].to) + ", " + b.action + (b.flags ? ", " + b.flags : "") + ")  -- " + b.label);
+        if (changed.length > 0) {
+            L.push("  -- then give their actions your own keys");
+            for (let c = 0; c < changed.length; c++) {
+                const b = changed[c].bind;
+                L.push("  hl.bind(" + luaStr(changed[c].to) + ", " + b.action + (b.flags ? ", " + b.flags : "") + ")  -- " + b.label);
+            }
+        }
+        if (custom.length > 0) {
+            L.push("  -- and the keys you made yourself");
+            for (let c = 0; c < custom.length; c++) {
+                const e = custom[c];
+                L.push("  hl.bind(" + luaStr(e.keys) + ", hl.dsp.exec_cmd(" + luaStr(e.command)
+                    + "), { description = " + luaStr(e.label) + " })  -- " + e.label);
+            }
         }
     }
     L.push("  -- this page, while the plugin is on");

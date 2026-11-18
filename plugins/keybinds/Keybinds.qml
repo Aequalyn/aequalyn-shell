@@ -35,10 +35,22 @@ Item {
     property var warnings: []         // binds in the file this could not name
     property var reserved: ({})       // every key that is not on the page, and why
     property var reservedRows: []     // the same, as rows for the page's fold
-    property var overrides: ({})      // Aequalyn's key -> your key
+    property var state: null           // { changed: {}, removed: [], custom: [] }, as saved
     property var status: ({ ok: false, active: "unknown", count: 0, changed: false, error: "", skipped: [] })
-    property bool ready: false        // your saved overrides have been read
+    property bool ready: false        // your saved keys have been read
     property bool dirReady: false     // the state folder exists, so writes can land
+
+    // how many keys differ from what Aequalyn ships
+    readonly property int differences: {
+        if (!state) return 0
+        let n = 0
+        for (const k in state.changed) n++
+        return n + state.removed.length + state.custom.length
+    }
+
+    function cloneState() {
+        return state ? JSON.parse(JSON.stringify(state)) : Binds.newState()
+    }
 
     // ---- the files -------------------------------------------------------------------
     function readText(fv) {
@@ -106,20 +118,14 @@ Item {
     // ---- your keys -------------------------------------------------------------------
     function absorbOverrides(text) {
         if (ready) return;
-        let fromFile = {};
-        try {
-            const parsed = JSON.parse(String(text || "{}"));
-            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) fromFile = parsed;
-        } catch (e) { fromFile = {} }
-        const merged = {};
-        for (const k in fromFile) merged[Binds.normalize(k)] = Binds.normalize(fromFile[k]);
-        overrides = merged;
+        state = Binds.readState(text);
         ready = true;
         reconcile();
     }
 
-    function currentKey(bind) { return Binds.currentKey(bind, overrides) }
+    function currentKey(bind) { return Binds.currentKey(bind, state) }
     function chordText(chord) { return Binds.chordText(chord) }
+    function customLabel(c) { return Binds.labelOfCustom(c) }
 
     // a key press, as one chord: "" while only modifiers are held, "" for a key
     // this cannot name (Hyprland names keys, and only those can be bound)
@@ -178,53 +184,132 @@ Item {
         return Binds.chordFromParts(mods, name);
     }
 
-    // null when the key is free; "modifier" when a key alone would be taken
-    // from every app; otherwise the name of the key's holder, in plain words
-    function conflictFor(chord, exceptId) {
-        return Binds.conflict(chord, exceptId, binds, overrides, reserved);
+    // null when the key is free; the string "modifier" when a key alone would
+    // be taken from every app; otherwise the name of the key's holder, in
+    // plain words. `except` spares the bind being edited: { id: ... } for a
+    // shipped bind whose key is changing, { custom: ... } for a made bind.
+    function conflictFor(chord, except) {
+        return Binds.conflict(chord, except, binds, state, reserved);
     }
 
-    function setBind(id, chord) {
+    // ---- one change at a time -------------------------------------------------------
+    // Every change keeps the state as it was, writes what it becomes, and asks
+    // Hyprland through the helper. When the helper says the change was taken
+    // back (the file restored), the state comes down with it, so the two are
+    // never apart.
+    property var lastGood: null
+
+    function commit(next) {
+        lastGood = cloneState();
+        state = next;
+        persist();
+        apply();
+    }
+
+    // a shipped bind, onto your key (its own key: back as Aequalyn ships it)
+    function moveKey(id, chord) {
         const norm = Binds.normalize(chord);
-        if (norm === id) { resetBind(id); return }
-        const next = {};
-        for (const k in overrides) next[k] = overrides[k];
-        next[id] = norm;
-        overrides = next;
-        persist();
-        apply();
+        const next = cloneState();
+        if (norm === id) {
+            delete next.changed[id];
+            const i = next.removed.indexOf(id);
+            if (i >= 0) next.removed.splice(i, 1);
+        } else {
+            next.changed[id] = norm;
+            const i = next.removed.indexOf(id);
+            if (i >= 0) next.removed.splice(i, 1);
+        }
+        commit(next);
     }
+
+    // a shipped bind back on Aequalyn's own key
     function resetBind(id) {
-        if (overrides[id] === undefined) return;
-        const next = {};
-        for (const k in overrides) if (k !== id) next[k] = overrides[k];
-        overrides = next;
-        persist();
-        apply();
+        const next = cloneState();
+        delete next.changed[id];
+        commit(next);
     }
-    function resetAll() {
-        overrides = ({});
-        persist();
-        apply();
+
+    // delete: a shipped bind's key does nothing any more
+    function removeBind(id) {
+        const next = cloneState();
+        delete next.changed[id];
+        if (next.removed.indexOf(id) < 0) next.removed.push(id);
+        commit(next);
     }
+
+    // take a delete back. "" when Aequalyn's own bind stands again; otherwise
+    // the name of whoever took its key in the meantime.
+    function restoreBind(id) {
+        const i = state.removed.indexOf(id);
+        if (i < 0) return "";
+        const who = Binds.conflict(id, null, binds, state, reserved);
+        if (who && who !== "modifier") return who;
+        const next = cloneState();
+        next.removed.splice(i, 1);
+        commit(next);
+        return "";
+    }
+
+    // a bind you made: a name, a command, a key. "" when it stands; otherwise
+    // the reason it cannot (a taken key, or something to run missing).
+    function addCustom(label, command, keys) {
+        const norm = Binds.normalize(keys);
+        if (norm === "" || String(command || "").trim() === "" || Binds.hasControl(command) || Binds.hasControl(label))
+            return "say what the key should run, and press a whole chord for it";
+        const who = conflictFor(norm, null);
+        if (who === "modifier") return "add a modifier: a key alone would be taken from every app";
+        if (who) return "that's " + who;
+        const next = cloneState();
+        next.custom.push({ keys: norm, label: String(label || ""), command: String(command) });
+        commit(next);
+        return "";
+    }
+
+    // a made bind, onto another key
+    function setCustomKey(oldKeys, chord) {
+        const norm = Binds.normalize(chord);
+        if (norm === Binds.normalize(oldKeys)) return;
+        const next = cloneState();
+        for (let i = 0; i < next.custom.length; i++) {
+            if (Binds.normalize(next.custom[i].keys) === Binds.normalize(oldKeys)) {
+                next.custom[i].keys = norm;
+                break;
+            }
+        }
+        commit(next);
+    }
+
+    // remove a bind you made
+    function removeCustom(keys) {
+        const norm = Binds.normalize(keys);
+        const next = cloneState();
+        for (let i = 0; i < next.custom.length; i++) {
+            if (Binds.normalize(next.custom[i].keys) === norm) { next.custom.splice(i, 1); break; }
+        }
+        commit(next);
+    }
+
+    // every key back to how Aequalyn ships it, and the ones you made gone
+    function resetAll() { commit(Binds.newState()) }
 
     function persist() {
-        if (!ready || !dirReady) return;
-        overridesFile.setText(JSON.stringify(overrides, null, 2) + "\n");
+        if (!ready || !dirReady || !state) return;
+        overridesFile.setText(JSON.stringify(state, null, 2) + "\n");
     }
 
     // ---- writing it to Hyprland ------------------------------------------------------
-    // the block, from your overrides as they stand now; written to the state
-    // folder, and keybinds-sync merges it into keybinds.lua and reloads. When
-    // nothing has changed the helper writes nothing and reloads nothing, so
-    // this is also the check that your keys really are live.
+    // the block, from your keys as they stand now; written to the state
+    // folder, and keybinds-sync merges it into keybinds.lua, reloads Hyprland
+    // and asks it whether your keys are live. When Hyprland refuses the
+    // change, the helper restores the file and says so here: the state comes
+    // down with it, so the two are never apart.
     function reconcile() {
         if (!ready || !dirReady || binds.length === 0) return;
         apply();
     }
     function apply() {
         if (!ready || !dirReady || binds.length === 0) return;
-        const gen = Binds.blockLua(binds, overrides);
+        const gen = Binds.blockLua(binds, state);
         const skipped = [];
         for (let s = 0; s < gen.skipped.length; s++)
             skipped.push(gen.skipped[s].id + ": " + gen.skipped[s].why);
@@ -245,8 +330,19 @@ Item {
             onStreamFinished: {
                 let st;
                 try { st = JSON.parse(String(text || "")) } catch (e) { st = null }
-                if (!st || typeof st !== "object") st = { ok: false, active: "unknown", count: 0, changed: false, error: "the keybind helper gave no answer" };
-                root.status = Object.assign({}, st, { skipped: root.status.skipped || [] });
+                if (!st || typeof st !== "object")
+                    st = { ok: false, active: "unknown", count: 0, changed: false, restored: "false",
+                           error: "the keybind helper gave no answer" };
+                // the change was taken back: come down with the file
+                if ((st.restored === "true" || st.restored === true) && root.lastGood) {
+                    root.state = root.lastGood;
+                    root.persist();
+                    blockFile.setText(Binds.blockLua(root.binds, root.state).text);
+                }
+                root.status = Object.assign({}, st, {
+                    skipped: root.status.skipped || [],
+                    count: root.differences
+                });
             }
         }
         onExited: if (root.syncAgain) { root.syncAgain = false; Qt.callLater(function () { root.runHelper("apply") }) }
@@ -281,5 +377,30 @@ Item {
         function status(): string { return JSON.stringify(root.status) }
 
         function open(): string { KeybindsHost.openPage(); return "ok" }
+
+        // a bind of your own:  qs ipc call keybinds add "Snip" "grim -g ..." "SUPER + F9"
+        function add(name: string, command: string, keys: string): string {
+            const why = root.addCustom(name, command, keys);
+            return why === "" ? "ok" : why;
+        }
+
+        // delete a bind: a shipped one by its id, a made one by its key
+        function remove(id: string): string {
+            const norm = Binds.normalize(id);
+            for (let i = 0; i < root.state.custom.length; i++) {
+                if (Binds.normalize(root.state.custom[i].keys) === norm) {
+                    root.removeCustom(norm);
+                    return "ok";
+                }
+            }
+            root.removeBind(norm);
+            return "ok";
+        }
+
+        // take a delete back
+        function restore(id: string): string {
+            const why = root.restoreBind(Binds.normalize(id));
+            return why === "" ? "ok" : "that key is used by " + why;
+        }
     }
 }
