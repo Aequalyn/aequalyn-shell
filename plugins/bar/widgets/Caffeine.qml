@@ -9,6 +9,8 @@ import "root:/plugins/idleInhibitor"
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: caffeineButton
   objectName: "aequalyn-caffeine-button"
   Accessible.role: Accessible.Button
@@ -20,7 +22,7 @@ Rectangle {
   Text {
     anchors.centerIn: parent
     text: CaffeineService.active ? "" : "󰾪"
-    color: CaffeineService.active ? bar.theme.accentOrange : bar.theme.textMuted
+    color: CaffeineService.active ? bar.inked(ink, bar.theme.accentOrange) : bar.theme.textMuted
     font.pixelSize: 14
     font.family: bar.font
   }

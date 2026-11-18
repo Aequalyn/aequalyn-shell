@@ -7,6 +7,8 @@ import "root:/style/Wheel.js" as Wheel
 
 Item {
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   property var screen
   // the wheel does this widget's own thing, so its bar region doesn't slide under it
   readonly property bool usesWheel: true
@@ -96,7 +98,7 @@ Item {
         width: modelData.focused ? 32 : 24
         height: 24
         radius: 12
-        color: modelData.focused ? bar.theme.accentPrimary :
+        color: modelData.focused ? bar.inked(ink, bar.theme.accentPrimary) :
                modelData.urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
         Behavior on color { ColorAnimation { duration: 150 } }
         SequentialAnimation {

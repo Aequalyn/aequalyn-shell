@@ -5,6 +5,8 @@ import "root:/style/Wheel.js" as Wheel
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: brightWidget
   // the wheel does this widget's own thing, so its bar region doesn't slide under it
   readonly property bool usesWheel: true
@@ -22,7 +24,7 @@ Rectangle {
     Text {
       anchors.verticalCenter: parent.verticalCenter
       text: "󰃠"
-      color: bar.theme.accentOrange
+      color: bar.inked(ink, bar.theme.accentOrange)
       font.pixelSize: 14
       font.family: bar.font
     }

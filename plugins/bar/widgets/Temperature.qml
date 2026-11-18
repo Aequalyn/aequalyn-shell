@@ -5,6 +5,8 @@ import ".."
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: tempWidget
   height: 24
   width: tempContent.width + 12
@@ -17,7 +19,7 @@ Rectangle {
     Text {
       anchors.verticalCenter: parent.verticalCenter
       text: "󰔏"
-      color: bar.theme.accentRed
+      color: bar.inked(ink, bar.theme.accentRed)
       font.pixelSize: 14
       font.family: bar.font
     }

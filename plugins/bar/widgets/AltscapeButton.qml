@@ -11,6 +11,8 @@ import "root:/plugins/altscape"
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: altscapeButton
   objectName: "aequalyn-altscape-button"
   readonly property var svc: AltscapeHost.svc
@@ -24,7 +26,7 @@ Rectangle {
   Text {
     anchors.centerIn: parent
     text: "\u{F05B1}"
-    color: bar.theme.accentPrimary
+    color: bar.inked(ink, bar.theme.accentPrimary)
     font.pixelSize: 14
     font.family: bar.font
   }

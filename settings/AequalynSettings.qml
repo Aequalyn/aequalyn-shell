@@ -47,6 +47,10 @@ QtObject {
         root.save()
     }
     property int barCenterPercent: 33
+    // the bar's widgets: their own colours ("own"), or the theme's ("theme") in a pattern
+    // along the bar (style/Colors.js: patterns), which the shapes' Palette colours follow too
+    property string barInk: "own"
+    property string barInkPattern: "all"
     property bool showClock: true
     property bool showCalendar: true
     property bool showWorkspaces: true
@@ -423,6 +427,8 @@ QtObject {
                 barSidePercent: root.barSidePercent,
                 barClicks: root.barClicks,
                 barCenterPercent: root.barCenterPercent,
+                barInk: root.barInk,
+                barInkPattern: root.barInkPattern,
                 showClock: root.showClock,
                 showCalendar: root.showCalendar,
                 showWorkspaces: root.showWorkspaces,
@@ -606,6 +612,8 @@ QtObject {
         root.barSidePercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barSidePercent, root.barSidePercent)) || 0)))
         root.barClicks = a.barClicks && typeof a.barClicks === "object" && !Array.isArray(a.barClicks) ? a.barClicks : ({})
         root.barCenterPercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barCenterPercent, root.barCenterPercent)) || 0)))
+        root.barInk = a.barInk === "theme" ? "theme" : "own"
+        root.barInkPattern = typeof a.barInkPattern === "string" ? a.barInkPattern : "all"
         root.showClock = pick(a.showClock, root.showClock)
         root.showCalendar = pick(a.showCalendar, root.showCalendar)
         root.showWorkspaces = pick(a.showWorkspaces, root.showWorkspaces)

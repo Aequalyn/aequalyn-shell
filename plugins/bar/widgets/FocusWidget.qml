@@ -9,6 +9,8 @@ Rectangle {
   id: root
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   readonly property var svc: KitHost.get("focus")
   readonly property bool wanted: !!svc && (root.svc.on)
   visible: wanted
@@ -20,7 +22,7 @@ Rectangle {
     id: label
     anchors.centerIn: parent
     text: root.wanted ? "\u{F0F6E} " + root.svc.left + " min" : ""
-    color: bar.theme.textPrimary
+    color: bar.inked(ink, bar.theme.textPrimary)
     font.pixelSize: 12
     font.family: bar.font
   }

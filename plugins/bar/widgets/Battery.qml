@@ -7,14 +7,16 @@ import ".."
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: battPill
   height: 24
   width: battContent.width + 12
   radius: 12
   color: quick.visible ? bar.theme.bgSelected : bar.chipColor
   readonly property color batteryColor: {
-    if (SystemInfo.batteryCharging) return bar.theme.accentGreen;
-    if (SystemInfo.batteryLevelRaw > 20) return bar.theme.batteryGood;
+    if (SystemInfo.batteryCharging) return bar.inked(ink, bar.theme.accentGreen);
+    if (SystemInfo.batteryLevelRaw > 20) return bar.inked(ink, bar.theme.batteryGood);
     if (SystemInfo.batteryLevelRaw > 10) return bar.theme.batteryWarning;
     return bar.theme.batteryCritical;
   }

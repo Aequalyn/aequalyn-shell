@@ -6,6 +6,8 @@ import ".."
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: clockWidget
   height: 24
   width: timeDate.width + 16
@@ -18,7 +20,7 @@ Rectangle {
     Text {
       anchors.verticalCenter: parent.verticalCenter
       text: Time.timeString
-      color: bar.theme.textPrimary
+      color: bar.inked(ink, bar.theme.textPrimary)
       font.pixelSize: 12
       font.family: bar.font
     }

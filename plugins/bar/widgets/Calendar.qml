@@ -3,6 +3,8 @@ import Quickshell
 
 Item {
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: calendarButton
   implicitWidth: 28
   implicitHeight: 24
@@ -14,7 +16,7 @@ Item {
     Text {
       anchors.centerIn: parent
       text: "\u{F0ED7}"
-      color: bar.theme.accentPrimary
+      color: bar.inked(ink, bar.theme.accentPrimary)
       font.family: bar.font
       font.pixelSize: 16
     }

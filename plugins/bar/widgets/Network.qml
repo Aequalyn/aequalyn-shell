@@ -8,6 +8,8 @@ import ".."
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: netPill
   height: 24
   width: netContent.width + 12
@@ -25,7 +27,7 @@ Rectangle {
         if (SystemInfo.networkType === "wifi") return "󰖩"
         return "󰖪"
       }
-      color: SystemInfo.networkType === "disconnected" ? bar.theme.textMuted : bar.theme.accentGreen
+      color: SystemInfo.networkType === "disconnected" ? bar.theme.textMuted : bar.inked(ink, bar.theme.accentGreen)
       font.pixelSize: 14
       font.family: bar.font
     }

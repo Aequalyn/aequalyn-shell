@@ -5,6 +5,8 @@ import QtQuick.Controls
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: shotButton
   objectName: "aequalyn-screenshot-button"
   Accessible.role: Accessible.Button
@@ -16,7 +18,7 @@ Rectangle {
   Text {
     anchors.centerIn: parent
     text: "󰹑"
-    color: bar.theme.textPrimary
+    color: bar.inked(ink, bar.theme.textPrimary)
     font.pixelSize: 14
     font.family: bar.font
   }
