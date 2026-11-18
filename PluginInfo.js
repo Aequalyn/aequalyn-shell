@@ -36,6 +36,8 @@ var info = {
                       about: "Every window, in one of twelve layouts, with live previews." },
     fm:             { icon: "\u{F024B}", group: "key",        keys: "",                     page: "",
                       about: "Aequalyn FM: tabs, bookmarks, preview, network drives and every app's Open/Save dialog." },
+    keybinds:       { icon: "\u{F030C}", group: "background", keys: "Super + Alt + K",      page: "keybinds",
+                      about: "Change every shortcut: press your own keys for what Aequalyn does." },
     clipboard:      { icon: "\u{F014F}", group: "key",        keys: "Super + Ctrl + V",     page: "",
                       about: "Everything you copied, text and images." },
     powerMenu:      { icon: "\u{F0425}", group: "key",        keys: "Super + Shift + M",    page: "sleep",

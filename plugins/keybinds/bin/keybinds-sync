@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+# writes / removes the block of your own keys at the end of ~/.config/hypr/
+# keybinds.lua. Run by the Keybinds plugin of the Aequalyn shell
+# (plugins/keybinds/Keybinds.qml), which writes the block itself to
+# <state>/block.lua from your overrides; this script only merges it in:
+# take the old marked block out, put the new one at the end (the last binds
+# win), reload Hyprland, and check the keys really are live.
+#
+#   keybinds-sync apply     merge the block, reload, verify
+#   keybinds-sync remove    take the block out, reload
+#   keybinds-sync status    one json line
+#
+# prints one json line: {"ok":..,"active":"true|false|unknown","count":N,
+# "changed":..,"error":".."}. For tests: KEYBINDS_FILE, KEYBINDS_STATE and
+# KEYBINDS_NO_RELOAD=1 override the paths and the reload.
+set -uo pipefail
+umask 077
+
+STATE_DIR="${KEYBINDS_STATE:-$HOME/.local/state/aequalyn/keybinds}"
+FILE="${KEYBINDS_FILE:-$HOME/.config/hypr/keybinds.lua}"
+BLOCK="$STATE_DIR/block.lua"
+DIAG="$STATE_DIR/binds-check.txt"
+BEGIN="-- >>> keybinds >>>"
+END="-- <<< keybinds <<<"
+# the block's guard: this file, at its real place. While the plugin is there
+# the block works; once it is gone the binds in it stop.
+MARK="$(readlink -f "${BASH_SOURCE[0]}")"
+
+# the block, with its mark filled in from where this really is
+marked_block() {
+  sed "s|@@MARK@@|$(printf '%s' "$MARK" | sed 's/[&|]/\\&/g')|g" "$BLOCK"
+}
+
+# path -> lua string. escape \ and ", refuse control chars
+lua_str() {
+  local s="$1"
+  [[ "$s" == *[$'\001'-$'\037']* ]] && return 1
+  s="${s//\\/\\\\}"; s="${s//\"/\\\"}"
+  printf '"%s"' "$s"
+}
+
+json_str() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+report() { # ok active count changed error
+  printf '{"ok":%s,"active":"%s","count":%s,"changed":%s,"error":"%s"}\n' \
+    "$1" "$2" "${3:-0}" "$4" "$(json_str "$5")"
+}
+
+reload_hypr() {
+  [[ "${KEYBINDS_NO_RELOAD:-}" == 1 ]] && return 0
+  command -v hyprctl >/dev/null 2>&1 && hyprctl reload >/dev/null 2>&1
+  return 0
+}
+
+# write only if different, keeping symlinked dotfiles as symlinks. prints 1 if written
+write_if_changed() {
+  local f="$1" content="$2"
+  [[ -f "$f" && "$(cat "$f")" == "$content" ]] && { echo 0; return; }
+  mkdir -p "$(dirname "$f")"
+  printf '%s\n' "$content" > "$f" && echo 1
+}
+
+# the file without our block (and without the blank lines it left at the end)
+strip_block() {
+  [[ -f "$FILE" ]] || return 0
+  awk -v b="$BEGIN" -v e="$END" '
+    $0 == b { skip = 1; next }
+    skip && $0 == e { skip = 0; next }
+    !skip { print }
+  ' "$FILE" | sed -e :a -e '/^[[:space:]]*$/{$d;N;ba' -e '}'
+}
+
+backup_once() {
+  [[ -f "$FILE" && ! -e "$FILE.bak-keybinds" ]] && cp -p "$FILE" "$FILE.bak-keybinds"
+  return 0
+}
+
+# the chords of the binds in the block, one a line
+block_chords() {
+  [[ -f "$BLOCK" ]] || return 0
+  sed -n 's/^[[:space:]]*hl\.bind("\([^"]*\)".*/\1/p' "$BLOCK"
+}
+
+# is every chord of the block live? hyprctl reports the key lowercase and the
+# mods as a mask; compare both. Prints the missing ones, one a line, "?" when
+# there is no Hyprland to ask.
+live_check() {
+  { command -v hyprctl && command -v python3; } >/dev/null 2>&1 || { echo "?"; return; }
+  local -a chords=()
+  mapfile -t chords < <(block_chords)
+  [[ ${#chords[@]} -eq 0 ]] && return 0
+  local missing rc
+  missing="$(hyprctl -j binds 2>/dev/null | python3 -c '
+import json, sys
+chords = sys.argv[1:]
+try:
+    binds = json.load(sys.stdin)
+except Exception:
+    sys.exit(2)
+bits = {"SHIFT": 1, "CAPS": 2, "CTRL": 4, "ALT": 8, "MOD2": 16, "MOD3": 32, "SUPER": 64, "MOD5": 128}
+missing = []
+for c in chords:
+    parts = [p.strip().upper() for p in c.split("+") if p.strip()]
+    mask = sum(bits[p] for p in parts if p in bits)
+    key = parts[-1].lower() if parts else ""
+    if not any(str(b.get("key", "")).lower() == key and int(b.get("modmask", -1)) == mask
+               for b in binds):
+        missing.append(c)
+print("\n".join(missing))
+sys.exit(0 if not missing else 1)
+' "${chords[@]}")"
+  rc=$?
+  [[ $rc -eq 2 ]] && { echo "?"; return 0; }
+  [[ $rc -ne 0 ]] && printf '%s\n' "$missing"
+  return 0
+}
+
+# what we saw goes to binds-check.txt when a key did not take
+diag_dump() { # missing
+  mkdir -p "$STATE_DIR"
+  {
+    echo "checked: $(date)"
+    echo "missing: $(echo "$1" | tr '\n' ' ')"
+    echo "--- hyprctl configerrors"
+    hyprctl configerrors 2>&1 | head -40
+    echo "--- our binds in hyprctl"
+    hyprctl -j binds 2>/dev/null | python3 -c '
+import json, sys
+try:
+    binds = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for b in binds:
+    print(b.get("modmask"), b.get("key"), b.get("description", ""))' 2>&1 | head -60
+  } > "$DIAG" 2>&1
+}
+
+cmd_apply() {
+  [[ -f "$FILE" ]] || { report false unknown 0 false "no $FILE: Aequalyn's Lua Hyprland config is not there"; return 1; }
+  [[ -f "$BLOCK" ]] || { report false unknown 0 false "no block.lua in $STATE_DIR (the shell is not running?)"; return 1; }
+  local body content w changed=0
+  body="$(strip_block)"
+  [[ -n "$body" ]] && body="$body"$'\n'
+  content="$body"$'\n'"$(marked_block)"
+  w="$(write_if_changed "$FILE" "$content")"; [[ "$w" == 1 ]] && changed=1
+  [[ "$changed" == 1 ]] && reload_hypr
+  # the pairs you changed: the unbinds, less this page's own key
+  local count
+  count=$(grep -c 'pcall(hl.unbind' "$BLOCK"); count=$(( count > 0 ? count - 1 : 0 ))
+  if [[ "${KEYBINDS_NO_RELOAD:-}" == 1 ]]; then
+    report true unknown "$count" "$([[ $changed == 1 ]] && echo true || echo false)" ""
+    return 0
+  fi
+  { command -v hyprctl && command -v python3; } >/dev/null 2>&1 || { report true unknown "$count" false ""; return 0; }
+  sleep 0.6
+  local missing
+  missing="$(live_check)"
+  if [[ "$missing" == "?" ]]; then report true unknown "$count" "$([[ $changed == 1 ]] && echo true || echo false)" ""; return 0; fi
+  if [[ -n "$missing" ]]; then
+    diag_dump "$missing"
+    report false false "$count" "$([[ $changed == 1 ]] && echo true || echo false)" "Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
+    return 1
+  fi
+  report true true "$count" "$([[ $changed == 1 ]] && echo true || echo false)" ""
+}
+
+cmd_remove() {
+  local changed=0 content
+  if [[ -f "$FILE" ]] && grep -qxF -e "$BEGIN" "$FILE"; then
+    backup_once
+    content="$(strip_block)"
+    printf '%s\n' "$content" > "$FILE"
+    changed=1
+  fi
+  [[ "$changed" == 1 ]] && reload_hypr
+  report true true 0 "$([[ $changed == 1 ]] && echo true || echo false)" ""
+}
+
+cmd_status() {
+  local present=false count=0
+  [[ -f "$FILE" ]] && grep -qxF -e "$BEGIN" "$FILE" && present=true
+  [[ -f "$BLOCK" ]] && count=$(grep -c 'pcall(hl.unbind' "$BLOCK") && count=$(( count > 0 ? count - 1 : 0 ))
+  if [[ "$present" == true && "${KEYBINDS_NO_RELOAD:-}" != 1 ]] && { command -v hyprctl && command -v python3; } >/dev/null 2>&1; then
+    local missing
+    missing="$(live_check)"
+    [[ "$missing" == "?" ]] && { report true unknown "$count" false ""; return 0; }
+    if [[ -n "$missing" ]]; then
+      report true false "$count" false "Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
+      return 1
+    fi
+    report true true "$count" false ""
+  else
+    report "$present" unknown "$count" false ""
+  fi
+}
+
+case "${1:-status}" in
+  apply) cmd_apply ;;
+  remove) cmd_remove ;;
+  status) cmd_status ;;
+  *) echo "usage: keybinds-sync apply | remove | status" >&2; exit 2 ;;
+esac
