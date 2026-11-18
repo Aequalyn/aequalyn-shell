@@ -34,6 +34,8 @@ var info = {
                       about: "The theme and wallpaper pickers, and the look pages here." },
     altscape:       { icon: "\u{F05B1}", group: "key",        keys: "Alt + Tab",            page: "switcher",
                       about: "Every window, in one of twelve layouts, with live previews." },
+    fm:             { icon: "\u{F024B}", group: "key",        keys: "",                     page: "",
+                      about: "Aequalyn FM: tabs, bookmarks, preview, network drives and every app's Open/Save dialog." },
     clipboard:      { icon: "\u{F014F}", group: "key",        keys: "Super + Ctrl + V",     page: "",
                       about: "Everything you copied, text and images." },
     powerMenu:      { icon: "\u{F0425}", group: "key",        keys: "Super + Shift + M",    page: "sleep",

@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# aequalyn-fm — rebuilt as an Aequalyn shell plugin.
+#
+# The file manager itself lives in the shell process, so there is no second
+# Quickshell to start: this launcher only talks to it over IPC, and installs
+# the desktop entry / file-chooser portal when asked.
+#
+#   aequalyn-fm [folder|file|uri ...]  a window for the first, tabs for the rest
+#   aequalyn-fm --background           make sure the shell is up, no window
+#   aequalyn-fm --install              write the desktop entry for this copy
+#   aequalyn-fm --default              that, and make it what opens folders
+#   aequalyn-fm --portal               make it every app's open and save dialog
+#   aequalyn-fm --portal-off           give the dialogs back to gtk's or gnome's
+#   aequalyn-fm --windows              close all file-manager windows
+
+set -u
+
+here=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+root=$(dirname "$here")
+daemon=$root/daemon/fmd.py
+data=${XDG_DATA_HOME:-$HOME/.local/share}
+apps=$data/applications
+portal_conf=${XDG_CONFIG_HOME:-$HOME/.config}/xdg-desktop-portal/hyprland-portals.conf
+qt_conf=${XDG_CONFIG_HOME:-$HOME/.config}/qt6ct/qt6ct.conf
+qs_config=${XDG_CONFIG_HOME:-$HOME/.config}/quickshell
+target=aequalyn-fm
+portal_name=org.freedesktop.impl.portal.desktop.aequalyn
+
+running() {
+    qs ipc call -- "$target" count &>/dev/null
+}
+
+ensure_shell() {
+    running && return 0
+    # d-bus can call us before the session has brought the shell up. pgrep is
+    # no help: a defunct qs still shows there, so only the shell's own IPC
+    # answers count. hold the portal name until the shell's daemon takes it.
+    command -v qs >/dev/null 2>&1 || return 1
+    if [[ -f $root/daemon/holdname.py ]]; then
+        python3 "$root/daemon/holdname.py" &>/dev/null &
+    fi
+    qs -n -d -p "$qs_config" &>/dev/null || true
+    for _ in $(seq 100); do
+        running && return 0
+        sleep 0.1
+    done
+    return 1
+}
+
+install_entry() {
+    mkdir -p "$apps"
+    # folders only once it is chosen: with no default set, a new entry that
+    # claims inode/directory would quietly take over what opens them
+    local mime=""
+    if [[ ${1:-} == default ]] || grep -qs '^MimeType=inode/directory' "$apps/aequalyn.fm.desktop"; then
+        mime=$'\nMimeType=inode/directory;'
+    fi
+    cat > "$apps/aequalyn.fm.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Aequalyn FM
+GenericName=File Manager
+Comment=Browse and organise your files with Aequalyn
+Exec="$here/aequalyn-fm" %U
+Icon=aequalyn-fm
+Terminal=false
+Categories=System;FileTools;FileManager;
+Keywords=files;folders;browse;explorer;manager;
+StartupNotify=true
+StartupWMClass=aequalyn.fm
+Actions=new-window;$mime
+
+[Desktop Action new-window]
+Name=New Window
+Exec="$here/aequalyn-fm"
+EOF
+    update-desktop-database -q "$apps" 2>/dev/null || true
+}
+
+# ini_pick file section key value: that one key, in that section; the rest of
+# the file is left as it was
+ini_pick() {
+    local tmp="$1.tmp"
+    awk -v sect="[$2]" -v key="$3=" -v want="$3=$4" '
+        index($0, key) == 1 { if (!done) print want; done = 1; next }
+        { print }
+        $0 == sect && !done { print want; done = 1 }
+        END { if (!done) { print sect; print want } }
+    ' "$1" > "$tmp" && mv "$tmp" "$1"
+}
+
+# the choosers to fall back on: gnome's own is nautilus, so without it gtk's goes first
+others() {
+    if command -v nautilus &>/dev/null; then
+        printf 'gnome;gtk'
+    else
+        printf 'gtk;gnome'
+    fi
+}
+
+portal_pick() {
+    mkdir -p "$(dirname "$portal_conf")"
+    if [[ ! -s $portal_conf ]]; then
+        printf '[preferred]\ndefault=hyprland;gtk\n' > "$portal_conf"
+    fi
+    ini_pick "$portal_conf" preferred org.freedesktop.impl.portal.FileChooser "$1"
+}
+
+portal_on() {
+    mkdir -p "$data/dbus-1/services" "$data/xdg-desktop-portal/portals"
+    # d-bus starts us when an app asks for a dialog and nothing owns the name yet
+    cat > "$data/dbus-1/services/$portal_name.service" <<EOF
+[D-BUS Service]
+Name=$portal_name
+Exec=$here/aequalyn-fm --background
+EOF
+    cat > "$data/xdg-desktop-portal/portals/aequalyn.portal" <<EOF
+[portal]
+DBusName=$portal_name
+Interfaces=org.freedesktop.impl.portal.FileChooser
+UseIn=Hyprland
+EOF
+    # the others stay behind it, for a machine where the shell cannot start
+    portal_pick "aequalyn;$(others)"
+    # qt apps take their dialogs from qt6ct, which asks the portal only when told
+    if [[ -f $qt_conf ]]; then
+        ini_pick "$qt_conf" Appearance standard_dialogs xdgdesktopportal
+    fi
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig &>/dev/null || true
+    systemctl --user try-restart xdg-desktop-portal.service &>/dev/null || true
+}
+
+portal_off() {
+    rm -f "$data/dbus-1/services/$portal_name.service" \
+        "$data/xdg-desktop-portal/portals/aequalyn.portal"
+    portal_pick "$(others)"
+    if grep -qsx 'standard_dialogs=xdgdesktopportal' "$qt_conf"; then
+        ini_pick "$qt_conf" Appearance standard_dialogs default
+    fi
+    busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig &>/dev/null || true
+    systemctl --user try-restart xdg-desktop-portal.service &>/dev/null || true
+}
+
+background=0
+paths=()
+for arg in "$@"; do
+    case $arg in
+        --background) background=1 ;;
+        --install) install_entry; exit 0 ;;
+        --default)
+            install_entry default
+            xdg-mime default aequalyn.fm.desktop inode/directory
+            exit 0
+            ;;
+        --portal) portal_on; exit 0 ;;
+        --portal-off) portal_off; exit 0 ;;
+        --windows)
+            ensure_shell && qs ipc call -- "$target" closeAll >/dev/null 2>&1 || true
+            exit 0
+            ;;
+        --help|-h) sed -n '2,16s/^# \{0,1\}//p' "${BASH_SOURCE[0]}"; exit 0 ;;
+        *)
+            if [[ $arg != *://* && $arg != /* && $arg != "~"* ]]; then
+                arg=$PWD/$arg
+            fi
+            paths+=("$arg")
+            ;;
+    esac
+done
+
+ensure_shell || exit 1
+(( background )) && exit 0
+
+list=""
+if (( ${#paths[@]} > 0 )); then
+    list=$(printf '%s\n' "${paths[@]}")
+fi
+exec qs ipc call -- "$target" open "$list" >/dev/null 2>&1
