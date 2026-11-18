@@ -52,8 +52,10 @@ CcPage {
             ]
         }
     }
-    CcToggle { setting: "clockSeconds"; title: "Show seconds" }
-    CcToggle { setting: "showBarDate"; title: "Show the date on the bar" }
+    CcSection {
+        CcToggle { setting: "clockSeconds"; title: "Show seconds" }
+        CcToggle { setting: "showBarDate"; title: "Show the date on the bar" }
+    }
     CcSection {
         title: "Date format"
         CcChoice {

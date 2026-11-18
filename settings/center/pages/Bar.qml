@@ -73,16 +73,17 @@ CcPage {
     }
 
     // ---- size and place -------------------------------------------------------------------
-    CcSlider {
+    CcSection {
         visible: page.tab === 2
-        setting: "barHeight"; title: "Height"
-        from: 24; to: 48; step: 2; unit: " px"
-    }
-    CcSlider {
-        visible: page.tab === 2
-        setting: "barOpacity"; title: "How solid it is"
-        sub: "Lower lets the wallpaper show through."
-        from: 40; to: 100; step: 5; unit: "%"
+        CcSlider {
+            setting: "barHeight"; title: "Height"
+            from: 24; to: 48; step: 2; unit: " px"
+        }
+        CcSlider {
+            setting: "barOpacity"; title: "How solid it is"
+            sub: "Lower lets the wallpaper show through."
+            from: 40; to: 100; step: 5; unit: "%"
+        }
     }
     Loader {
         visible: page.tab === 2

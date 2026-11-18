@@ -57,12 +57,15 @@ CcPage {
     }
 
 
-    CcSlider { visible: page.tab === 0; setting: "gapsIn"; title: "Space between windows"; from: 0; to: 20; step: 1; unit: " px" }
-    CcSlider { visible: page.tab === 0; setting: "gapsOut"; title: "Space at the screen's edges"; from: 0; to: 30; step: 1; unit: " px" }
-    CcSlider { visible: page.tab === 0; setting: "rounding"; title: "Rounded corners"; from: 0; to: 24; step: 1; unit: " px"; zeroText: "Square" }
-    CcSlider { visible: page.tab === 0; setting: "borderSize"; title: "Border"; from: 0; to: 8; step: 1; unit: " px"; zeroText: "None" }
-    CcToggle { visible: page.tab === 0; setting: "blurEnabled"; title: "Blur behind see-through windows"; sub: "The bar, menus and see-through windows soften what is behind them." }
-    CcToggle { visible: page.tab === 0; setting: "animationsEnabled"; title: "Animations"; sub: "Windows glide when they open, close and move." }
+    CcSection {
+        visible: page.tab === 0
+        CcSlider { setting: "gapsIn"; title: "Space between windows"; from: 0; to: 20; step: 1; unit: " px" }
+        CcSlider { setting: "gapsOut"; title: "Space at the screen's edges"; from: 0; to: 30; step: 1; unit: " px" }
+        CcSlider { setting: "rounding"; title: "Rounded corners"; from: 0; to: 24; step: 1; unit: " px"; zeroText: "Square" }
+        CcSlider { setting: "borderSize"; title: "Border"; from: 0; to: 8; step: 1; unit: " px"; zeroText: "None" }
+        CcToggle { setting: "blurEnabled"; title: "Blur behind see-through windows"; sub: "The bar, menus and see-through windows soften what is behind them." }
+        CcToggle { setting: "animationsEnabled"; title: "Animations"; sub: "Windows glide when they open, close and move." }
+    }
     CcMore {
         visible: page.tab === 0
         CcSlider { setting: "blurSize"; title: "Blur strength"; from: 1; to: 20; step: 1; enabled: AequalynSettings.blurEnabled }
@@ -190,24 +193,25 @@ CcPage {
             onChosen: key => AequalynSettings.setIn("backdrop", "colour", key)
         }
     }
-    CcSlider {
+    CcSection {
         visible: page.tab === 1
-        enabled: page.bstyle !== "instant" && page.bstyle !== "dim"
-        title: "Blur strength"
-        sub: page.bstyle === "instant" ? "Instant uses the blur strength of see-through windows (Windows tab)."
-           : page.bstyle === "dim" ? "Dim only has no blur." : ""
-        value: Number(page.bcfg.strength)
-        from: 0; to: 100; step: 5
-        format: v => v <= 15 ? "Light" : v >= 80 ? "Strong" : Math.round(v) + "%"
-        onCommitted: v => AequalynSettings.setIn("backdrop", "strength", v)
-    }
-    CcSlider {
-        visible: page.tab === 1
-        title: "Darkness"
-        sub: "How much each panel darkens the desktop behind it. The middle is each panel's own shade."
-        value: Number(page.bcfg.dim)
-        from: 0; to: 100; step: 5
-        format: v => v === 0 ? "Not darker" : v === 50 ? "As each panel sets" : Math.round(v) + "%"
-        onCommitted: v => AequalynSettings.setIn("backdrop", "dim", v)
+        CcSlider {
+            enabled: page.bstyle !== "instant" && page.bstyle !== "dim"
+            title: "Blur strength"
+            sub: page.bstyle === "instant" ? "Instant uses the blur strength of see-through windows (Windows tab)."
+               : page.bstyle === "dim" ? "Dim only has no blur." : ""
+            value: Number(page.bcfg.strength)
+            from: 0; to: 100; step: 5
+            format: v => v <= 15 ? "Light" : v >= 80 ? "Strong" : Math.round(v) + "%"
+            onCommitted: v => AequalynSettings.setIn("backdrop", "strength", v)
+        }
+        CcSlider {
+            title: "Darkness"
+            sub: "How much each panel darkens the desktop behind it. The middle is each panel's own shade."
+            value: Number(page.bcfg.dim)
+            from: 0; to: 100; step: 5
+            format: v => v === 0 ? "Not darker" : v === 50 ? "As each panel sets" : Math.round(v) + "%"
+            onCommitted: v => AequalynSettings.setIn("backdrop", "dim", v)
+        }
     }
 }
