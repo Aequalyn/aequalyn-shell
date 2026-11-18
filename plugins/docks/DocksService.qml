@@ -112,7 +112,7 @@ Scope {
     bgBase: root.shellTheme.bgBase, textPrimary: root.shellTheme.textPrimary,
     accentPrimary: root.shellTheme.accentPrimary, accentCyan: root.shellTheme.accentCyan,
     accentGreen: root.shellTheme.accentGreen, accentOrange: root.shellTheme.accentOrange,
-    accentRed: root.shellTheme.accentRed
+    accentRed: root.shellTheme.accentRed, borderColors: root.shellTheme.borderColors
   }) : Colors.fromTheme(null)
 
   // ---- the bar --------------------------------------------------------------

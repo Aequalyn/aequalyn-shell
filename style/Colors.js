@@ -16,7 +16,9 @@ var mono = { bg: "#161616", fg: "#e0e0e0", ac: "#ffffff", hot: "#ff6b5e", spectr
 function fromTheme(t) {
     if (!t || !t.bgBase) return mono;
     var spectrum = [];
-    var list = [t.accentPrimary, t.accentCyan, t.accentGreen, t.accentOrange, t.accentRed];
+    // a theme's own gradient (palette.borderColors) when it has one, else its accents
+    var own = t.borderColors && t.borderColors.length >= 2 ? Array.from(t.borderColors) : null;
+    var list = own || [t.accentPrimary, t.accentCyan, t.accentGreen, t.accentOrange, t.accentRed];
     for (var i = 0; i < list.length; i++) {
         var c = hex(list[i]);
         if (spectrum.indexOf(c) < 0) spectrum.push(c);
