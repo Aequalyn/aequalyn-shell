@@ -37,6 +37,30 @@ Singleton {
     // a colour, see-through
     function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a); }
 
+    // ---- the one pattern every setting follows ---------------------------------------
+    // A section (CcSection) holds its settings in one rounded group, a row each (CcToggle,
+    // CcSlider, CcRow): its name and explanation on the left, its control on the right,
+    // a hairline between rows. A row outside a section is a group of its own.
+    // the section a row sits in, or null
+    function sectionOf(item) {
+        for (let p = item ? item.parent : null; p; p = p.parent) if (p.ccSection === true) return p;
+        return null;
+    }
+    // in a section's group (one that draws its box), at any depth: on the box's colour
+    function inGroup(item) { const s = sectionOf(item); return !!s && s.boxed; }
+    // directly in a group's box (not inside a row of it): it needs room of its own
+    function inGroupBody(item) {
+        const body = item ? item.parent : null, box = body ? body.parent : null, sec = box ? box.parent : null;
+        return !!sec && sec.ccSection === true && sec.boxed;
+    }
+    // the first shown item among `item`'s siblings: the row that gets no line above it
+    function firstShown(parentItem) {
+        if (!parentItem) return null;
+        const c = parentItem.children;
+        for (let i = 0; i < c.length; i++) if (c[i].visible && c[i].height > 0) return c[i];
+        return null;
+    }
+
     function run(args) { Quickshell.execDetached(args); }
     // another part of the shell, through its IPC; the control center closes first
     // when that part opens over the screen

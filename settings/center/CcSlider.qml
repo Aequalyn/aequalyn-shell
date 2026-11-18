@@ -44,9 +44,27 @@ Rectangle {
 
     Layout.fillWidth: true
     implicitHeight: col.implicitHeight + 26
-    radius: 12
-    color: Cc.theme.bgSurface
+    radius: grouped ? 8 : 12
+    color: grouped ? "transparent" : Cc.theme.bgSurface
+    border.width: grouped ? 0 : 1
+    border.color: Cc.theme.bgBorder
     opacity: enabled ? 1 : 0.5
+    // the pattern (Cc.qml): a row of its section's group, or a group of its own
+    property var section: null
+    readonly property bool grouped: !!section
+    readonly property bool firstRow: Cc.firstShown(parent) === s
+    Component.onCompleted: { s.section = Cc.sectionOf(s); if (s.section) s.section.rows++; }
+    Component.onDestruction: { try { if (s.section) s.section.rows--; } catch (e) {} }
+    Rectangle {
+        visible: s.grouped && !s.firstRow
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        height: 1
+        color: Cc.theme.bgBorder
+    }
 
     ColumnLayout {
         id: col
@@ -133,12 +151,14 @@ Rectangle {
         signal clicked()
         implicitWidth: 28
         implicitHeight: 28
-        radius: 9
-        color: sbArea.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSelected
+        radius: 8
+        color: sbArea.containsMouse ? Cc.theme.bgHover : Cc.theme.bgBase
+        border.width: 1
+        border.color: Cc.theme.bgBorder
         Text {
             anchors.centerIn: parent
             text: sb.label
-            color: Cc.theme.textPrimary
+            color: Cc.theme.textSecondary
             font.family: Cc.mono
             font.pixelSize: 15
         }
