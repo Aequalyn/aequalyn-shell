@@ -597,8 +597,15 @@ class Fm:
         if self.legacy or it["kind"] == "app":
             it["icon"] = flat_icon(it.get("icon", ""))
         it["slot"] = slot_for(it)
+        self.chooser_types(it)
         it["canWrite"] = info.get_attribute_boolean("access::can-write") if info.has_attribute("access::can-write") else True
         return it
+
+    def chooser_types(self, it):
+        # a dialog's filters may spell a file's type by any of its names: carry
+        # the lot while one is open, so the window's match on the rules holds
+        if self.portal is not None and self.portal.pending and it.get("kind") != "dir":
+            it["types"] = mime_types(it.get("mime") or "")
 
     def shortcut(self, folder, info, target):
         # somewhere to connect to: a computer the network found, a server's share
@@ -752,6 +759,7 @@ class Fm:
                         info = Gio.File.new_for_path(e.path).query_info(ATTRS, Gio.FileQueryInfoFlags.NONE, None)
                         it = dk.entry(d, info, self.icons, None, ())
                         it["slot"] = slot_for(it)
+                        self.chooser_types(it)
                         it["where"] = d
                         batch.append(it)
                         found += 1
@@ -1615,6 +1623,58 @@ class Fm:
 # ~/.config/xdg-desktop-portal/hyprland-portals.conf names this one, and a d-bus
 # service file starts aequalyn-fm when nothing owns the name yet. the request becomes a
 # chooser window; what the person picks goes back as the method's reply
+
+# the filters a dialog brings name types the way the app that asked spells them
+# ("application/x-cd-image"), while gio types the file itself -- the same thing,
+# by alias ("application/vnd.efi.iso", every .iso is). the tree shared-mime-info
+# lays out says which names are one type and which stand under which: read once,
+# kept for the run, handed out per file so the window's match on the rules holds.
+MIME_MAPS = None
+
+
+def mime_maps():
+    global MIME_MAPS
+    if MIME_MAPS is None:
+        parents, aliases, real = {}, {}, {}
+        try:
+            with open("/usr/share/mime/subclasses", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    sub, _, sup = line.strip().partition(" ")
+                    if sub and sup:
+                        parents.setdefault(sub, []).append(sup)
+            with open("/usr/share/mime/aliases", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    alias, _, canon = line.strip().partition(" ")
+                    if alias and canon:
+                        real[alias] = canon
+                        aliases.setdefault(canon, []).append(alias)
+        except OSError:
+            pass
+        MIME_MAPS = (parents, aliases, real)
+    return MIME_MAPS
+
+
+def mime_types(ctype):
+    """the type plus every other name gio's content_type_is_a would say yes to:
+    its own aliases, its ancestors, and theirs"""
+    if not ctype or "/" not in ctype:
+        return []
+    parents, aliases, real = mime_maps()
+    out, todo = {ctype}, [ctype]
+    while todo:
+        cur = todo.pop()
+        canon = real.get(cur, cur)
+        if canon not in out:
+            out.add(canon)
+            todo.append(canon)
+        for alias in aliases.get(canon, ()):
+            out.add(alias)
+        for sup in parents.get(canon, ()):
+            if sup not in out:
+                out.add(sup)
+                todo.append(sup)
+    return sorted(out)
+
 
 PORTAL_NAME = "org.freedesktop.impl.portal.desktop.aequalyn"
 PORTAL_PATH = "/org/freedesktop/portal/desktop"
