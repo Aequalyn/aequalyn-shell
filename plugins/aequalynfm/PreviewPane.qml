@@ -1,6 +1,5 @@
 import QtMultimedia
 import QtQuick
-import QtQuick.Pdf
 import "root:/plugins/aequalynfm/compat"
 
 // the preview pane, right of the folder: what is picked out, big, and what there
@@ -448,36 +447,27 @@ Item {
 
     }
 
-    // a pdf's first page, rendered here
+    // a pdf's first page (PdfView.qml): loaded by its path, so a system without
+    // QtQuick.Pdf (Arch: qt6-webengine) only goes without pdf previews
     Component {
         id: pdfView
 
         Item {
-            PdfDocument {
-                id: doc
-
-                source: prev.media
-                onPageCountChanged: prev.pages = doc.pageCount
-            }
-
-            Rectangle {
-                anchors.centerIn: page
-                width: page.paintedWidth
-                height: page.paintedHeight
-                color: "white"
-                visible: page.status === Image.Ready
-            }
-
-            PdfPageImage {
-                id: page
+            Loader {
+                id: pdfLoader
 
                 anchors.fill: parent
-                anchors.margins: Theme.dp(10)
-                document: doc
-                currentFrame: 0
-                asynchronous: true
-                fillMode: Image.PreserveAspectFit
-                sourceSize.width: Math.ceil(width * 2)
+                Component.onCompleted: setSource(Qt.resolvedUrl("PdfView.qml"), { prev: prev })
+            }
+
+            Text {
+                anchors.centerIn: parent
+                width: parent.width - Theme.dp(24)
+                visible: pdfLoader.status === Loader.Error
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: "No PDF preview here: it needs qt6-webengine"
+                color: Theme.subtext
             }
 
         }
