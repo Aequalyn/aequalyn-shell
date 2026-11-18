@@ -198,18 +198,41 @@ QuickPopup {
 
     // ---- how it looks on the bar: each change shows on the bar at once ---------------
     function set(key, value) { if (q.svc) q.svc.setSetting(key, value) }
-    QuickLabel { visible: !!q.svc; text: "Visualizer" }
-    QuickChips {
+    // sample music for the previews, moving while the panel is open: bands (0..1) for
+    // the bar-like styles, a wave (-1..1) for the scope-like ones
+    property real phase: 0
+    Timer { interval: 80; repeat: true; running: q.visible && !!q.svc; onTriggered: q.phase += 0.18 }
+    readonly property var demoBands: {
+        const out = [];
+        for (let i = 0; i < 10; i++)
+            out.push(0.18 + 0.72 * Math.abs(Math.sin(q.phase * (0.7 + i * 0.13) + i * 0.9)) * (1 - i * 0.05));
+        return out;
+    }
+    readonly property var demoWave: {
+        const out = [];
+        for (let i = 0; i < 48; i++)
+            out.push(0.8 * Math.sin(i * 0.4 + q.phase * 1.6) * Math.cos(i * 0.09 + q.phase * 0.5));
+        return out;
+    }
+
+    QuickLabel { visible: !!q.svc; text: "Visualizer · " + (Visuals.labels[q.vizStyle] || q.vizStyle) }
+    PreviewRow {
         visible: !!q.svc
-        options: Visuals.keys.map(k => ({ key: k, label: Visuals.labels[k] || k }))
+        options: Visuals.keys
         current: q.vizStyle
+        styleOf: k => k
+        colorOf: k => q.cfg ? q.cfg.colorMode : "theme"
+        labelOf: k => Visuals.labels[k] || k
         onChosen: key => { q.svc.styleOverride = ""; q.set("vizStyle", key) }
     }
-    QuickLabel { visible: !!q.svc; text: "Colours" }
-    QuickChips {
+    QuickLabel { visible: !!q.svc; text: "Colours · " + (q.cfg ? (Colors.labels[q.cfg.colorMode] || q.cfg.colorMode) : "") }
+    PreviewRow {
         visible: !!q.svc
-        options: Colors.keys.map(k => ({ key: k, label: Colors.labels[k] || k }))
+        options: Colors.keys
         current: q.cfg ? q.cfg.colorMode : ""
+        styleOf: k => Visuals.isSquare(q.vizStyle) ? "bars" : q.vizStyle
+        colorOf: k => k
+        labelOf: k => Colors.labels[k] || k
         onChosen: key => q.set("colorMode", key)
     }
     QuickLabel { visible: !!q.svc; text: "Cover on the bar" }
@@ -265,6 +288,94 @@ QuickPopup {
             glyph: "\u{F054C}"
             label: "Undo"
             onClicked: q.svc.undoLook()
+        }
+    }
+
+    // ---- a row of choices, each drawn as it looks (the visualizer itself, on sample
+    // music), scrolling sideways; the chosen one is lifted with an accent edge ----------
+    component PreviewRow: Flickable {
+        id: pr
+        property var options: []
+        property string current: ""
+        property var styleOf: k => "bars"
+        property var colorOf: k => "theme"
+        property var labelOf: k => k
+        signal chosen(string key)
+        Layout.fillWidth: true
+        implicitHeight: 62
+        contentWidth: tiles.implicitWidth
+        contentHeight: 62
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.HorizontalFlick
+        function show(item) {
+            if (!item) return
+            if (item.x < contentX) contentX = item.x
+            else if (item.x + item.width > contentX + width) contentX = Math.min(contentWidth - width, item.x + item.width - width)
+        }
+        WheelHandler {
+            onWheel: e => {
+                const d = Math.abs(e.angleDelta.x) > Math.abs(e.angleDelta.y) ? e.angleDelta.x : e.angleDelta.y
+                pr.contentX = Math.max(0, Math.min(pr.contentWidth - pr.width, pr.contentX - d / 2))
+            }
+        }
+        Row {
+            id: tiles
+            spacing: 6
+            Repeater {
+                model: pr.options
+                delegate: Rectangle {
+                    id: tile
+                    required property string modelData
+                    readonly property bool on: modelData === pr.current
+                    readonly property string vs: pr.styleOf(modelData)
+                    width: 84
+                    height: 62
+                    radius: 8
+                    color: on ? Quick.theme.bgSelected : tileArea.containsMouse ? Quick.theme.bgHover : Quick.theme.bgSurface
+                    border.width: 1
+                    border.color: on ? Quick.theme.accentPrimary : Quick.theme.bgBorder
+                    onOnChanged: if (on) Qt.callLater(pr.show, tile)
+                    Component.onCompleted: if (on) Qt.callLater(pr.show, tile)
+                    MediaBar.Visualizer {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: 9
+                        width: Visuals.isSquare(tile.vs) ? 26 : parent.width - 18
+                        height: 26
+                        levels: Visuals.isScope(tile.vs) ? q.demoWave : q.demoBands
+                        vizStyle: tile.vs
+                        colorMode: pr.colorOf(tile.modelData)
+                        customColor: q.cfg ? q.cfg.customColor : "#7aa2f7"
+                        customColor2: q.cfg ? q.cfg.customColor2 : "#f7768e"
+                        accent: Quick.theme.accentPrimary
+                        themeColors: q.svc ? q.svc.themePalette : []
+                        borderColors: q.svc ? q.svc.borderColors : []
+                        coverColors: q.svc ? q.svc.coverColors : []
+                        foreground: Quick.theme.textPrimary
+                        count: 10
+                    }
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 6
+                        width: parent.width - 8
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        text: pr.labelOf(tile.modelData)
+                        color: tile.on ? Quick.theme.accentPrimary : Quick.theme.textSecondary
+                        font.family: Quick.mono
+                        font.pixelSize: 9
+                        font.bold: tile.on
+                    }
+                    MouseArea {
+                        id: tileArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pr.chosen(tile.modelData)
+                    }
+                }
+            }
         }
     }
 }
