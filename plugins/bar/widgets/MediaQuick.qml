@@ -313,7 +313,11 @@ QuickPopup {
             if (item.x < contentX) contentX = item.x
             else if (item.x + item.width > contentX + width) contentX = Math.min(contentWidth - width, item.x + item.width - width)
         }
-        WheelHandler {
+        // the wheel, by a MouseArea that takes no clicks: a WheelHandler never hears a real
+        // mouse wheel here
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
             onWheel: e => {
                 const d = Math.abs(e.angleDelta.x) > Math.abs(e.angleDelta.y) ? e.angleDelta.x : e.angleDelta.y
                 pr.contentX = Math.max(0, Math.min(pr.contentWidth - pr.width, pr.contentX - d / 2))
