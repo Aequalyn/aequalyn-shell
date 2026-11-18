@@ -72,11 +72,10 @@ Item {
     }
   }
 
-  // the mouse wheel slides a full region. It sits above the Flickable, not on it: the
-  // Flickable takes every wheel event over its widgets for itself and, flicking only
-  // sideways, does nothing with a wheel's up and down. Over a widget that uses the wheel
-  // itself (volume, workspaces) it steps aside, so the wheel reaches that widget.
-  // A MouseArea, not a WheelHandler: a WheelHandler never hears a real mouse wheel here.
+  // the mouse wheel slides a full region, over its widgets and the room between them.
+  // Over a widget that uses the wheel itself (volume, workspaces) it steps aside, so the
+  // wheel reaches that widget. A MouseArea, not a WheelHandler: a WheelHandler never
+  // hears a real mouse wheel here.
   Item {
     id: wheelLayer
     anchors.fill: parent
