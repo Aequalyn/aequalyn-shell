@@ -8,7 +8,7 @@ import ".."
 
 CcPage {
     id: page
-    title: "Lock screens"
+    title: "Login screen"
     sub: "The login screen shown by SDDM: pick a theme, turn autologin on (boots straight into Hyprland, no greeter) or preview one for a few seconds."
 
     property var themes: []

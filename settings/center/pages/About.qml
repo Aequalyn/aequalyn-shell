@@ -71,7 +71,7 @@ CcPage {
         running: false
         onExited: (code, st) => {
             if (code === 0) {
-                page.status = "Lock screens installed. Open Lock Screens in Look."
+                page.status = "Login screens installed. Choose one in Look › Login screen."
                 AequalynSettings.lockscreensMarker.reload()
             } else {
                 page.status = "Install failed (exit " + code + ")."
@@ -81,11 +81,11 @@ CcPage {
     property string status: ""
 
     CcSection {
-        title: "Lock screens"
+        title: "Login screens"
         hint: page.lockscreensInstalled ? "SDDM theme pack installed." : "Optional SDDM login themes (~400 MB download)."
         CcButton {
             visible: !page.lockscreensInstalled
-            text: "Install lock screens"
+            text: "Install login screens"
             icon: "\u{F0193}"
             primary: true
             onClicked: {
