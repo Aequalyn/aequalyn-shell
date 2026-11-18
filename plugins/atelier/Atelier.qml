@@ -46,7 +46,9 @@ Scope {
     onSurfaceChanged: {
         AtelierHost.shown = shown;
         AtelierHost.shownCollection = shown ? collection : "";
-        if (!shown && theme) theme.previewPalette = null;
+        // (the surface itself, not `shown`: in this handler `shown` may not have caught up
+        // yet, and a preview left behind would cover the theme you picked until next time)
+        if (surface === "" && theme) theme.previewPalette = null;
     }
     onCollectionChanged: AtelierHost.shownCollection = shown ? collection : ""
 
@@ -172,7 +174,7 @@ Scope {
         if (c === "wallpapers") AtelierService.refresh();
     }
 
-    function search(text) { searchText = text; currentIndex = 0; preview(); }
+    function search(text) { searchText = text; currentKey = ""; currentIndex = 0; preview(); }
 
     function setLayout(l) {
         if (layoutKeys.indexOf(l) < 0) return;
@@ -183,8 +185,11 @@ Scope {
 
     function selectActive() {
         const list = items;
-        for (let i = 0; i < list.length; i++) if (list[i].active) { currentIndex = i; return; }
-        currentIndex = 0;
+        let at = 0;
+        for (let i = 0; i < list.length; i++) if (list[i].active) { at = i; break; }
+        currentIndex = at;
+        // the active one is your item now, also while the list is still settling
+        currentKey = list[at] ? list[at].key : "";
     }
 
     function move(delta) {
@@ -195,13 +200,34 @@ Scope {
         currentIndex = wraps ? (i % n + n) % n : Math.max(0, Math.min(n - 1, i));
     }
 
-    onCurrentIndexChanged: preview()
-    onItemsChanged: if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1)
+    // The item you are on, by its key, so it stays chosen when the list is made again (the
+    // wallpapers read in as the picker opens, a theme applied marking another one active).
+    // A view given a new list jumps to its first item (a carousel does); that jump isn't you
+    // browsing, so it previews nothing, and you're put back on your item once the list settles.
+    property string currentKey: ""
+    property bool settling: false
+    onCurrentIndexChanged: {
+        if (settling) return;
+        const it = items[currentIndex];
+        currentKey = it ? it.key : "";
+        preview();
+    }
+    onItemsChanged: {
+        if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1);
+        settling = true;
+        Qt.callLater(root.settle);
+    }
+    function settle() {
+        settling = false;
+        const i = currentKey === "" ? -1 : items.findIndex(it => it.key === currentKey);
+        if (i >= 0 && i !== currentIndex) currentIndex = i;
+        else if (i < 0) { const it = items[currentIndex]; currentKey = it ? it.key : ""; }
+    }
 
     // Live preview: the whole shell takes the colours of the theme under the
     // cursor until you pick one or close the picker.
     function preview() {
-        if (!shown || !root.theme || collection !== "themes" || !livePreview) return;
+        if (surface === "" || !root.theme || collection !== "themes" || !livePreview) return;
         // Read items directly: currentItem may not have re-evaluated yet
         // when this runs from onCurrentIndexChanged.
         const it = items[currentIndex];
