@@ -205,7 +205,7 @@ QtObject {
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps", "media", "fm"]
+    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps", "media", "fm", "keybinds"]
     property var pluginsKnown: []
 
     // ---- Dock -------------------------------------------------------------
