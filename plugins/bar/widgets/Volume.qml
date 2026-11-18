@@ -7,6 +7,8 @@ Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
   id: volWidget
+  // the wheel does this widget's own thing, so its bar region doesn't slide under it
+  readonly property bool usesWheel: true
   height: 24
   width: volContent.width + 12
   radius: 12

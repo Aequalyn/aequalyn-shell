@@ -1,7 +1,7 @@
 // One region of the bar (left, center or right): its widgets in a row, kept against its
 // own side (the center one centered). When they don't fit, the row scrolls sideways
-// instead of running into the next region: with the mouse wheel, or by dragging the
-// space between widgets.
+// instead of running into the next region: with the mouse wheel, a touchpad's swipe,
+// or by dragging the space between widgets.
 // A full right region starts at its end, so the widgets nearest the screen edge stay in
 // view, and the center at its middle; where you scroll to stays put while widgets change
 // width (the CPU reading does every few seconds).
@@ -72,14 +72,27 @@ Item {
     }
   }
 
-  // the mouse wheel scrolls a full region (widgets that use the wheel themselves, like
-  // volume or workspaces, keep it)
-  WheelHandler {
-    target: null
-    enabled: section.overflowing && !section.band.dragging
-    onWheel: event => {
-      const d = Wheel.amount(event);
-      section.scrollBy(-d / 2);
+  // the mouse wheel slides a full region. It sits above the Flickable, not on it: the
+  // Flickable takes every wheel event over its widgets for itself and, flicking only
+  // sideways, does nothing with a wheel's up and down. Over a widget that uses the wheel
+  // itself (volume, workspaces) it steps aside, so the wheel reaches that widget.
+  // A MouseArea, not a WheelHandler: a WheelHandler never hears a real mouse wheel here.
+  Item {
+    id: wheelLayer
+    anchors.fill: parent
+    HoverHandler { id: wheelHover }
+    // the widget under the pointer
+    readonly property var under: {
+      if (!wheelHover.hovered) return null;
+      const p = row.mapFromItem(wheelLayer, wheelHover.point.position.x, wheelHover.point.position.y);
+      return row.childAt(p.x, p.y);
+    }
+    MouseArea {
+      anchors.fill: parent
+      acceptedButtons: Qt.NoButton
+      enabled: section.overflowing && !section.band.dragging
+               && !(wheelLayer.under && wheelLayer.under.usesWheel)
+      onWheel: wheel => section.scrollBy(-Wheel.amount(wheel) / 2)
     }
   }
 }

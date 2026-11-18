@@ -12,6 +12,8 @@ Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
   id: plumeButton
+  // the wheel does this widget's own thing, so its bar region doesn't slide under it
+  readonly property bool usesWheel: true
   objectName: "aequalyn-plume-button"
   readonly property var svc: PlumeHost.svc
   readonly property bool wanted: !!svc

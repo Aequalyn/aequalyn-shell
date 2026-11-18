@@ -8,6 +8,8 @@ import "root:/style/Wheel.js" as Wheel
 Item {
   required property var bar
   property var screen
+  // the wheel does this widget's own thing, so its bar region doesn't slide under it
+  readonly property bool usesWheel: true
   implicitWidth: wsRow.implicitWidth
   implicitHeight: 24
   Process { id: wsScrollProc; running: false }
