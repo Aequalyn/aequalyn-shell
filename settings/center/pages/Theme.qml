@@ -163,24 +163,24 @@ CcPage {
         }
     }
 
-    CcToggle {
+    CcSection {
         visible: page.tab === 0
-        setting: "themeApps"
-        title: "Apps use these colours too"
-        sub: "Files, settings windows and other GTK apps match your desktop. Off leaves them as they come."
-    }
-    CcToggle {
-        visible: page.tab === 0
-        title: "Show each theme on the whole desktop while choosing"
-        sub: "In the picker, the bar, dock and windows take the colours of the theme you are on until you pick one or close it."
-        checked: AequalynSettings.atelierCfg.livePreview !== false
-        onToggled: v => AequalynSettings.setIn("atelier", "livePreview", v)
-    }
-    CcToggle {
-        visible: page.tab === 0
-        setting: "themeBrowser"
-        title: "Browsers use these colours too"
-        sub: "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. The first time asks for admin permission."
+        CcToggle {
+            setting: "themeApps"
+            title: "Apps use these colours too"
+            sub: "Files, settings windows and other GTK apps match your desktop. Off leaves them as they come."
+        }
+        CcToggle {
+            title: "Show each theme on the whole desktop while choosing"
+            sub: "In the picker, the bar, dock and windows take the colours of the theme you are on until you pick one or close it."
+            checked: AequalynSettings.atelierCfg.livePreview !== false
+            onToggled: v => AequalynSettings.setIn("atelier", "livePreview", v)
+        }
+        CcToggle {
+            setting: "themeBrowser"
+            title: "Browsers use these colours too"
+            sub: "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. The first time asks for admin permission."
+        }
     }
     CcMore {
         visible: page.tab === 0

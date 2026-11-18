@@ -18,20 +18,22 @@ CcPage {
     function name(n) { return n.description || n.nickname || n.name; }
     function setVolume(node, v) { if (node && node.audio) node.audio.volume = v / 100; }
 
-    CcSlider {
-        title: "Volume"
-        enabled: !!(page.sink && page.sink.audio)
-        value: page.sink && page.sink.audio ? Math.round(page.sink.audio.volume * 100) : 0
-        from: 0; to: 150; step: 5; unit: "%"
-        sub: "Above 100% can distort."
-        onMoved: v => page.setVolume(page.sink, v)
-        onCommitted: v => page.setVolume(page.sink, v)
-    }
-    CcToggle {
-        title: "Mute"
-        enabled: !!(page.sink && page.sink.audio)
-        checked: !!(page.sink && page.sink.audio && page.sink.audio.muted)
-        onToggled: v => { if (page.sink && page.sink.audio) page.sink.audio.muted = v; }
+    CcSection {
+        CcSlider {
+            title: "Volume"
+            enabled: !!(page.sink && page.sink.audio)
+            value: page.sink && page.sink.audio ? Math.round(page.sink.audio.volume * 100) : 0
+            from: 0; to: 150; step: 5; unit: "%"
+            sub: "Above 100% can distort."
+            onMoved: v => page.setVolume(page.sink, v)
+            onCommitted: v => page.setVolume(page.sink, v)
+        }
+        CcToggle {
+            title: "Mute"
+            enabled: !!(page.sink && page.sink.audio)
+            checked: !!(page.sink && page.sink.audio && page.sink.audio.muted)
+            onToggled: v => { if (page.sink && page.sink.audio) page.sink.audio.muted = v; }
+        }
     }
     CcSection {
         title: "Play sound through"
