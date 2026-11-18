@@ -43,7 +43,9 @@ Item {
                 // default value. The previous `it.theme !== undefined` guard
                 // skipped those, so they never inherited ts.theme as plugins.
                 try { it.theme = Qt.binding(() => pm.theme); } catch (e) {}
-                if (modelData.id === "docks" && it.shellTheme !== undefined) it.shellTheme = Qt.binding(() => pm.theme);
+                // the docks' palette: their `shellTheme` starts out undefined too, so it is
+                // bound the same way, without a guard that would skip it
+                if (modelData.id === "docks") { try { it.shellTheme = Qt.binding(() => pm.theme); } catch (e) {} }
                 if (modelData.id === "atelier" && pm.themeSwitcher) {
                     loader.openHandler = (collection) => { if (loader.item && loader.item.open) loader.item.open(collection); };
                     pm.themeSwitcher.onOpenRequested.connect(loader.openHandler);
