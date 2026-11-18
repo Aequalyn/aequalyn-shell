@@ -37,6 +37,17 @@ Scope {
     property real panelHeight: 480
     property bool multiline: false               // Enter adds a line; Ctrl + Enter is the action
     property int columns: 0                      // tiles across: a grid instead of a list
+    // a row of chips under the line to pick a part of the items by (categories): [{ key,
+    // label }], the chosen one's key in `chip`; `chipChosen` when one is picked. Tab and
+    // Shift + Tab step through them.
+    property var chips: []
+    property string chip: ""
+    signal chipChosen(string key)
+    function stepChip(d) {
+        if (kp.chips.length === 0) return
+        const i = kp.chips.findIndex(c => c.key === kp.chip)
+        kp.chipChosen(kp.chips[((i < 0 ? 0 : i) + d + kp.chips.length) % kp.chips.length].key)
+    }
     // the line over the list ("12 results"); "" for none
     property string countText: kp.items.length + (kp.items.length === 1 ? " result" : " results")
     // small buttons at the right of the keys: [{ key, label }], answered by `action`
@@ -77,6 +88,9 @@ Scope {
         if (event.key === Qt.Key_Escape) {
             if (kp.input && kp.query !== "" && !kp.multiline) kp.query = ""
             else kp.open = false
+            event.accepted = true
+        } else if (kp.chips.length > 0 && !kp.multiline && (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab)) {
+            kp.stepChip(event.key === Qt.Key_Tab ? 1 : -1)
             event.accepted = true
         } else if (kp.columns > 0 && kp.body === null && (event.key === Qt.Key_Left || event.key === Qt.Key_Right
                    || event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
@@ -191,6 +205,45 @@ Scope {
                                 text: kp.placeholder
                                 color: kp.c_muted
                                 font: field.font
+                            }
+                        }
+                    }
+                }
+
+                // the chips: a part of the items to show, as the Applications menu's categories
+                Flow {
+                    visible: kp.chips.length > 0
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Repeater {
+                        model: kp.chips
+                        delegate: Rectangle {
+                            id: chipItem
+                            required property var modelData
+                            readonly property bool on: kp.chip === modelData.key
+                            width: chipLabel.implicitWidth + 20
+                            height: 28
+                            radius: 8
+                            color: on ? kp.c_selected : (chipArea.containsMouse ? kp.c_hover : kp.c_surface)
+                            border.width: 1
+                            border.color: on ? kp.c_accent : kp.c_border
+                            Accessible.role: Accessible.RadioButton
+                            Accessible.name: modelData.label
+                            Accessible.checked: on
+                            Text {
+                                id: chipLabel
+                                anchors.centerIn: parent
+                                text: chipItem.modelData.label
+                                color: chipItem.on ? kp.c_accent : kp.c_text2
+                                font.family: kp.font
+                                font.pixelSize: 11
+                            }
+                            MouseArea {
+                                id: chipArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { kp.chipChosen(chipItem.modelData.key); field.forceActiveFocus() }
                             }
                         }
                     }
