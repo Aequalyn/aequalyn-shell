@@ -586,6 +586,31 @@ function newState() {
 
 function hasControl(s) { return /[\u0000-\u001f]/.test(String(s || "")) }
 
+// does this look like keys someone typed ("super + alt + m"), not a command?
+// Two or more + separated words, at least one a modifier, every one a key word.
+function looksLikeChord(s) {
+    const parts = String(s || "").split("+").map(p => p.trim()).filter(p => p !== "");
+    if (parts.length < 2) return false;
+    const mods = /^(super|sup|win|meta|ctrl|control|alt|shift|altgr)$/i;
+    const keys = /^(esc|escape|tab|enter|return|space|print|scrolllock|capslock|grave|left|right|up|down|delete|insert|home|end|pageup|pagedown|backspace|f\d{1,2}|[a-z0-9]|[,.\/;'[\]`\\=\-])$/i;
+    let hasMod = false;
+    for (let i = 0; i < parts.length; i++) {
+        if (mods.test(parts[i])) { hasMod = true; continue }
+        if (!keys.test(parts[i])) return false;
+    }
+    return hasMod;
+}
+
+// a made bind's command, with the name/command swap undone: when the command
+// someone typed is keys and the name is what they meant to run, run the name
+function repairCustom(entry) {
+    const command = String(entry.command || "");
+    const label = String(entry.label || "");
+    if (!looksLikeChord(command)) return entry;
+    if (label.trim() === "") return null;   // nothing to run: not a whole bind
+    return { keys: entry.keys, label: "", command: label.trim() };
+}
+
 function labelOfCustom(c) {
     return c.label && String(c.label).trim() !== "" ? String(c.label)
         : "Run: " + String(c.command).split(/\s+/)[0];
@@ -607,11 +632,16 @@ function readState(text) {
         }
         const cu = Array.isArray(raw.custom) ? raw.custom : [];
         for (let i = 0; i < cu.length; i++) {
-            const c = cu[i] && typeof cu[i] === "object" ? cu[i] : null;
+            let c = cu[i] && typeof cu[i] === "object" ? cu[i] : null;
             if (!c || !c.command || hasControl(c.command) || hasControl(c.label)) continue;
             const keys = normalize(c.keys);
             if (keys === "") continue;
-            st.custom.push({ keys: keys, label: String(c.label || ""), command: String(c.command) });
+            // the name and the command may have come swapped: the command holds
+            // the keys, the name what they meant to run. Undone here, so every
+            // saved entry of that kind heals without a migration.
+            const fixed = repairCustom({ keys: keys, label: String(c.label || ""), command: String(c.command) });
+            if (!fixed) continue;
+            st.custom.push({ keys: fixed.keys, label: String(fixed.label || ""), command: String(fixed.command) });
         }
         return st;
     }

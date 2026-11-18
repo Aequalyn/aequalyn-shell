@@ -194,12 +194,28 @@ const NewShape = B.readState(JSON.stringify({
         { keys: "SUPER + F9", label: "Snip", command: "grim -g \"$(slurp)\" - | wl-copy" },
         { keys: "SUPER + F9", label: "", command: "" },
         { keys: "SUPER + F8", label: "bad", command: "echo \"line\nbreak\"" },
-        { keys: "", label: "no key", command: "true" }
+        { keys: "", label: "no key", command: "true" },
+        // the name and the command swapped: keys typed as the command
+        { keys: "SUPER + ALT + M", label: "nautilus", command: "super + alt + m" },
+        // the keys typed as the command, with no name either
+        { keys: "SUPER + ALT + N", label: "", command: "super + alt + n" }
     ]
 }));
 ok(NewShape.changed["SUPER + Q"] === "SUPER + SHIFT + Q", "moved keys are read");
 ok(NewShape.removed.length === 2 && NewShape.removed.indexOf("SUPER + P") >= 0, "deleted keys are read, once each");
-ok(NewShape.custom.length === 1 && NewShape.custom[0].keys === "SUPER + F9", "only whole made binds are read");
+ok(NewShape.custom.length === 2, "only whole made binds are read");
+ok(NewShape.custom[1].command === "nautilus" && NewShape.custom[1].label === "",
+   "a swapped name/command is put right: the name runs, the label is derived");
+
+// keys someone typed, not a command
+ok(B.looksLikeChord("super + alt + m") === true, "keys with spaces look like keys");
+ok(B.looksLikeChord("Super+Alt+M") === true, "keys without spaces look like keys");
+ok(B.looksLikeChord("ctrl + shift + f1") === true, "mods and a function key look like keys");
+ok(B.looksLikeChord("nautilus") === false, "one word is a command");
+ok(B.looksLikeChord("kitty --class fm") === false, "a command with flags is a command");
+ok(B.looksLikeChord("grim -g \"$(slurp)\"") === false, "a command with quotes is a command");
+ok(B.looksLikeChord("echo $((1+1))") === false, "a command with a plus is a command");
+ok(B.looksLikeChord("") === false, "nothing is not keys");
 
 // ------------------------------------------------------------------ the block
 
