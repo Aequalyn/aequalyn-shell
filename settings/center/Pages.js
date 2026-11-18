@@ -1,4 +1,5 @@
 .pragma library
+.import "SettingsIndex.js" as Index
 
 // Every page of the control center, in the order of the sidebar. `words` are the
 // settings on the page, shown as search results; `also` are other words people may
@@ -7,13 +8,27 @@
 // Pages with live pictures are kept once made (on their first visit), so they show at
 // once after that; the rest are made when shown and dropped when left, so their scans
 // and timers only run while you look at them.
-var groups = [
-    { title: "",        pages: ["home"] },
-    { title: "Look",    pages: ["wallpaper", "theme", "bar", "dock", "picker", "lockscreens"] },
-    { title: "Windows", pages: ["arrange", "windows", "switcher", "screens", "input", "cursor"] },
-    { title: "Connect", pages: ["wifi", "bluetooth", "sound", "media"] },
-    { title: "System",  pages: ["apps", "webapps", "store", "clipboard", "aiTools", "clock", "sleep", "updates", "backup", "plugins", "about"] }
+// Six categories, each a few pages: the window lists the categories, then the pages
+// of the one chosen (two levels, so neither list ever grows long). Home stands apart.
+var categories = [
+    { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "lockscreens", "cursor"] },
+    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "dock", "plugins", "media", "clipboard"] },
+    { key: "windows", title: "Windows", icon: "\u{F05AF}", pages: ["arrange", "windows", "switcher", "screens", "input"] },
+    { key: "connect", title: "Connect", icon: "\u{F05A9}", pages: ["wifi", "bluetooth", "sound"] },
+    { key: "apps",    title: "Apps",    icon: "\u{F003B}", pages: ["apps", "webapps", "store", "aiTools"] },
+    { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["clock", "sleep", "updates", "backup", "about"] }
 ];
+// the same, as the flat groups other parts of the shell read
+var groups = [{ title: "", pages: ["home"] }].concat(categories.map(function (c) { return { title: c.title, pages: c.pages }; }));
+// the category a page is in, "" for Home
+function categoryOf(page) {
+    for (var i = 0; i < categories.length; i++) if (categories[i].pages.indexOf(page) >= 0) return categories[i].key;
+    return "";
+}
+function category(key) {
+    for (var i = 0; i < categories.length; i++) if (categories[i].key === key) return categories[i];
+    return null;
+}
 
 var pages = {
     home:      { label: "Home", icon: "\u{F02DC}", file: "Home",
@@ -123,27 +138,64 @@ function resolve(name) {
     return { page: pages[parts[0]] ? parts[0] : "", tab: isNaN(tab) ? 0 : tab };
 }
 
-// what matches what you typed: settings first, then pages
-function search(query) {
+// What matches what you typed, best first: the settings themselves (SettingsIndex.js,
+// read from the pages), then the pages and the words they are known by. `cat` keeps one
+// category ("" for all). Each result: { page, tab, label, group, where, icon, cat, entry,
+// score }; `entry` is the indexed control (with `setting` when it can be changed right
+// there), null for a page.
+function search(query, cat) {
     var q = (query || "").toLowerCase().trim();
     if (q === "") return [];
     var words = q.split(/\s+/);
-    var out = [];
+    function hits(hay) {
+        for (var w = 0; w < words.length; w++) if (hay.indexOf(words[w]) < 0) return false;
+        return true;
+    }
+    function rank(name) {
+        return name.indexOf(q) === 0 ? 3 : (" " + name).indexOf(" " + words[0]) >= 0 ? 2 : name.indexOf(q) >= 0 ? 1 : 0;
+    }
+    var out = [], seen = {};
+    function push(r) {
+        var id = r.page + "|" + r.label.toLowerCase() + "|" + (r.group || "");
+        if (seen[id]) return;
+        seen[id] = true;
+        if (cat && r.cat !== cat) return;
+        out.push(r);
+    }
+    // the settings
+    for (var e = 0; e < Index.entries.length; e++) {
+        var en = Index.entries[e], pg = pages[en.page];
+        if (!pg || order.indexOf(en.page) < 0) continue;
+        var hay = (en.title + " " + (en.group || "") + " " + (en.sub || "") + " " + pg.label + " " + pg.also).toLowerCase();
+        if (!hits(hay)) continue;
+        push({ page: en.page, tab: en.tab || 0, label: en.title, group: en.group || "", icon: pg.icon,
+               cat: categoryOf(en.page), entry: en,
+               score: rank(en.title.toLowerCase()) * 2 + (en.setting ? 1 : 0) + 4 });
+    }
+    // the pages, and the words they are known by
     for (var i = 0; i < order.length; i++) {
         var key = order[i], p = pages[key];
-        var entries = [p.label].concat(p.words);
-        for (var j = 0; j < entries.length; j++) {
-            var hay = (entries[j] + " " + p.label + " " + p.also).toLowerCase();
-            var hit = true;
-            for (var w = 0; w < words.length; w++) if (hay.indexOf(words[w]) < 0) { hit = false; break; }
-            if (!hit) continue;
-            var name = entries[j].toLowerCase();
-            var score = (name.indexOf(q) === 0 ? 4 : name.indexOf(q) >= 0 ? 2 : 0) + (j === 0 ? 1 : 0);
-            out.push({ page: key, label: entries[j], where: j === 0 ? "Page" : p.label, icon: p.icon, score: score });
+        var names = [p.label].concat(p.words);
+        for (var j = 0; j < names.length; j++) {
+            if (!hits((names[j] + " " + p.label + " " + p.also).toLowerCase())) continue;
+            push({ page: key, tab: 0, label: names[j], group: "", icon: p.icon, cat: categoryOf(key), entry: null,
+                   score: rank(names[j].toLowerCase()) * 2 + (j === 0 ? 5 : 2) });
         }
     }
-    out.sort(function (a, b) { return b.score - a.score; });
-    return out.slice(0, 8);
+    for (var k = 0; k < out.length; k++) {
+        var c = category(out[k].cat);
+        out[k].where = (c ? c.title + " › " : "") + pages[out[k].page].label + (out[k].group ? " › " + out[k].group : "");
+    }
+    out.sort(function (a, b) { return b.score - a.score || a.label.length - b.label.length; });
+    return out.slice(0, 80);
+}
+
+// how many results each category has, for the chips over the results
+function counts(query) {
+    var all = search(query, ""), n = { "": all.length };
+    for (var i = 0; i < categories.length; i++) n[categories[i].key] = 0;
+    for (var j = 0; j < all.length; j++) if (all[j].cat) n[all[j].cat]++;
+    return n;
 }
 
 // the pages kept once built: no timers or scans run on them while hidden
