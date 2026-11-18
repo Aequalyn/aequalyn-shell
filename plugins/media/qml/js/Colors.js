@@ -11,6 +11,12 @@
 .import "colors/heat.js" as Heat
 .import "colors/pulse.js" as Pulse
 .import "colors/duotone.js" as Duotone
+.import "colors/sunset.js" as Sunset
+.import "colors/ocean.js" as Ocean
+.import "colors/aurora.js" as Aurora
+.import "colors/chromatic.js" as Chromatic
+.import "colors/fire.js" as Fire
+.import "colors/synthwave.js" as Synthwave
 
 // Every color mode for the visualizer, in the order the settings show them. Each one
 // lives in its own file under colors/ (see CONTRIBUTING.md).
@@ -33,7 +39,13 @@ var list = [
     Cover.color,
     Heat.color,
     Pulse.color,
-    Duotone.color
+    Duotone.color,
+    Sunset.color,
+    Ocean.color,
+    Aurora.color,
+    Chromatic.color,
+    Fire.color,
+    Synthwave.color
 ];
 
 var byKey = {};
