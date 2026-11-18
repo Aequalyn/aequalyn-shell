@@ -19,6 +19,7 @@ umask 077
 STATE_DIR="${KEYBINDS_STATE:-$HOME/.local/state/aequalyn/keybinds}"
 FILE="${KEYBINDS_FILE:-$HOME/.config/hypr/keybinds.lua}"
 BLOCK="$STATE_DIR/block.lua"
+BEFORE="$STATE_DIR/before.lua"      # the file as it was before the last change
 DIAG="$STATE_DIR/binds-check.txt"
 BEGIN="-- >>> keybinds >>>"
 END="-- <<< keybinds <<<"
@@ -41,9 +42,9 @@ lua_str() {
 
 json_str() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 
-report() { # ok active count changed error
-  printf '{"ok":%s,"active":"%s","count":%s,"changed":%s,"error":"%s"}\n' \
-    "$1" "$2" "${3:-0}" "$4" "$(json_str "$5")"
+report() { # ok active count changed error [restored]
+  printf '{"ok":%s,"active":"%s","count":%s,"changed":%s,"restored":"%s","error":"%s"}\n' \
+    "$1" "$2" "${3:-0}" "$4" "${5:-false}" "$(json_str "${6:-}")"
 }
 
 reload_hypr() {
@@ -75,19 +76,21 @@ backup_once() {
   return 0
 }
 
-# the chords of the binds in the block, one a line
-block_chords() {
-  [[ -f "$BLOCK" ]] || return 0
-  sed -n 's/^[[:space:]]*hl\.bind("\([^"]*\)".*/\1/p' "$BLOCK"
+# the chords of the binds in a file, one a line
+chords_in() {
+  [[ -f "$1" ]] || return 0
+  sed -n 's/^[[:space:]]*hl\.bind("\([^"]*\)".*/\1/p' "$1"
 }
+block_chords() { chords_in "$BLOCK"; }
+file_chords() { chords_in "$FILE"; }
 
-# is every chord of the block live? hyprctl reports the key lowercase and the
+# is every chord of a file live? hyprctl reports the key lowercase and the
 # mods as a mask; compare both. Prints the missing ones, one a line, "?" when
 # there is no Hyprland to ask.
-live_check() {
+live_check() { # file
   { command -v hyprctl && command -v python3; } >/dev/null 2>&1 || { echo "?"; return; }
   local -a chords=()
-  mapfile -t chords < <(block_chords)
+  mapfile -t chords < <(chords_in "$1")
   [[ ${#chords[@]} -eq 0 ]] && return 0
   local missing rc
   missing="$(hyprctl -j binds 2>/dev/null | python3 -c '
@@ -115,6 +118,12 @@ sys.exit(0 if not missing else 1)
   return 0
 }
 
+# how many errors the running config carries for keybinds.lua, now
+config_errors() {
+  command -v hyprctl >/dev/null 2>&1 || { echo 0; return; }
+  hyprctl configerrors 2>/dev/null | grep -ci 'keybinds\.lua' || echo 0
+}
+
 # what we saw goes to binds-check.txt when a key did not take
 diag_dump() { # missing
   mkdir -p "$STATE_DIR"
@@ -136,32 +145,90 @@ for b in binds:
 }
 
 cmd_apply() {
-  [[ -f "$FILE" ]] || { report false unknown 0 false "no $FILE: Aequalyn's Lua Hyprland config is not there"; return 1; }
-  [[ -f "$BLOCK" ]] || { report false unknown 0 false "no block.lua in $STATE_DIR (the shell is not running?)"; return 1; }
-  local body content w changed=0
+  [[ -f "$FILE" ]] || { report false unknown 0 false false "no $FILE: Aequalyn's Lua Hyprland config is not there"; return 1; }
+  [[ -f "$BLOCK" ]] || { report false unknown 0 false false "no block.lua in $STATE_DIR (the shell is not running?)"; return 1; }
+  local body content w changed=0 base_errs=0
   body="$(strip_block)"
   [[ -n "$body" ]] && body="$body"$'\n'
   content="$body"$'\n'"$(marked_block)"
-  w="$(write_if_changed "$FILE" "$content")"; [[ "$w" == 1 ]] && changed=1
-  [[ "$changed" == 1 ]] && reload_hypr
+
+  if [[ ! -f "$FILE" ]] || [[ "$(cat "$FILE")" != "$content" ]]; then
+    # a real change: remember the errors the config already carries, and keep
+    # the file as it is now -- the point a bad change is restored to. When the
+    # block already in the file is not live (a change broke before this one),
+    # the older point is the good one: keep it.
+    base_errs=$(config_errors)
+    local live
+    live="$(live_check "$FILE")"
+    if [[ ! -f "$BEFORE" || -z "$live" ]]; then
+      cp -p "$FILE" "$BEFORE"
+    fi
+    w="$(write_if_changed "$FILE" "$content")"; [[ "$w" == 1 ]] && changed=1
+  else
+    w=0
+  fi
+
   # the pairs you changed: the unbinds, less this page's own key
   local count
   count=$(grep -c 'pcall(hl.unbind' "$BLOCK"); count=$(( count > 0 ? count - 1 : 0 ))
-  if [[ "${KEYBINDS_NO_RELOAD:-}" == 1 ]]; then
-    report true unknown "$count" "$([[ $changed == 1 ]] && echo true || echo false)" ""
+
+  if [[ "$changed" != 1 ]]; then
+    # nothing moved: still ask Hyprland, so the page can say the keys are live
+    if [[ "${KEYBINDS_NO_RELOAD:-}" == 1 ]]; then
+      report true unknown "$count" false false ""
+      return 0
+    fi
+    { command -v hyprctl && command -v python3; } >/dev/null 2>&1 || { report true unknown "$count" false false ""; return 0; }
+    local missing
+    missing="$(live_check "$BLOCK")"
+    if [[ "$missing" == "?" ]]; then report true unknown "$count" false false ""; return 0; fi
+    if [[ -n "$missing" ]]; then
+      diag_dump "$missing"
+      report true false "$count" false false "Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
+      return 1
+    fi
+    report true true "$count" false false ""
     return 0
   fi
-  { command -v hyprctl && command -v python3; } >/dev/null 2>&1 || { report true unknown "$count" false ""; return 0; }
+
+  reload_hypr
+  if [[ "${KEYBINDS_NO_RELOAD:-}" == 1 ]]; then
+    report true unknown "$count" true false ""
+    return 0
+  fi
+  { command -v hyprctl && command -v python3; } >/dev/null 2>&1 || { report true unknown "$count" true false ""; return 0; }
   sleep 0.6
-  local missing
-  missing="$(live_check)"
-  if [[ "$missing" == "?" ]]; then report true unknown "$count" "$([[ $changed == 1 ]] && echo true || echo false)" ""; return 0; fi
-  if [[ -n "$missing" ]]; then
+  local missing errs
+  missing="$(live_check "$BLOCK")"
+  [[ "$missing" == "?" ]] && { report true unknown "$count" true false ""; return 0; }
+  errs=$(config_errors)
+  if [[ -n "$missing" || "$errs" -gt "$base_errs" ]]; then
+    # Hyprland refused the change: put the file back as it was, reload, and
+    # say so. The shell brings its own state back down with the report.
+    local why
+    if [[ -n "$missing" ]]; then
+      why="Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
+    else
+      why="the config reported $errs error(s) in keybinds.lua"
+    fi
     diag_dump "$missing"
-    report false false "$count" "$([[ $changed == 1 ]] && echo true || echo false)" "Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
+    if [[ -f "$BEFORE" ]]; then
+      write_if_changed "$FILE" "$(cat "$BEFORE")" >/dev/null
+      reload_hypr
+      sleep 0.6
+      local after
+      after="$(live_check "$FILE")"
+      if [[ -z "$after" ]]; then
+        report false true "$count" true true "$why -- the change was taken back"
+      else
+        report false false "$count" true true "$why -- the change was taken back, but the keys before it are not live either: see $DIAG"
+      fi
+      return 1
+    fi
+    report false false "$count" false false "$why, and there is nothing to restore to"
     return 1
   fi
-  report true true "$count" "$([[ $changed == 1 ]] && echo true || echo false)" ""
+  report true true "$count" true false ""
 }
 
 cmd_remove() {
@@ -173,7 +240,7 @@ cmd_remove() {
     changed=1
   fi
   [[ "$changed" == 1 ]] && reload_hypr
-  report true true 0 "$([[ $changed == 1 ]] && echo true || echo false)" ""
+  report true true 0 "$([[ $changed == 1 ]] && echo true || echo false)" false ""
 }
 
 cmd_status() {
@@ -182,15 +249,15 @@ cmd_status() {
   [[ -f "$BLOCK" ]] && count=$(grep -c 'pcall(hl.unbind' "$BLOCK") && count=$(( count > 0 ? count - 1 : 0 ))
   if [[ "$present" == true && "${KEYBINDS_NO_RELOAD:-}" != 1 ]] && { command -v hyprctl && command -v python3; } >/dev/null 2>&1; then
     local missing
-    missing="$(live_check)"
-    [[ "$missing" == "?" ]] && { report true unknown "$count" false ""; return 0; }
+    missing="$(live_check "$BLOCK")"
+    [[ "$missing" == "?" ]] && { report true unknown "$count" false false ""; return 0; }
     if [[ -n "$missing" ]]; then
-      report true false "$count" false "Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
+      report true false "$count" false false "Hyprland is not using: $(echo "$missing" | tr '\n' ' ')"
       return 1
     fi
-    report true true "$count" false ""
+    report true true "$count" false false ""
   else
-    report "$present" unknown "$count" false ""
+    report "$present" unknown "$count" false false ""
   fi
 }
 

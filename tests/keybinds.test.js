@@ -9,6 +9,10 @@ const B = load(path.join(__dirname, "../plugins/keybinds/js/Binds.js"));
 
 let n = 0;
 const ok = (c, msg) => { assert.ok(c, msg); n++; };
+// one state file's worth: moved keys, deleted keys, made keys
+const st = (changed, removed, custom) => Object.assign(B.newState(), {
+    changed: changed || {}, removed: removed || [], custom: custom || []
+});
 
 // a keybinds.lua in miniature, with every shape the real one uses
 const FILE = [
@@ -86,7 +90,7 @@ ok(New.binds[0].label.length > 0, "an unknown bind still gets a name");
 
 // the marked block, read back without doubling
 const WithBlock = FILE + "\n\n" +
-    B.blockLua(P.binds, { "SUPER + Q": "SUPER + SHIFT + Q" }).text;
+    B.blockLua(P.binds, st({ "SUPER + Q": "SUPER + SHIFT + Q" })).text;
 const Reparsed = B.parseBinds(WithBlock);
 ok(Reparsed.binds.length === P.binds.length, "the block is not read back as binds");
 ok(Reparsed.warnings.length === 0, "and it leaves no warnings");
@@ -156,31 +160,66 @@ ok(rows.some(r => r.what.indexOf("web app") >= 0), "the web apps' rows");
 // ------------------------------------------------------------------ conflicts
 
 const binds = P.binds;
-ok(B.conflict("SUPER + C", null, binds, {}, reserved) === "Copy, in any app", "a clipboard key is refused, by name");
-ok(B.conflict("SUPER + E", null, binds, {}, null) === "Open your files", "another bind's key is refused, by name");
-ok(B.conflict("SUPER + E", "SUPER + E", binds, {}, null) === null, "the bind being edited does not block itself");
-ok(B.conflict("X", null, binds, {}, null) === "modifier", "a key alone would be taken from every app");
-ok(B.conflict("PRINT", null, [], {}, null) === null, "Print alone is allowed, as shipped");
-ok(B.conflict("XF86AUDIONEXT", null, [], {}, null) === null, "a media key alone is allowed");
-ok(B.conflict("SUPER + Y", null, binds, {}, reserved) === null, "a free key is free");
-ok(B.conflict("SUPER + ALT + K", null, binds, {}, reserved) === "This page", "this page's own key is refused");
+
+ok(B.conflict("SUPER + C", null, binds, st(), reserved) === "Copy, in any app", "a clipboard key is refused, by name");
+ok(B.conflict("SUPER + E", null, binds, st(), null) === "Open your files", "another bind's key is refused, by name");
+ok(B.conflict("SUPER + E", { id: "SUPER + E" }, binds, st(), null) === null, "the bind being edited does not block itself");
+ok(B.conflict("X", null, binds, st(), null) === "modifier", "a key alone would be taken from every app");
+ok(B.conflict("PRINT", null, [], st(), null) === null, "Print alone is allowed, as shipped");
+ok(B.conflict("XF86AUDIONEXT", null, [], st(), null) === null, "a media key alone is allowed");
+ok(B.conflict("SUPER + Y", null, binds, st(), reserved) === null, "a free key is free");
+ok(B.conflict("SUPER + ALT + K", null, binds, st(), reserved) === "This page", "this page's own key is refused");
 // your other keys are where the new key wants to go
-ok(B.conflict("SUPER + Y", "SUPER + T", binds, { "SUPER + Q": "SUPER + Y" }, null) === "Close the window",
+ok(B.conflict("SUPER + Y", { id: "SUPER + T" }, binds, st({ "SUPER + Q": "SUPER + Y" }), null) === "Close the window",
    "a key you already gave to another bind is refused");
+// a deleted bind frees its key, and a bind you made holds its own
+ok(B.conflict("SUPER + T", null, binds, st(null, ["SUPER + T"]), null) === null,
+   "deleting a bind frees its key");
+ok(B.conflict("SUPER + P", null, binds, st(null, null, [{ keys: "SUPER + P", label: "Snip", command: "grim" }]), null) === "Snip",
+   "a bind you made holds its key, by its name");
+ok(B.conflict("SUPER + P", { custom: "SUPER + P" }, binds, st(null, null, [{ keys: "SUPER + P", label: "Snip", command: "grim" }]), null) === null,
+   "the bind you made being edited does not block itself");
+
+// ------------------------------------------------------------------ the state file
+
+// an older file is a plain map of moved keys
+const Old = B.readState('{ "SUPER + Q": "SUPER + SHIFT + Q" }');
+ok(Old.changed["SUPER + Q"] === "SUPER + SHIFT + Q" && Old.removed.length === 0 && Old.custom.length === 0,
+   "an older state file reads as moved keys only");
+// a new file: moved, deleted, made; junk dropped, not trusted
+const NewShape = B.readState(JSON.stringify({
+    changed: { "SUPER + Q": "SUPER + SHIFT + Q" },
+    removed: ["SUPER + P", "SUPER + P", "no longer shipped"],
+    custom: [
+        { keys: "SUPER + F9", label: "Snip", command: "grim -g \"$(slurp)\" - | wl-copy" },
+        { keys: "SUPER + F9", label: "", command: "" },
+        { keys: "SUPER + F8", label: "bad", command: "echo \"line\nbreak\"" },
+        { keys: "", label: "no key", command: "true" }
+    ]
+}));
+ok(NewShape.changed["SUPER + Q"] === "SUPER + SHIFT + Q", "moved keys are read");
+ok(NewShape.removed.length === 2 && NewShape.removed.indexOf("SUPER + P") >= 0, "deleted keys are read, once each");
+ok(NewShape.custom.length === 1 && NewShape.custom[0].keys === "SUPER + F9", "only whole made binds are read");
 
 // ------------------------------------------------------------------ the block
 
-const BL = B.blockLua(binds, {
+const BL = B.blockLua(binds, st({
     "SUPER + Q": "SUPER + SHIFT + Q",
     "SUPER + RETURN": "SUPER + Y",
     "SUPER + 3": "SUPER + ALT + 3",
     "XF86AUDIOMUTE": "SUPER + ALT + M"
-});
-ok(BL.skipped.length === 0, "nothing skipped: " + JSON.stringify(BL.skipped));
+}, ["SUPER + T", "SUPER + MOUSE_DOWN"], [{
+    keys: "SUPER + F9", label: "Snip", command: "grim -g \"$(slurp)\" - | wl-copy"
+}]));
+ok(BL.skipped.length === 0, "nothing in the state is skipped: " + JSON.stringify(BL.skipped));
 
 const firstUnbind = BL.text.indexOf("pcall(hl.unbind");
 ok(firstUnbind >= 0, "the block unbinds Aequalyn's own keys");
 ok(BL.text.indexOf('pcall(hl.unbind, "SUPER + Q")  -- Close the window') >= 0, "an unbind with its label");
+ok(BL.text.indexOf('pcall(hl.unbind, "SUPER + T")  -- deleted: Pick a theme') >= 0,
+   "a deleted bind is only unbound, and named as deleted");
+ok(BL.text.indexOf('pcall(hl.unbind, "SUPER + mouse_down")  -- deleted: Next workspace') >= 0,
+   "an unbind uses the key as the file spells it (mouse_down, not MOUSE_DOWN)");
 ok(BL.text.indexOf('hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close())  -- Close the window') >= 0, "a bind to your key, its action word for word");
 ok(BL.text.indexOf('hl.bind("SUPER + Y", hl.dsp.exec_cmd(term))  -- Open a terminal') >= 0, "a bind's action has the file's locals in scope");
 ok(BL.text.indexOf('hl.bind("SUPER + ALT + 3", hl.dsp.focus({ workspace = "r~3" }))') >= 0,
@@ -191,18 +230,29 @@ ok(BL.text.indexOf('pcall(hl.unbind, "SUPER + RETURN")') > 0 && BL.text.indexOf(
 const lastTake = BL.text.indexOf('pcall(hl.unbind, "XF86AUDIOMUTE")');   // the overrides' own section
 ok(BL.text.indexOf('hl.bind("SUPER + SHIFT + Q"') > lastTake && BL.text.indexOf('hl.bind("SUPER + Y"') > lastTake,
    "every unbind comes before every bind, so a key moving between binds is not caught");
+ok(BL.text.indexOf('hl.bind("SUPER + F9", hl.dsp.exec_cmd("grim -g \\"$(slurp)\\" - | wl-copy"), { description = "Snip" })  -- Snip') >= 0,
+   "a bind you made: its command escaped, its name the description");
 ok(BL.text.indexOf('io.open("@@MARK@@", "r")') >= 0, "the block works only while the plugin is there (the helper fills the mark in)");
 ok(BL.text.indexOf('hl.bind("SUPER + ALT + K", hl.dsp.exec_cmd("qs ipc call aequalyn page keybinds")') >= 0,
    "the block binds this page's own key");
 ok(BL.text.trim().startsWith(B.BLOCK_BEGIN) && BL.text.trim().endsWith(B.BLOCK_END), "the block is marked, so it can be rewritten and removed");
 
-// a key that is taken is skipped, not written
-const Bad = B.blockLua(binds, { "SUPER + Q": "SUPER + E" });
+// a delete wins over a moved key: unbound, never re-bound
+const Deleted = B.blockLua(binds, st({ "SUPER + Q": "SUPER + SHIFT + Q" }, ["SUPER + Q"]));
+ok(Deleted.text.indexOf('pcall(hl.unbind, "SUPER + Q")  -- deleted: Close the window') >= 0, "the delete takes the key back");
+ok(Deleted.text.indexOf('hl.bind("SUPER + SHIFT + Q"') < 0, "a deleted bind is not re-bound, even if you had moved it");
+
+// a key that is taken is skipped, not written -- shipped and made alike
+const Bad = B.blockLua(binds, st({ "SUPER + Q": "SUPER + E" }));
 ok(Bad.skipped.length === 1 && Bad.skipped[0].id === "SUPER + Q", "an override onto a taken key is skipped, with a why");
 ok(Bad.text.indexOf('pcall(hl.unbind, "SUPER + Q")') < 0, "the skipped bind is left alone");
+const BadCustom = B.blockLua(binds, st(null, null, [{ keys: "SUPER + E", label: "Files again", command: "nautilus" }]));
+ok(BadCustom.skipped.length === 1 && BadCustom.skipped[0].id === "SUPER + E"
+   && BadCustom.skipped[0].why.indexOf("used by another bind") >= 0, "a made bind onto a taken key is skipped, with a why");
+ok(BadCustom.text.indexOf("Files again") < 0, "the skipped made bind is not written");
 
 // nothing changed: still the page's own key, so it works from the first moment
-const Empty = B.blockLua(binds, {});
+const Empty = B.blockLua(binds, st());
 ok(Empty.text.indexOf("hl.bind") >= 0 && Empty.text.indexOf('pcall(hl.unbind, "SUPER + Q")') < 0,
    "with no changes, only this page's own key is bound");
 
