@@ -1,5 +1,6 @@
-// Emoji (Super + .): find one by name, Enter copies it, ready to paste. The ones you
-// used last come first.
+// Emoji (Super + .): a grid of emoji; type a name to narrow it, the arrows move, Enter
+// copies it, ready to paste. The ones you used last come first; the line under the
+// grid names the one you are on.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -18,16 +19,18 @@ Scope {
         name: "emoji"
         icon: "\u{F0785}"
         placeholder: "A name, like smile, heart or rocket"
-        panelHeight: 460
+        panelHeight: 540
+        columns: 10
         emptyText: "No emoji by that name"
+        countText: panel.items.length + " emoji"
         items: {
             const q = panel.query.trim().toLowerCase()
             const all = Emojis.list
             const hit = q === "" ? root.recent.map(c => all.find(e => e[0] === c)).filter(x => !!x).concat(all.filter(e => root.recent.indexOf(e[0]) < 0))
                 : all.filter(e => e[1].indexOf(q) >= 0)
-            return hit.slice(0, 80).map(e => ({ title: e[0] + "   " + e[1].split(" ")[0], sub: e[1], value: e[0] }))
+            return hit.map(e => ({ glyph: e[0], title: e[1].split(" ")[0], sub: e[1].split(" ").slice(1).join(" "), value: e[0] }))
         }
-        hints: [["Enter", "copy"], ["↑ ↓", "move"], ["Esc", "close"]]
+        hints: [["← ↑ ↓ →", "move"], ["Enter", "copy"], ["Esc", "close"]]
         onActivated: (item) => {
             if (!item) return
             KitHost.copy(item.value)
