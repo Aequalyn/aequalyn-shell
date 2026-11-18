@@ -6,6 +6,9 @@
 //   Enter       the plugin's action on the row        Esc         clear, then close
 // A plugin sets `items` ({ icon, title, sub, hint, swatch }) and answers `activated`;
 // one that needs more shows its own `body` under the line instead of the list.
+// `columns` above 0 shows the items as a grid of tiles instead (each its `glyph`, or its
+// icon, large): the arrows move across and down, and the line under the grid names
+// the tile you are on (its title and sub).
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -32,6 +35,7 @@ Scope {
     property real panelWidth: 580
     property real panelHeight: 480
     property bool multiline: false               // Enter adds a line; Ctrl + Enter is the action
+    property int columns: 0                      // tiles across: a grid instead of a list
     // the line over the list ("12 results"); "" for none
     property string countText: kp.items.length + (kp.items.length === 1 ? " result" : " results")
     // small buttons at the right of the keys: [{ key, label }], answered by `action`
@@ -72,6 +76,18 @@ Scope {
         if (event.key === Qt.Key_Escape) {
             if (kp.input && kp.query !== "" && !kp.multiline) kp.query = ""
             else kp.open = false
+            event.accepted = true
+        } else if (kp.columns > 0 && kp.body === null && (event.key === Qt.Key_Left || event.key === Qt.Key_Right
+                   || event.key === Qt.Key_Up || event.key === Qt.Key_Down)) {
+            // the grid: across with ← →, a row up or down with ↑ ↓, staying on the grid
+            const n = kp.items.length
+            if (n) {
+                const step = event.key === Qt.Key_Left ? -1 : event.key === Qt.Key_Right ? 1
+                           : event.key === Qt.Key_Up ? -kp.columns : kp.columns
+                const next = kp.current + step
+                if (next >= 0 && next < n) kp.current = next
+                else if (step === 1 || step === -1) kp.current = (next + n) % n
+            }
             event.accepted = true
         } else if (event.key === Qt.Key_Down || (event.key === Qt.Key_Tab && !kp.multiline)) {
             if (kp.items.length) kp.current = (kp.current + 1) % kp.items.length
@@ -188,15 +204,89 @@ Scope {
                     font.family: kp.font
                 }
 
+                // the grid: each item a tile, its glyph large
+                GridView {
+                    id: grid
+                    visible: kp.body === null && kp.columns > 0
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    model: visible ? kp.items : []
+                    currentIndex: kp.current
+                    cellWidth: Math.floor(width / Math.max(1, kp.columns))
+                    cellHeight: cellWidth
+                    highlightMoveDuration: 100
+                    boundsBehavior: Flickable.StopAtBounds
+                    onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
+                    highlight: Rectangle {
+                        width: grid.cellWidth
+                        height: grid.cellHeight
+                        radius: 10
+                        color: kp.c_selected
+                        border.width: 1
+                        border.color: kp.c_accent
+                    }
+                    delegate: Item {
+                        id: tile
+                        required property var modelData
+                        required property int index
+                        width: grid.cellWidth
+                        height: grid.cellHeight
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.title || ""
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            radius: 10
+                            color: tileArea.containsMouse && tile.index !== kp.current ? kp.c_hover : "transparent"
+                        }
+                        Text {
+                            anchors.centerIn: parent
+                            text: tile.modelData.glyph || tile.modelData.icon || ""
+                            textFormat: Text.PlainText
+                            color: kp.c_text
+                            font.pixelSize: Math.round(grid.cellWidth * 0.5)
+                        }
+                        MouseArea {
+                            id: tileArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onPositionChanged: kp.current = tile.index
+                            onClicked: { kp.current = tile.index; kp.activated(tile.modelData, tile.index, 0) }
+                        }
+                    }
+                    Text {
+                        anchors.centerIn: parent
+                        visible: kp.items.length === 0
+                        text: kp.emptyText
+                        color: kp.c_muted
+                        font.family: kp.font
+                        font.pixelSize: 14
+                    }
+                }
+                // the tile you are on, by name
+                Text {
+                    visible: kp.body === null && kp.columns > 0 && kp.items.length > 0
+                    Layout.fillWidth: true
+                    readonly property var cur: kp.items[kp.current] || ({})
+                    text: (cur.title || "") + (cur.sub ? "   " + cur.sub : "")
+                    textFormat: Text.PlainText
+                    color: kp.c_text2
+                    font.family: kp.font
+                    font.pixelSize: 12
+                    elide: Text.ElideRight
+                }
+
                 // the list
                 ListView {
                     id: list
-                    visible: kp.body === null
+                    visible: kp.body === null && kp.columns === 0
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
                     spacing: 2
-                    model: kp.items
+                    model: visible ? kp.items : []
                     currentIndex: kp.current
                     highlightMoveDuration: 150
                     highlightMoveVelocity: -1
