@@ -172,8 +172,11 @@ Item {
         return false;
     }
 
-    WheelHandler {
-        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+    // the wheel, by a MouseArea that takes no clicks: a WheelHandler never hears a real
+    // mouse wheel here
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.NoButton
         onWheel: event => {
             const n = root.items.length;
             if (n === 0) return;
