@@ -5,6 +5,7 @@ import Quickshell
 import "root:/settings"
 import "../../../plugins/atelier"
 import "../../../style/BarLooks.js" as BarLooks
+import "../../../style/Colors.js" as Colors
 import "../../../plugins/bar/widgets/Widgets.js" as Widgets
 import ".."
 
@@ -68,6 +69,60 @@ CcPage {
                 interactive: false
                 theme: Cc.theme
                 font: Cc.mono
+            }
+        }
+    }
+
+    // ---- the widgets' colours: their own, or the theme's in a pattern ----------------------
+    readonly property var inkColors: Colors.fromTheme(Cc.theme).spectrum
+    CcSection {
+        visible: page.tab === 1
+        title: "The widgets' colours"
+        hint: "Their own: each widget in its usual colour. The theme's: they take the theme's colours in turn, along the bar from left to right."
+        CcChoice {
+            setting: "barInk"
+            options: [{ key: "own", label: "Their own" }, { key: "theme", label: "The theme's" }]
+        }
+    }
+    CcSection {
+        visible: page.tab === 1
+        title: "In what pattern"
+        hint: "a is the theme's first colour, b its second, c its third. The bar's Palette colours (Colours, above) follow it too."
+        CcChoice {
+            setting: "barInkPattern"
+            options: [
+                { key: "all", label: "Every colour in turn" },
+                { key: "a", label: "All the accent" },
+                { key: "ab", label: "a b a b" },
+                { key: "abb", label: "a b b" },
+                { key: "aab", label: "a a b" },
+                { key: "aabb", label: "a a b b" },
+                { key: "abc", label: "a b c" }
+            ]
+        }
+        // the first widgets along the bar, in the theme's colours as the pattern gives them
+        Row {
+            Layout.leftMargin: 2
+            Layout.topMargin: 4
+            spacing: 6
+            Repeater {
+                model: 12
+                delegate: Rectangle {
+                    required property int index
+                    width: 22
+                    height: 22
+                    radius: 7
+                    color: Cc.theme.bgSurface
+                    border.width: 1
+                    border.color: Cc.theme.bgBorder
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u{F111}"
+                        color: Colors.inkAt(page.inkColors, AequalynSettings.barInkPattern, parent.index) || Cc.theme.textMuted
+                        font.family: Cc.mono
+                        font.pixelSize: 11
+                    }
+                }
             }
         }
     }

@@ -17,6 +17,8 @@ var entries = [
     {"page": "theme", "title": "Browsers use these colours too", "kind": "toggle", "sub": "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. The first time asks for admin permission.", "setting": "themeBrowser"},
     {"page": "theme", "title": "Add your own theme", "kind": "more"},
     {"page": "theme", "title": "Open the themes folder", "kind": "button", "group": "Add your own theme"},
+    {"page": "bar", "title": "The widgets' colours", "kind": "choice", "sub": "Their own: each widget in its usual colour. The theme's: they take the theme's colours in turn, along the bar from left to right.", "tab": 1, "setting": "barInk", "options": [{"key": "own", "label": "Their own"}, {"key": "theme", "label": "The theme's"}]},
+    {"page": "bar", "title": "In what pattern", "kind": "choice", "sub": "a is the theme's first colour, b its second, c its third. The bar's Palette colours (Colours, above) follow it too.", "tab": 1, "setting": "barInkPattern", "options": [{"key": "all", "label": "Every colour in turn"}, {"key": "a", "label": "All the accent"}, {"key": "ab", "label": "a b a b"}, {"key": "abb", "label": "a b b"}, {"key": "aab", "label": "a a b"}, {"key": "aabb", "label": "a a b b"}, {"key": "abc", "label": "a b c"}]},
     {"page": "bar", "title": "Height", "kind": "slider", "tab": 2, "setting": "barHeight", "from": 24.0, "to": 48.0, "step": 2.0, "unit": " px"},
     {"page": "bar", "title": "How solid it is", "kind": "slider", "sub": "Lower lets the wallpaper show through.", "tab": 2, "setting": "barOpacity", "from": 40.0, "to": 100.0, "step": 5.0, "unit": "%"},
     {"page": "bar", "title": "When a part of the bar is full", "kind": "more", "tab": 2},
