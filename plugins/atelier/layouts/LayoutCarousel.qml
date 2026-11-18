@@ -71,8 +71,11 @@ Item {
             onClicked: index === root.currentIndex ? root.picked(index) : root.hovered(index)
         }
 
-        WheelHandler {
-            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        // the wheel, by a MouseArea that takes no clicks: a WheelHandler never hears a real
+        // mouse wheel here
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.NoButton
             onWheel: event => {
                 if (root.items.length === 0) return;
                 const d = -Wheel.step(event, root.wheelAcc);
