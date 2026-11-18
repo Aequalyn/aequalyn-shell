@@ -36,6 +36,14 @@ Scope {
     property var theme: AequalynDefaultTheme {}
     property bool panelVisible: false
     property string page: "home"
+    // the kept pages (Pages.kept) are made in the background once the control center has
+    // been open a moment, so the first visit to one doesn't wait for it to be built
+    property bool warm: false
+    Timer {
+        running: root.panelVisible && !root.warm
+        interval: 400
+        onTriggered: root.warm = true
+    }
     readonly property string version: "0.1.0"
 
     // Lock Screens page is only shown when the user opted into the (optional)
@@ -494,7 +502,10 @@ Scope {
                     width: root.categoryNow && !root.searching ? 214 : 0
                     visible: width > 0
                     clip: true
-                    Behavior on width { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                    // It takes its room at once, never by animating its width: the page area is
+                    // laid out from it, and a width that moves lays every page out again on each
+                    // frame of the animation. Its list slides in instead, which only moves pixels.
+                    onVisibleChanged: if (visible) navIn.restart()
 
                     Column {
                         id: nav
@@ -502,6 +513,12 @@ Scope {
                         y: 16
                         width: 214 - 24
                         spacing: 2
+                        transform: Translate { id: navShift }
+                        ParallelAnimation {
+                            id: navIn
+                            NumberAnimation { target: nav; property: "opacity"; from: 0; to: 1; duration: 150; easing.type: Easing.OutCubic }
+                            NumberAnimation { target: navShift; property: "x"; from: -14; to: 0; duration: 180; easing.type: Easing.OutCubic }
+                        }
                         Text {
                             leftPadding: 8
                             text: root.categoryNow ? root.categoryNow.icon + "  " + root.categoryNow.title : ""
@@ -594,27 +611,60 @@ Scope {
                     anchors.bottom: footer.top
                     anchors.bottomMargin: 4
 
+                    // the room a page has when it is shown: all of it for Home, the room beside
+                    // the pages list for a page in a category
+                    readonly property real wideRoom: width + (side.visible ? side.width + side.anchors.leftMargin : 0)
+                    readonly property real narrowRoom: wideRoom - 214 - side.anchors.leftMargin
+
                     Repeater {
                         id: pageLoaders
                         model: root.filteredOrder
                         delegate: Loader {
+                            id: pageLoader
                             required property string modelData
                             readonly property bool current: root.page === modelData
                             readonly property bool kept: Pages.kept.indexOf(modelData) >= 0
-                            // A kept page stays drawn, just outside the page area (which clips
-                            // it) and out of reach: its pictures (canvases, which only paint
-                            // while drawn) are painted in the background, not all at once when
-                            // you switch to it. Opacity 0 would skip them: Qt doesn't draw it.
-                            width: pageArea.width
+                            // A kept page out of view stays drawn for a moment, just outside the
+                            // page area (which clips it) and out of reach: its pictures (canvases,
+                            // which only paint while drawn) are painted then, in the background,
+                            // not all at once when you switch to it. Opacity 0 would skip them: Qt
+                            // doesn't draw it. Then it rests, not drawn at all: the clip hides it
+                            // but doesn't stop it being drawn, and nine pages drawn on every frame
+                            // made each frame of a switch slow. Its pictures keep what they painted.
+                            // Every page keeps the width it is shown at, hidden or not, so going
+                            // to Home, a category or the search never lays a page out again.
+                            width: Pages.categoryOf(modelData) === "" ? pageArea.wideRoom : pageArea.narrowRoom
                             height: pageArea.height
-                            x: current ? 0 : pageArea.width + 64
-                            visible: current || kept
+                            x: current ? 0 : pageArea.wideRoom + 64
+                            property bool resting: false
+                            visible: current || (kept && !resting)
                             enabled: current
-                            // made when first shown; a kept page then stays made
+                            Timer {
+                                id: restTimer
+                                interval: 800
+                                onTriggered: if (!pageLoader.current) pageLoader.resting = true
+                            }
+                            // Coming into view it fades and rises a little: opacity and a shift
+                            // move what is drawn already, nothing is laid out or painted again
+                            property real enter: 1
+                            opacity: current ? 0.35 + 0.65 * enter : 1
+                            transform: Translate { y: (1 - pageLoader.enter) * 10 }
+                            onCurrentChanged: {
+                                if (current) { resting = false; restTimer.stop(); enterAnim.restart(); }
+                                else restTimer.restart();
+                            }
+                            NumberAnimation { id: enterAnim; target: pageLoader; property: "enter"; from: 0; to: 1; duration: 170; easing.type: Easing.OutCubic }
+                            // made when first shown, or, for a kept page, in the background soon
+                            // after the control center opens (a bit at a time, so nothing stalls),
+                            // so it is ready the first time you go to it; a kept page then stays made
                             property bool made: false
-                            active: (current && root.panelVisible) || (kept && made)
+                            active: (current && root.panelVisible) || (kept && (made || root.warm))
+                            // the page you go to is made at once; the others in the background
+                            asynchronous: !current
                             onLoaded: {
                                 made = true;
+                                // made in the background: drawn while its pictures paint, then rests
+                                if (!current) restTimer.restart();
                                 // the sub page asked for, when the page is opened by name
                                 if (current && item.tabs !== undefined && Cc.startTab < item.tabs.length) item.tab = Cc.startTab;
                             }
