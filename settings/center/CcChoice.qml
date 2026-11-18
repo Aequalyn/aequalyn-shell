@@ -1,4 +1,5 @@
-// One of a few answers, as buttons in a row. `options` are strings or
+// One of a few answers, as chips (the Applications menu's categories): the chosen one
+// lifted, its edge and words in the accent. `options` are strings or
 // { key, label } objects; `setting` binds the choice to an AequalynSettings key,
 // otherwise use `current` and `chosen`.
 import QtQuick
@@ -15,7 +16,14 @@ Flow {
     readonly property var value: setting !== "" ? AequalynSettings[setting] : current
 
     Layout.fillWidth: true
-    spacing: 8
+    spacing: 6
+    // in a section's group: room of its own beside the rows
+    readonly property bool grouped: Cc.inGroup(c)
+    readonly property bool roomy: Cc.inGroupBody(c)
+    Layout.leftMargin: roomy ? 12 : 0
+    Layout.rightMargin: roomy ? 12 : 0
+    Layout.topMargin: roomy ? 8 : 0
+    Layout.bottomMargin: roomy ? 8 : 0
 
     Repeater {
         model: c.options
@@ -26,12 +34,12 @@ Flow {
             readonly property string label: typeof modelData === "object" ? modelData.label : String(modelData)
             readonly property bool on: key === c.value
 
-            implicitWidth: lbl.implicitWidth + 30
-            implicitHeight: 36
-            radius: 10
-            color: on ? Cc.alpha(Cc.theme.accentPrimary, 0.16) : (area.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSurface)
-            border.width: 2
-            border.color: on ? Cc.theme.accentPrimary : "transparent"
+            implicitWidth: lbl.implicitWidth + 24
+            implicitHeight: 32
+            radius: 8
+            color: on ? Cc.theme.bgSelected : (area.containsMouse ? Cc.theme.bgHover : (c.grouped ? Cc.theme.bgBase : Cc.theme.bgSurface))
+            border.width: 1
+            border.color: on ? Cc.theme.accentPrimary : Cc.theme.bgBorder
             Behavior on color { ColorAnimation { duration: 120 } }
             Accessible.role: Accessible.RadioButton
             Accessible.name: label
@@ -41,7 +49,7 @@ Flow {
                 id: lbl
                 anchors.centerIn: parent
                 text: opt.label
-                color: opt.on ? Cc.theme.textPrimary : Cc.theme.textSecondary
+                color: opt.on ? Cc.theme.accentPrimary : Cc.theme.textSecondary
                 font.family: Cc.sans
                 font.pixelSize: 12
                 font.weight: opt.on ? Font.DemiBold : Font.Normal

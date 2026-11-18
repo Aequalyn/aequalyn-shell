@@ -1,5 +1,6 @@
 // A one-line text field, looking like the rest of the control center.
 import QtQuick
+import QtQuick.Layouts
 import QtQuick.Controls
 
 Rectangle {
@@ -14,9 +15,16 @@ Rectangle {
     implicitHeight: 38
     implicitWidth: inputWidth > 0 ? inputWidth : 220
     radius: 10
-    color: Cc.theme.bgSurface
-    border.width: input.activeFocus ? 2 : 1
+    color: grouped ? Cc.theme.bgBase : Cc.theme.bgSurface
+    border.width: 1
     border.color: input.activeFocus ? Cc.theme.accentPrimary : Cc.theme.bgBorder
+    // in a section's group: room of its own beside the rows
+    readonly property bool grouped: Cc.inGroup(f)
+    readonly property bool roomy: Cc.inGroupBody(f)
+    Layout.leftMargin: roomy ? 12 : 0
+    Layout.topMargin: roomy ? 8 : 0
+    Layout.bottomMargin: roomy ? 8 : 0
+
 
     MouseArea {
         anchors.fill: parent

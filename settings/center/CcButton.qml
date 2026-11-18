@@ -1,5 +1,8 @@
-// A button: plain, `primary` (filled with the accent) or `danger` (red on hover).
+// A button, as everywhere in Aequalyn: quiet, with a hairline edge; `primary` (the main
+// one) in the accent's edge and words on a lifted fill, `danger` red when you point at it,
+// `warning` red already.
 import QtQuick
+import QtQuick.Layouts
 
 Rectangle {
     id: b
@@ -10,20 +13,29 @@ Rectangle {
     property bool warning: false
     signal clicked()
 
-    implicitWidth: row.implicitWidth + 28
-    implicitHeight: 34
-    radius: 10
-    color: warning ? Cc.theme.accentRed
-         : primary ? (area.containsMouse ? Qt.lighter(Cc.theme.accentPrimary, 1.12) : Cc.theme.accentPrimary)
-         : danger && area.containsMouse ? Cc.theme.accentRed
-         : area.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSelected
+    implicitWidth: row.implicitWidth + 26
+    implicitHeight: 32
+    radius: 8
+    color: primary ? (area.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSelected)
+         : area.containsMouse ? Cc.theme.bgHover : (grouped ? Cc.theme.bgBase : Cc.theme.bgSurface)
+    border.width: 1
+    border.color: warning || (danger && area.containsMouse) ? Cc.theme.accentRed
+                : primary ? Cc.theme.accentPrimary : Cc.theme.bgBorder
+    // in a section's group: room of its own beside the rows
+    readonly property bool grouped: Cc.inGroup(b)
+    readonly property bool roomy: Cc.inGroupBody(b)
+    Layout.leftMargin: roomy ? 12 : 0
+    Layout.topMargin: roomy ? 8 : 0
+    Layout.bottomMargin: roomy ? 8 : 0
+
     opacity: enabled ? 1 : 0.45
     Behavior on color { ColorAnimation { duration: 120 } }
 
     Accessible.role: Accessible.Button
     Accessible.name: text
 
-    readonly property color ink: primary || warning || (danger && area.containsMouse) ? Cc.theme.bgBase : Cc.theme.textPrimary
+    readonly property color ink: warning || (danger && area.containsMouse) ? Cc.theme.accentRed
+                               : primary ? Cc.theme.accentPrimary : Cc.theme.textPrimary
     Row {
         id: row
         anchors.centerIn: parent
