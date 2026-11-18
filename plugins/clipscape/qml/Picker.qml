@@ -6,8 +6,10 @@ import Quickshell.Hyprland
 import ".."
 import "picker"
 import "controls"
+import "root:/style/backdrop"
 
-// Clipscape's picker on Super+Ctrl+V, opened through the service singleton.
+// Clipscape's picker on Super+Ctrl+V, opened through the service singleton. Drawn like
+// the Applications menu: over the shell's backdrop, on its frame, with its key chips.
 // The payload may hold { "query": "...", "filter": "..." }.
 Item {
     id: root
@@ -15,6 +17,7 @@ Item {
     readonly property var svc: ClipscapeService
     readonly property var ui: svc.ui
     readonly property var cfg: svc.cfg
+    property var theme: null            // the shell's palette, for the frame and the backdrop
 
     property bool opened: false
     property var targetScreen: null
@@ -113,25 +116,27 @@ Item {
     PanelWindow {
         id: win
 
-        visible: root.shown
+        visible: root.shown || veil.shown
         screen: root.targetScreen
         anchors { top: true; bottom: true; left: true; right: true }
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.namespace: "clipscape"
+        WlrLayershell.namespace: veil.layerName("clipscape")
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: root.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         mask: root.opened ? null : noInput
 
-        Rectangle {
-            anchors.fill: parent
-            color: "black"
-            opacity: (1 - root.t) * (root.cfg ? root.cfg.dim / 100 : 0.3)
-        }
+        // the desktop behind, blurred and dimmed as every Aequalyn panel has it
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.AllButtons
             onClicked: root.dismiss()
+            Backdrop {
+                id: veil
+                open: root.opened
+                theme: root.theme
+                tintAlpha: root.theme ? root.theme.bgOverlay.a : (root.cfg ? root.cfg.dim / 100 : 0.3)
+            }
         }
 
         Item {
@@ -148,31 +153,67 @@ Item {
 
             MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons }   // clicks on the card stay here
 
-            Frame { anchors.fill: parent; ui: root.ui }
+            // the Applications menu's frame
+            Rectangle {
+                anchors.fill: parent
+                radius: 16
+                color: root.theme ? root.theme.bgBase : root.ui.surface
+                border.width: 1
+                border.color: root.theme ? root.theme.bgBorder : root.ui.tint(0.14)
+            }
 
             ClipView {
                 id: view
                 anchors.fill: parent
-                anchors.margins: root.ui ? root.ui.px(14) : 14
-                anchors.bottomMargin: root.ui ? root.ui.px(34) : 34
+                anchors.margins: 16
+                anchors.bottomMargin: 42
                 svc: root.svc
                 active: root.opened
                 onDone: root.dismiss()
             }
 
-            Txt {
-                ui: root.ui
+            // the keys, as the Applications menu shows them: each in its own chip
+            Row {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                anchors.leftMargin: root.ui ? root.ui.px(16) : 16
-                anchors.rightMargin: root.ui ? root.ui.px(16) : 16
-                height: root.ui ? root.ui.px(30) : 30
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-                text: view.hints
-                font.pixelSize: root.ui ? root.ui.fs(10) : 10
-                opacity: 0.45
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.bottomMargin: 14
+                height: 18
+                spacing: 16
+                clip: true
+                Repeater {
+                    model: view.hints.split(" · ").map(h => {
+                        const k = h.indexOf(" ");
+                        return k > 0 ? [h.slice(0, k), h.slice(k + 1)] : [h, ""];
+                    })
+                    delegate: Row {
+                        required property var modelData
+                        spacing: 4
+                        Rectangle {
+                            width: keyText.implicitWidth + 8
+                            height: 18
+                            radius: 4
+                            color: root.theme ? root.theme.bgSurface : root.ui.tint(0.06)
+                            Txt {
+                                id: keyText
+                                ui: root.ui
+                                anchors.centerIn: parent
+                                text: ({ "Enter": "⏎", "Esc": "esc", "Tab": "tab", "Del": "del" })[modelData[0]] || modelData[0]
+                                color: root.theme ? root.theme.textMuted : root.ui.tint(0.5)
+                                font.pixelSize: 10
+                            }
+                        }
+                        Txt {
+                            ui: root.ui
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData[1]
+                            color: root.theme ? root.theme.textMuted : root.ui.tint(0.5)
+                            font.pixelSize: 10
+                        }
+                    }
+                }
             }
         }
     }

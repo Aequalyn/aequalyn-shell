@@ -7,7 +7,7 @@ Item {
     id: root
     property var theme: null
 
-    Picker { id: picker }
+    Picker { id: picker; theme: root.theme }
 
     Component.onDestruction: {}
 }
