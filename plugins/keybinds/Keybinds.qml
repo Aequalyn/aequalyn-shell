@@ -120,6 +120,9 @@ Item {
         if (ready) return;
         state = Binds.readState(text);
         ready = true;
+        // write it back as it now stands: readState puts swapped fields right,
+        // and the file should say what is really in use
+        persist();
         reconcile();
     }
 
@@ -251,16 +254,28 @@ Item {
     }
 
     // a bind you made: a name, a command, a key. "" when it stands; otherwise
-    // the reason it cannot (a taken key, or something to run missing).
+    // the reason it cannot (a taken key, or something to run missing). When the
+    // command someone typed is the keys and the name is what they meant to run
+    // -- an easy pair to swap -- the two are put right without a word.
     function addCustom(label, command, keys) {
+        let name = String(label || "");
+        let cmd = String(command || "");
+        if (Binds.looksLikeChord(cmd)) {
+            if (name.trim() === "")
+                return "that looks like the keys, not the command. Say what the key should run.";
+            const fixed = Binds.repairCustom({ keys: Binds.normalize(keys), label: name, command: cmd });
+            if (!fixed) return "say what the key should run, and press a whole chord for it";
+            name = String(fixed.label || "");
+            cmd = String(fixed.command || "");
+        }
         const norm = Binds.normalize(keys);
-        if (norm === "" || String(command || "").trim() === "" || Binds.hasControl(command) || Binds.hasControl(label))
+        if (norm === "" || cmd.trim() === "" || Binds.hasControl(cmd) || Binds.hasControl(name))
             return "say what the key should run, and press a whole chord for it";
         const who = conflictFor(norm, null);
         if (who === "modifier") return "add a modifier: a key alone would be taken from every app";
         if (who) return "that's " + who;
         const next = cloneState();
-        next.custom.push({ keys: norm, label: String(label || ""), command: String(command) });
+        next.custom.push({ keys: norm, label: name, command: cmd });
         commit(next);
         return "";
     }
@@ -362,8 +377,9 @@ Item {
             root.dirReady = true;
             overridesFile.reload();
             // the overrides may have been read while the folder was still being
-            // made: their first write has been waiting since
-            if (root.ready) root.reconcile();
+            // made: their first write has been waiting since -- write what was
+            // read, for it heals swapped fields, then make it live
+            if (root.ready) { root.persist(); root.reconcile() }
         }
     }
 

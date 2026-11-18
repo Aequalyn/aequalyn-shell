@@ -272,7 +272,7 @@ CcPage {
             }
         }
 
-        // the add form: name and command, then the key is pressed
+        // the add form: what it runs, an optional name, then the key is pressed
         ColumnLayout {
             visible: !page.formPicking
             Layout.fillWidth: true
@@ -281,16 +281,16 @@ CcPage {
                 Layout.fillWidth: true
                 spacing: 8
                 CcField {
-                    Layout.preferredWidth: 150
-                    placeholder: "A name (optional)"
-                    text: page.newName
-                    onTextChanged: page.newName = text
-                }
-                CcField {
                     Layout.fillWidth: true
-                    placeholder: "What it runs (a command)"
+                    placeholder: "The command it runs (nautilus, kitty --class ...)"
                     text: page.newCommand
                     onTextChanged: page.newCommand = text
+                }
+                CcField {
+                    Layout.preferredWidth: 160
+                    placeholder: "A name, if you want one"
+                    text: page.newName
+                    onTextChanged: page.newName = text
                 }
                 CcButton {
                     text: "Add a keybind"
@@ -301,7 +301,7 @@ CcPage {
                         if (page.newCommand.trim() === "") { page.formNote = "Say what the key should run."; return }
                         page.editing = "";
                         page.editingCustom = "";
-                        page.formNote = "Press the keys for it. Esc cancels.";
+                        page.formNote = "Now press the keys for it. Esc cancels.";
                         page.formPicking = true;
                         formcap.forceActiveFocus();
                     }
