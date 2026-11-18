@@ -20,9 +20,27 @@ Rectangle {
 
     Layout.fillWidth: true
     implicitHeight: Math.max(54, col.implicitHeight + 24)
-    radius: 12
-    color: area.containsMouse && enabled ? Cc.theme.bgHover : Cc.theme.bgSurface
+    radius: grouped ? 8 : 12
+    color: area.containsMouse && enabled ? Cc.theme.bgHover : (grouped ? "transparent" : Cc.theme.bgSurface)
+    border.width: grouped ? 0 : 1
+    border.color: Cc.theme.bgBorder
     opacity: enabled ? 1 : 0.5
+    // the pattern (Cc.qml): a row of its section's group, or a group of its own
+    property var section: null
+    readonly property bool grouped: !!section
+    readonly property bool firstRow: Cc.firstShown(parent) === t
+    Component.onCompleted: { t.section = Cc.sectionOf(t); if (t.section) t.section.rows++; }
+    Component.onDestruction: { try { if (t.section) t.section.rows--; } catch (e) {} }
+    Rectangle {
+        visible: t.grouped && !t.firstRow
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.leftMargin: 12
+        anchors.rightMargin: 12
+        height: 1
+        color: Cc.theme.bgBorder
+    }
 
     MouseArea {
         id: area
