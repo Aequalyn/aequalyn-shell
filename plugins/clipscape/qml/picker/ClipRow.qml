@@ -24,12 +24,11 @@ Rectangle {
 
     readonly property bool hot: area.containsMouse
 
-    height: detailed ? ui.px(50) : ui.px(34)
-    radius: ui.r(2)
-    // the chosen row as in the Applications menu: lifted, with an accent bar at its left
-    color: selected ? ui.accentTint(0.12) : ui.cardFill(hot)
-    border.width: selected ? 0 : ui.cardBorder
-    border.color: ui.tint(0.12)
+    // as the Applications menu's rows: plain, the chosen one lifted with an accent bar
+    height: detailed ? ui.px(46) : ui.px(38)
+    radius: 8
+    color: selected ? ui.accentTint(0.12) : (hot ? ui.tint(0.05) : "transparent")
+    border.width: 0
     Rectangle {
         visible: row.selected
         width: 3
@@ -67,7 +66,7 @@ Rectangle {
             text: row.entry ? Clips.title(row.entry, row.masked) : ""
             elide: Text.ElideRight
             maximumLineCount: 1
-            font.pixelSize: ui.fs(12)
+            font.pixelSize: ui.fs(13)
             font.weight: row.entry && row.entry.label ? Font.DemiBold : Font.Normal
             opacity: row.entry && row.entry.secret && row.masked ? 0.7 : 1
         }
@@ -77,7 +76,7 @@ Rectangle {
             width: parent.width
             text: row.entry ? Clips.meta(row.entry, row.now, row.showApp) : ""
             elide: Text.ElideRight
-            font.pixelSize: ui.fs(10)
+            font.pixelSize: ui.fs(11)
             opacity: 0.5
         }
     }

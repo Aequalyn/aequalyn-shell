@@ -349,7 +349,7 @@ Item {
                     : (view.wide ? "Type to search · is:pinned  type:link  app:firefox" : "Type to search")
                 opacity: view.query !== "" ? 1 : 0.4
                 elide: view.query !== "" ? Text.ElideLeft : Text.ElideRight
-                font.pixelSize: ui.fs(13)
+                font.pixelSize: ui.fs(15)
             }
             Rectangle {   // the caret, after what was typed
                 visible: view.active && view.query !== "" && !preview.editing
@@ -373,13 +373,6 @@ Item {
                     color: ui.accent
                     font.pixelSize: ui.fs(10)
                     font.weight: Font.DemiBold
-                }
-                Txt {
-                    ui: view.ui
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: view.rows.length + (view.rows.length === 1 ? " clip" : " clips")
-                    opacity: 0.45
-                    font.pixelSize: ui.fs(10)
                 }
                 Rectangle {   // recording or paused; click to switch
                     anchors.verticalCenter: parent.verticalCenter
@@ -427,6 +420,14 @@ Item {
                     }
                 }
             }
+        }
+
+        // how many there are, as the Applications menu says it
+        Txt {
+            ui: view.ui
+            text: view.rows.length + (view.rows.length === 1 ? " clip" : " clips")
+            opacity: 0.5
+            font.pixelSize: ui.fs(11)
         }
 
         // the list and the preview
