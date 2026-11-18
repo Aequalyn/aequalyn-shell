@@ -602,10 +602,13 @@ class Fm:
         return it
 
     def chooser_types(self, it):
-        # a dialog's filters may spell a file's type by any of its names: carry
-        # the lot while one is open, so the window's match on the rules holds
+        # a dialog's filters may spell a file's type by any of its names: while
+        # one is open, carry the lot. an empty file has no content to go by --
+        # gio types it x-zerosize whatever its name says -- so its names come
+        # from the name, the same place the icon and the description took
+        # theirs from
         if self.portal is not None and self.portal.pending and it.get("kind") != "dir":
-            it["types"] = mime_types(it.get("mime") or "")
+            it["types"] = mime_types(named_type(it.get("name", ""), it.get("mime") or ""))
 
     def shortcut(self, folder, info, target):
         # somewhere to connect to: a computer the network found, a server's share
