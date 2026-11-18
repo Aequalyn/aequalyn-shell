@@ -42,6 +42,49 @@ Item {
     property bool settled: false
     Timer { interval: 60; running: true; onTriggered: page.settled = true }
     function opened(i) { return settled && seen.indexOf(i) >= 0; }
+
+    // ---- a setting found by the search: scrolled to and lit up for a moment ----------
+    // reveal("Lock the screen when I'm away"): the first control titled so is shown (its
+    // folds opened), brought into view and outlined in the accent. Tries again for a
+    // moment while a sub page is still being made. False when there is no such control.
+    function findTitled(item, t) {
+        if (!item) return null;
+        for (let i = 0; i < item.children.length; i++) {
+            const c = item.children[i];
+            if (c.title === t || (c.text === t && c.primary !== undefined)) return c;
+            const d = findTitled(c, t);
+            if (d) return d;
+        }
+        return null;
+    }
+    property string revealing: ""
+    property int revealTries: 0
+    function reveal(t) {
+        page.revealing = t;
+        page.revealTries = 0;
+        revealTimer.restart();
+    }
+    Timer {
+        id: revealTimer
+        interval: 120
+        onTriggered: {
+            const it = page.findTitled(body, page.revealing);
+            if (!it) {
+                if (++page.revealTries < 12) restart();
+                return;
+            }
+            // open the folds around it
+            for (let p = it.parent; p && p !== body; p = p.parent)
+                if (p.ccMore === true && !p.open) p.open = true;
+            Qt.callLater(() => {
+                const pt = it.mapToItem(flick.contentItem, 0, 0);
+                flick.contentY = Math.max(0, Math.min(flick.contentHeight - flick.height, pt.y - 24));
+                flash.x = pt.x - 4; flash.y = pt.y - 4;
+                flash.width = it.width + 8; flash.height = it.height + 8;
+                flashAnim.restart();
+            });
+        }
+    }
     onTabChanged: {
         flick.contentY = 0;
         if (seen.indexOf(tab) < 0) seen = seen.concat([tab]);
@@ -233,6 +276,24 @@ Item {
             width: flick.width - (page.fill ? 0 : 14)
             height: page.fill ? flick.height : implicitHeight
             spacing: 22
+        }
+        // the outline that lights up a setting the search found
+        Rectangle {
+            id: flash
+            z: 5
+            radius: 14
+            color: "transparent"
+            border.width: 2
+            border.color: Cc.theme.accentPrimary
+            opacity: 0
+            SequentialAnimation {
+                id: flashAnim
+                NumberAnimation { target: flash; property: "opacity"; from: 0; to: 1; duration: 140 }
+                NumberAnimation { target: flash; property: "opacity"; from: 1; to: 0.25; duration: 420 }
+                NumberAnimation { target: flash; property: "opacity"; from: 0.25; to: 1; duration: 300 }
+                PauseAnimation { duration: 700 }
+                NumberAnimation { target: flash; property: "opacity"; from: 1; to: 0; duration: 600 }
+            }
         }
     }
 }

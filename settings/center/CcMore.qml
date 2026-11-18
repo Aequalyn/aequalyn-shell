@@ -6,6 +6,8 @@ ColumnLayout {
     id: m
     property string title: "More options"
     property bool open: false
+    // the search opens a fold to show a setting inside it (CcPage.reveal)
+    readonly property bool ccMore: true
     default property alias content: body.data
 
     Layout.fillWidth: true
