@@ -23,6 +23,31 @@ Item {
   readonly property bool beingDragged: band.dragging && band.dragRegion === region && band.dragIndex === index
   // BarDecor measures these slots and only counts the ones that say whether they're hovered
   readonly property bool hovered: hh.hovered
+
+  // ---- its colour, when the widgets take the theme's (Bar page) -----------------------
+  // A widget that can take one says so with `property color ink`; the others (the tray's
+  // app icons, Media with colours of its own) keep theirs and aren't counted in the
+  // pattern, so it never shows a step that isn't there.
+  property int inkStart: 0
+  readonly property bool inkable: !!loader.item && loader.item.ink !== undefined
+  // its place among the widgets here that take a colour and show
+  readonly property int inkOrder: {
+    if (!parent) return -1;
+    let n = 0;
+    const kids = parent.children;
+    for (let i = 0; i < kids.length; i++) {
+      if (kids[i] === slot) return n;
+      if (kids[i].inkable && kids[i].visible) n++;
+    }
+    return -1;
+  }
+  readonly property color tone: inkable && inkOrder >= 0 ? bar.inkAt(inkStart + inkOrder) : "transparent"
+  Binding {
+    target: loader.item
+    property: "ink"
+    value: slot.tone
+    when: slot.inkable
+  }
   // the widget uses the wheel itself (volume, workspaces): its region doesn't slide under it
   readonly property bool usesWheel: !!(loader.item && loader.item.usesWheel === true)
 

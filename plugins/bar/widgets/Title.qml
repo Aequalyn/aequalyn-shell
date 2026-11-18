@@ -6,6 +6,8 @@ import Quickshell.Wayland
 Item {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   implicitWidth: Math.min(titleText.implicitWidth, 360)
   implicitHeight: 24
   width: implicitWidth
@@ -16,7 +18,7 @@ Item {
     // shell starts (login, aequalyn-update) it's empty; the Wayland toplevel list knows already
     text: Hyprland.activeToplevel ? Hyprland.activeToplevel.title
         : (ToplevelManager.activeToplevel ? ToplevelManager.activeToplevel.title : "")
-    color: bar.theme.textPrimary
+    color: bar.inked(ink, bar.theme.textPrimary)
     font.pixelSize: 12
     font.family: bar.font
     elide: Text.ElideRight

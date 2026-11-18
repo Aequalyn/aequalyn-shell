@@ -16,6 +16,7 @@ import "root:/plugins/bar/quick"
 import "widgets/Widgets.js" as Widgets
 import  "../../style/Shapes.js" as Shapes
 import  "../../style/BarLooks.js" as BarLooks
+import  "../../style/Colors.js" as Colors
 
 Scope {
   id: root
@@ -90,6 +91,18 @@ Scope {
   readonly property int windowThickness: bandThickness + floatGap
   readonly property int sectionMargin: styled ? Math.round(Shapes.sectionMargin(look, 8, barSize)) : 8
   readonly property int widgetSpacing: styled && look.shape === "widgets" ? Math.max(6, Shapes.pillSpacing(look, barSize)) : 8
+
+  // ---- the widgets' colours (Bar page): their own, or the theme's in a pattern ---------
+  // the theme's colours in order (its own gradient when it has one, else its accents)
+  readonly property var inkColors: Colors.fromTheme(theme).spectrum
+  // the colour of the widget at `order` along the bar, "transparent" for its own
+  function inkAt(order) {
+    if (AequalynSettings.barInk !== "theme") return "transparent";
+    const c = Colors.inkAt(root.inkColors, AequalynSettings.barInkPattern, order);
+    return c !== "" ? c : "transparent";
+  }
+  // what a widget paints with: the colour the bar gives it, else its own
+  function inked(ink, own) { return ink && ink.a > 0 ? ink : own; }
 
   property var activePlayer: {
     const players = Mpris.players.values;
@@ -409,6 +422,8 @@ Scope {
           BarSection {
             id: centerSec
             region: "center"; bar: root; band: band; screen: barWindow.screen
+            // the colour pattern runs on along the bar, left to right
+            inkStart: leftSec.shown
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             width: regions.centerW
@@ -417,6 +432,7 @@ Scope {
           BarSection {
             id: rightSec
             region: "right"; bar: root; band: band; screen: barWindow.screen
+            inkStart: leftSec.shown + centerSec.shown
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             width: regions.rightW

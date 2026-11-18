@@ -17,6 +17,15 @@ Item {
   property var screen               // the screen this bar is on
   // the widget slots, for BarDecor (where to draw) and drag and drop (where to drop)
   readonly property alias row: row
+  // the widgets' colour pattern (Bar page): where it stands at this region's first widget,
+  // and how many widgets here take a colour, for the next region to go on from
+  property int inkStart: 0
+  readonly property int shown: {
+    let n = 0;
+    const kids = row.children;
+    for (let i = 0; i < kids.length; i++) if (kids[i].inkable && kids[i].visible) n++;
+    return n;
+  }
 
   readonly property var ids: region === "left" ? AequalynSettings.barLeft
                            : region === "center" ? AequalynSettings.barCenter : AequalynSettings.barRight
@@ -67,6 +76,7 @@ Item {
           bar: section.bar
           band: section.band
           screen: section.screen
+          inkStart: section.inkStart
         }
       }
     }

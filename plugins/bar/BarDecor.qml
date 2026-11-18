@@ -32,10 +32,11 @@ Item {
 
     // ---- colors ---------------------------------------------------------------
     readonly property var pal: look ? Colors.forMode(deco.theme, look.colorMode, look) : Colors.mono
-    // Palette colors: every shape takes the next color of the theme
+    // Palette colors: the shapes take the theme's colors in the pattern the widgets'
+    // colours use (Bar page), every color in turn unless another is chosen
     function toneFor(index) {
         if (!look || look.colorMode !== "palette" || index < 0 || pal.spectrum.length === 0) return "";
-        return pal.spectrum[index % pal.spectrum.length];
+        return Colors.inkAt(pal.spectrum, AequalynSettings.barInkPattern, index);
     }
 
     // everything one shape's canvas needs

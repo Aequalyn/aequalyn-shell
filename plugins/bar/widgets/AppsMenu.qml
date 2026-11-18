@@ -9,6 +9,8 @@ import QtQuick.Controls
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: appsMenu
   objectName: "apps-menu"
   Accessible.role: Accessible.Button
@@ -27,7 +29,7 @@ Rectangle {
     layer.enabled: true
     layer.effect: MultiEffect {
       colorization: 1.0
-      colorizationColor: bar.theme.accentPrimary
+      colorizationColor: bar.inked(ink, bar.theme.accentPrimary)
     }
   }
   MouseArea {

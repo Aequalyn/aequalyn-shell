@@ -34,3 +34,32 @@ function forMode(t, mode, d) {
         return { bg: d.customBg || base.bg, fg: d.customFg || base.fg, ac: d.accentColor || base.ac, hot: base.hot, spectrum: [] };
     return base;
 }
+
+// ---- the widgets' colours, in a pattern ------------------------------------------------
+//
+// The bar's widgets can take the theme's colours in turn: a is its first colour (the
+// accent), b its second, c its third. A pattern is the run they repeat in, widget after
+// widget along the bar: "ab" is a b a b ..., "abb" is a b b a b b ..., "all" goes through
+// every colour the theme has.
+var patterns = [
+    { key: "all",  label: "Every colour in turn" },
+    { key: "a",    label: "All the accent" },
+    { key: "ab",   label: "a b a b" },
+    { key: "abb",  label: "a b b" },
+    { key: "aab",  label: "a a b" },
+    { key: "aabb", label: "a a b b" },
+    { key: "abc",  label: "a b c" }
+];
+function patternKey(k) {
+    for (var i = 0; i < patterns.length; i++) if (patterns[i].key === k) return k;
+    return "all";
+}
+// the colour of the widget at `order` (0 is the first along the bar), from the theme's
+// colours (fromTheme(t).spectrum), "" when there are none
+function inkAt(spectrum, pattern, order) {
+    if (!spectrum || spectrum.length === 0 || order < 0) return "";
+    var k = patternKey(pattern);
+    if (k === "all") return spectrum[order % spectrum.length];
+    var c = k.charCodeAt(order % k.length) - 97;           // a = 0, b = 1, c = 2
+    return spectrum[c % spectrum.length];
+}

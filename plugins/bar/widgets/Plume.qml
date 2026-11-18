@@ -11,6 +11,8 @@ import "root:/style/Wheel.js" as Wheel
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: plumeButton
   // the wheel does this widget's own thing, so its bar region doesn't slide under it
   readonly property bool usesWheel: true
@@ -27,7 +29,7 @@ Rectangle {
   Text {
     anchors.centerIn: parent
     text: "\u{F01C0}"
-    color: plumeButton.on ? bar.theme.accentPrimary : bar.theme.textMuted
+    color: plumeButton.on ? bar.inked(ink, bar.theme.accentPrimary) : bar.theme.textMuted
     font.pixelSize: 14
     font.family: bar.font
   }

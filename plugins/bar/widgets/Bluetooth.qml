@@ -11,6 +11,8 @@ Rectangle {
   id: btPill
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   height: 24
   width: 26
   radius: 12
@@ -23,7 +25,7 @@ Rectangle {
   Text {
     anchors.centerIn: parent
     text: "󰂯"
-    color: BluetoothService.powered ? bar.theme.accentCyan : bar.theme.textMuted
+    color: BluetoothService.powered ? bar.inked(ink, bar.theme.accentCyan) : bar.theme.textMuted
     font.pixelSize: 14
     font.family: bar.font
   }

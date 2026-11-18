@@ -10,6 +10,8 @@ Rectangle {
   id: btn
   // the bar this button sits in (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   property string tab: "themes"
   property string icon: ""
   property string label: ""
@@ -29,7 +31,7 @@ Rectangle {
   radius: 12
   color: active || quick.visible ? btn.bar.theme.bgSelected : (area.containsMouse ? btn.bar.theme.bgHover : btn.bar.chipColor)
   border.width: active ? 1 : 0
-  border.color: btn.bar.theme.accentPrimary
+  border.color: btn.bar.inked(btn.ink, btn.bar.theme.accentPrimary)
   Behavior on color { ColorAnimation { duration: 120 } }
 
   Row {
@@ -39,7 +41,7 @@ Rectangle {
     Text {
       anchors.verticalCenter: parent.verticalCenter
       text: btn.icon
-      color: btn.bar.theme.accentPrimary
+      color: btn.bar.inked(btn.ink, btn.bar.theme.accentPrimary)
       font.pixelSize: 14
       font.family: btn.bar.font
     }

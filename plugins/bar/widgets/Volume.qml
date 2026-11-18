@@ -6,6 +6,8 @@ import "root:/style/Wheel.js" as Wheel
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
   required property var bar
+  // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+  property color ink: "transparent"
   id: volWidget
   // the wheel does this widget's own thing, so its bar region doesn't slide under it
   readonly property bool usesWheel: true
@@ -29,7 +31,7 @@ Rectangle {
       color: {
         const sink = Pipewire.defaultAudioSink;
         if (!sink || !sink.audio || sink.audio.muted) return bar.theme.textMuted;
-        return bar.theme.accentPrimary;
+        return bar.inked(ink, bar.theme.accentPrimary);
       }
       font.pixelSize: 14
       font.family: bar.font

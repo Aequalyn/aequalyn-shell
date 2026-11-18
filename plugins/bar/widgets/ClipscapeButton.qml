@@ -7,6 +7,8 @@ import "root:/plugins/clipscape/qml/js/Clips.js" as Clips
 
 Rectangle {
     required property var bar
+    // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
+    property color ink: "transparent"
 
     id: button
     objectName: "aequalyn-clipscape-button"
@@ -39,7 +41,7 @@ Rectangle {
     Text {
         anchors.centerIn: parent
         text: button.label
-        color: bar.theme.accentPrimary
+        color: bar.inked(ink, bar.theme.accentPrimary)
         font.pixelSize: 13
         font.family: bar.font
     }
