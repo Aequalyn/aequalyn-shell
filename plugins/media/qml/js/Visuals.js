@@ -23,6 +23,16 @@
 .import "visuals/fountain.js" as Fountain
 .import "visuals/vinyl.js" as Vinyl
 .import "visuals/skyline.js" as Skyline
+.import "visuals/ridges.js" as Ridges
+.import "visuals/lissajous.js" as Lissajous
+.import "visuals/vu.js" as Vu
+.import "visuals/strings.js" as Strings
+.import "visuals/bounce.js" as Bounce
+.import "visuals/barcode.js" as Barcode
+.import "visuals/sonar.js" as Sonar
+.import "visuals/tunnel.js" as Tunnel
+.import "visuals/spiral.js" as Spiral
+.import "visuals/polar.js" as Polar
 
 // Every visualizer style, in the order the settings show them. Each one lives in its
 // own file under visuals/ (see CONTRIBUTING.md): adding a style is one new file and
@@ -52,7 +62,17 @@ var list = [
     Waterfall.visual,
     Fountain.visual,
     Vinyl.visual,
-    Skyline.visual
+    Skyline.visual,
+    Ridges.visual,
+    Lissajous.visual,
+    Vu.visual,
+    Strings.visual,
+    Bounce.visual,
+    Barcode.visual,
+    Sonar.visual,
+    Tunnel.visual,
+    Spiral.visual,
+    Polar.visual
 ];
 
 var byKey = {};
