@@ -43,7 +43,7 @@ Scope {
     // aequalyn-sddm / the installer when themes are actually installed.
     readonly property bool lockscreensInstalled: AequalynSettings.lockscreensInstalled
     readonly property var filteredOrder: root.lockscreensInstalled ? Pages.order : Pages.order.filter(p => p !== "lockscreens")
-    // the categories as shown (Lock screens only when installed), and the one the page is in
+    // the categories as shown (Login screen only when its themes are installed), and the one the page is in
     readonly property var categories: Pages.categories.map(c => Object.assign({}, c, {
         pages: c.pages.filter(p => root.filteredOrder.indexOf(p) >= 0) }))
     readonly property string category: Pages.categoryOf(root.page)
@@ -172,7 +172,7 @@ Scope {
         root.panelVisible = true;
     }
     function pageItem(name) {
-        // the loaders follow filteredOrder (Lock screens may be left out): look it up there
+        // the loaders follow filteredOrder (Login screen may be left out): look it up there
         const i = root.filteredOrder.indexOf(name);
         const l = i >= 0 ? pageLoaders.itemAt(i) : null;
         return l && l.status === Loader.Ready ? l.item : null;

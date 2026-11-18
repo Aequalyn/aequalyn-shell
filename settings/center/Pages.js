@@ -11,12 +11,12 @@
 // Six categories, each a few pages: the window lists the categories, then the pages
 // of the one chosen (two levels, so neither list ever grows long). Home stands apart.
 var categories = [
-    { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "lockscreens", "cursor"] },
-    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "dock", "plugins", "media", "clipboard"] },
-    { key: "windows", title: "Windows", icon: "\u{F05AF}", pages: ["arrange", "windows", "switcher", "screens", "input"] },
-    { key: "connect", title: "Connect", icon: "\u{F05A9}", pages: ["wifi", "bluetooth", "sound"] },
+    { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "cursor", "lockscreens"] },
+    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "clock", "dock", "media", "clipboard"] },
+    { key: "windows", title: "Windows", icon: "\u{F05AF}", pages: ["arrange", "windows", "switcher"] },
+    { key: "devices", title: "Devices", icon: "\u{F0379}", pages: ["screens", "sound", "input", "bluetooth", "wifi"] },
     { key: "apps",    title: "Apps",    icon: "\u{F003B}", pages: ["apps", "webapps", "store", "aiTools"] },
-    { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["clock", "sleep", "updates", "backup", "about"] }
+    { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["sleep", "plugins", "updates", "backup", "about"] }
 ];
 // the same, as the flat groups other parts of the shell read
 var groups = [{ title: "", pages: ["home"] }].concat(categories.map(function (c) { return { title: c.title, pages: c.pages }; }));
@@ -48,9 +48,9 @@ var pages = {
     picker:    { label: "Theme picker", icon: "\u{F08B5}", file: "Picker",
                  words: ["Picker type", "Slices", "Picker shape", "Picker position", "Picker size"],
                  also: "switcher showcase carousel grid slices super t super w atelier" },
-    lockscreens: { label: "Lock screens", icon: "\u{F033E}", file: "LockScreens",
-                 words: ["SDDM theme", "Login screen", "Autologin", "Lock screen preview"],
-                 also: "sddm greeter login autologin preview lock" },
+    lockscreens: { label: "Login screen", icon: "\u{F0343}", file: "LockScreens",
+                 words: ["SDDM theme", "Login screen theme", "Autologin", "Login screen preview"],
+                 also: "sddm greeter login sign in autologin preview boot lock screens" },
     arrange:   { label: "Arranging windows", icon: "\u{F0570}", file: "Arrange",
                  words: ["Window layout", "Layouts in Super + L", "Built-in arrangement"],
                  also: "tiling layout master dwindle scrolling grid focus" },

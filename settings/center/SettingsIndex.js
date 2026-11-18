@@ -125,6 +125,6 @@ var entries = [
     {"page": "about", "title": "Version", "kind": "row"},
     {"page": "about", "title": "Colours", "kind": "row", "sub": "Made from your wallpaper by matugen, or taken from a theme."},
     {"page": "about", "title": "Your settings", "kind": "row", "sub": "~/.config/aequalyn/settings.json"},
-    {"page": "about", "title": "Lock screens", "kind": "group"},
-    {"page": "about", "title": "Install lock screens", "kind": "button", "group": "Lock screens"},
+    {"page": "about", "title": "Login screens", "kind": "group"},
+    {"page": "about", "title": "Install login screens", "kind": "button", "group": "Login screens"},
 ];
