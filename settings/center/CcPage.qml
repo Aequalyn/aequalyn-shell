@@ -202,33 +202,31 @@ Item {
             }
         }
 
-        // the sub pages, as a segmented row
-        Rectangle {
+        // the sub pages, as chips (the same as every choice)
+        Flow {
             visible: page.tabs.length > 0
-            implicitWidth: segs.implicitWidth + 8
-            implicitHeight: 40
-            radius: 12
-            color: Cc.theme.bgSurface
-            Row {
-                id: segs
-                anchors.centerIn: parent
-                spacing: 4
-                Repeater {
-                    model: page.tabs
-                    delegate: Rectangle {
+            Layout.fillWidth: true
+            spacing: 6
+            Repeater {
+                model: page.tabs
+                delegate: Rectangle {
                         required property string modelData
                         required property int index
                         readonly property bool on: page.tab === index
-                        width: segText.implicitWidth + 32
+                        width: segText.implicitWidth + 26
                         height: 32
-                        radius: 9
-                        color: on ? Cc.theme.accentPrimary : (segArea.containsMouse ? Cc.theme.bgHover : "transparent")
+                        radius: 8
+                        color: on ? Cc.theme.bgSelected : (segArea.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSurface)
+                        border.width: 1
+                        border.color: on ? Cc.theme.accentPrimary : Cc.theme.bgBorder
                         Behavior on color { ColorAnimation { duration: 120 } }
+                        Accessible.role: Accessible.PageTab
+                        Accessible.name: modelData
                         Text {
                             id: segText
                             anchors.centerIn: parent
                             text: modelData
-                            color: parent.on ? Cc.theme.bgBase : Cc.theme.textSecondary
+                            color: parent.on ? Cc.theme.accentPrimary : Cc.theme.textSecondary
                             font.family: Cc.sans
                             font.pixelSize: 12
                             font.weight: parent.on ? Font.DemiBold : Font.Normal
@@ -243,7 +241,6 @@ Item {
                     }
                 }
             }
-        }
     }
 
     Item {
