@@ -76,7 +76,7 @@ Scope {
         return out.sort((a, b) => a.keys.localeCompare(b.keys))
     }
     function load() {
-        reader.start(["sh", "-c", 'cd "$HOME/.config/hypr" 2>/dev/null && cat aequalyn/*.lua webapps.lua hyprland.lua 2>/dev/null'])
+        reader.start(["sh", "-c", 'cd "$HOME/.config/hypr" 2>/dev/null && cat aequalyn/*.lua webapps.lua keybinds.lua hyprland.lua 2>/dev/null'])
     }
     KitRun {
         id: reader
