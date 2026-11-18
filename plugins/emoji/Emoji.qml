@@ -19,8 +19,10 @@ Scope {
         name: "emoji"
         icon: "\u{F0785}"
         placeholder: "A name, like smile, heart or rocket"
-        panelHeight: 540
-        columns: 10
+        // wide and tall enough to show most of them at once; the rest scroll
+        panelWidth: 800
+        panelHeight: 700
+        columns: 14
         emptyText: "No emoji by that name"
         countText: panel.items.length + " emoji"
         items: {

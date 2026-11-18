@@ -11,6 +11,7 @@
 // the tile you are on (its title and sub).
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
 import "root:/style/backdrop"
@@ -218,6 +219,15 @@ Scope {
                     highlightMoveDuration: 100
                     boundsBehavior: Flickable.StopAtBounds
                     onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
+                    // a bar at the side whenever more tiles wait below, so it's clear the grid scrolls
+                    ScrollBar.vertical: ScrollBar {
+                        policy: grid.contentHeight > grid.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                        contentItem: Rectangle {
+                            implicitWidth: 4
+                            radius: 2
+                            color: kp.c_muted
+                        }
+                    }
                     highlight: Rectangle {
                         width: grid.cellWidth
                         height: grid.cellHeight
