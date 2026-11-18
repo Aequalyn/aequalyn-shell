@@ -107,7 +107,13 @@ Scope {
 
   // the shell's colors, in the painter's terms (hot = attention color,
   // spectrum = the theme's own colors, for gradients beyond the accent)
-  readonly property var theme: Colors.fromTheme(root.shellTheme)
+  // the theme's colours, each read here so a theme change redraws every dock at once
+  readonly property var theme: root.shellTheme ? Colors.fromTheme({
+    bgBase: root.shellTheme.bgBase, textPrimary: root.shellTheme.textPrimary,
+    accentPrimary: root.shellTheme.accentPrimary, accentCyan: root.shellTheme.accentCyan,
+    accentGreen: root.shellTheme.accentGreen, accentOrange: root.shellTheme.accentOrange,
+    accentRed: root.shellTheme.accentRed
+  }) : Colors.fromTheme(null)
 
   // ---- the bar --------------------------------------------------------------
   // the bar's look, and how far it reaches in from the top of every screen
