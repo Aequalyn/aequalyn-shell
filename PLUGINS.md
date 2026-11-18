@@ -146,8 +146,11 @@ one screen. `qs ipc call bar popup <id>` opens it from a key.
 
 ## Its page in the control center
 
-`settings/center/pages/<Name>.qml`, listed in `settings/center/Pages.js` (its group,
-label, icon, and the words people may search for):
+`settings/center/pages/<Name>.qml`, listed in `settings/center/Pages.js` (its label,
+icon, the words people may search for, and the category it sits in: Look, Desktop,
+Windows, Connect, Apps or System). Then run `python3 tools/cc-index.py`: it reads every
+titled control on the pages into the search, so people find your settings by name,
+and can change the ones bound to a `setting` right from the search.
 
 ```qml
 CcPage {
