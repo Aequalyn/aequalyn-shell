@@ -361,10 +361,14 @@ QtObject {
 
     function matches(it, rules) {
         var name = (it.name || "").toLowerCase(), mime = it.mime || "";
+        // the daemon's other names for this type (an .iso is application/vnd.efi.iso
+        // and application/x-cd-image at once): a rule may spell it either way
+        var types = it.types || null;
         for (var i = 0; i < rules.length; i++) {
             var kind = rules[i][0], pat = String(rules[i][1]);
             if (kind === 1) {
-                if (pat === mime || pat === "*/*" || (pat.slice(-2) === "/*" && mime.indexOf(pat.slice(0, -1)) === 0))
+                if (pat === mime || pat === "*/*" || (types !== null && types.indexOf(pat) !== -1)
+                    || (pat.slice(-2) === "/*" && mime.indexOf(pat.slice(0, -1)) === 0))
                     return true;
 
             } else {
