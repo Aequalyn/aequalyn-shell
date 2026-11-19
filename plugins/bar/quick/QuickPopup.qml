@@ -17,6 +17,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import "root:/settings"
 
 PopupWindow {
     id: pop
@@ -44,11 +45,13 @@ PopupWindow {
 
     anchor.item: anchorItem
     anchor.rect.x: 0
-    anchor.rect.y: 0
+    // under the widget on a top bar, over it on a bottom bar
+    readonly property bool upward: AequalynSettings.barPosition === "bottom"
+    anchor.rect.y: upward ? -8 : 0
     anchor.rect.width: anchorItem ? anchorItem.width : 0
     anchor.rect.height: anchorItem ? anchorItem.height + 8 : 0
-    anchor.edges: Edges.Bottom
-    anchor.gravity: Edges.Bottom
+    anchor.edges: upward ? Edges.Top : Edges.Bottom
+    anchor.gravity: upward ? Edges.Top : Edges.Bottom
     anchor.adjustment: PopupAdjustment.Slide
 
     Rectangle {

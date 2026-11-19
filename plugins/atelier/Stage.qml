@@ -2,6 +2,7 @@
 // right now (or as an ensemble would make them). Shared by the Bar and Docks
 // tabs, so you always see the two side by side.
 import QtQuick
+import "root:/settings"
 
 Item {
     id: stage
@@ -33,8 +34,11 @@ Item {
         }
     }
 
+    // the bar on the edge it sits on (Settings -> Bar)
+    readonly property bool barAtBottom: AequalynSettings.barPosition === "bottom"
     BarMini {
-        x: 8; y: 6
+        id: miniBar
+        x: 8; y: stage.barAtBottom ? stage.height - height - 6 : 6
         width: parent.width - 16
         theme: stage.theme
         look: stage.barLook
@@ -62,7 +66,10 @@ Item {
                 icons: slot.modelData.icons || 4
                 rotation: slot.hz ? 0 : (slot.edge === "left" ? 90 : -90)
                 readonly property real cx: slot.hz ? slot.mid : (slot.edge === "left" ? 4 + height / 2 : stage.width - 4 - height / 2)
-                readonly property real cy: slot.hz ? (slot.edge === "bottom" ? stage.height - 4 - height / 2 : 40 + height / 2) : 52 + slot.mid
+                readonly property real cy: slot.hz
+                    ? (slot.edge === "bottom" ? stage.height - 4 - height / 2 - (stage.barAtBottom ? miniBar.height + 6 : 0)
+                       : (stage.barAtBottom ? 4 + height / 2 : 40 + height / 2))
+                    : 52 + slot.mid
                 x: cx - width / 2
                 y: cy - height / 2
             }
@@ -90,7 +97,7 @@ Item {
         visible: stage.caption !== ""
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: stage.barSize + 20
+        anchors.topMargin: stage.barAtBottom ? 14 : stage.barSize + 20
         text: stage.caption
         color: "white"
         opacity: 0.85

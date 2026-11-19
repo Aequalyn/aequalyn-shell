@@ -147,8 +147,10 @@ Scope {
   // gap between the edge (or the bar) and the docks, one per edge, shared
   property var margins: Object.assign({}, defaultMargins)
 
-  function barOffset(mon, edge) { return edge === "top" && barShown ? barThickness : 0; }
-  function barInfoFor(mon) { return barShown ? "top " + barThickness + "px" : "hidden"; }
+  // a dock on the bar's edge sits past the bar
+  readonly property string barEdge: AequalynSettings.barPosition === "bottom" ? "bottom" : "top"
+  function barOffset(mon, edge) { return edge === barEdge && barShown ? barThickness : 0; }
+  function barInfoFor(mon) { return barShown ? barEdge + " " + barThickness + "px" : "hidden"; }
   function marginOf(edge) { const v = margins[edge]; return v === undefined ? 6 : v; }
 
   // colors for a dock or a style name. custom = your own bg/text/accent, attention stays the theme's
