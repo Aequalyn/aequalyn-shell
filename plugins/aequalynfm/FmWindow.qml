@@ -413,9 +413,15 @@ FloatingWindow {
             t.go(p);
             return ;
         }
+        var a = win.app, w = win.winId;
         win.app.call("info", {
             "uri": win.app.uriOf(p)
         }, function(r) {
+            // the window may have closed while the daemon looked: a reply
+            // for it goes nowhere
+            if (a.windowGone(w))
+                return ;
+
             if (r.ok && !r.isDir && r.where) {
                 if (t === win.tab)
                     win.pendingSelect = r.name;
@@ -696,9 +702,15 @@ FloatingWindow {
             win.go(p);
             return ;
         }
+        var a = win.app, w = win.winId;
         win.app.call("info", {
             "uri": p.indexOf("://") !== -1 ? p : win.app.uriOf(p)
         }, function(r) {
+            // the window may have closed while the daemon looked: a reply
+            // for it goes nowhere
+            if (a.windowGone(w))
+                return ;
+
             if (!r.ok) {
                 win.say("Can't find “" + text + "”");
                 return ;
@@ -3297,7 +3309,12 @@ FloatingWindow {
                                 dragCard.slot = chip.slot;
                                 dragCard.tint = chip.tint;
                                 dragCard.grabToImage(function(r) {
-                                    win.tabImage = r.url;
+                                    // the window may be going while the grab
+                                    // ran: keep the last picture it had
+                                    try {
+                                        win.tabImage = r.url;
+                                    } catch (e) {
+                                    }
                                 });
                             }
                             onClicked: (mouse) => {

@@ -47,6 +47,8 @@ Singleton {
     readonly property color fgErrorContainer: t.accentRed
     readonly property color stateHover: t.bgHover
     readonly property color statePressed: t.bgSelected
+    // tonal buttons rest on it, segmented groups idle on it, progress tracks run on it
+    readonly property color bgSelected: t.bgSelected
     readonly property color disabledContainer: Qt.rgba(t.textPrimary.r, t.textPrimary.g, t.textPrimary.b, 0.12)
     readonly property color disabledContent: Qt.rgba(t.textPrimary.r, t.textPrimary.g, t.textPrimary.b, 0.38)
 
