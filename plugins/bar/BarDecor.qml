@@ -31,6 +31,10 @@ Item {
     // the screen edge is at the start (top bar) or the end (bottom bar) of the band
     property bool edgeAtStart: true
     onEdgeAtStartChanged: { lastKey = ""; refresh(); }
+    // a side bar: the shapes run top to bottom ("along" is y, "across" is x)
+    property bool vertical: false
+    onVerticalChanged: { lastKey = ""; refresh(); }
+    readonly property string screenEdge: vertical ? (edgeAtStart ? "left" : "right") : (edgeAtStart ? "top" : "bottom")
 
     // ---- colors ---------------------------------------------------------------
     readonly property var pal: look ? Colors.forMode(deco.theme, look.colorMode, look) : Colors.mono
@@ -51,7 +55,7 @@ Item {
         }
         if (region === "center" && look.centerStyle === "tinted") d.gradientTo = "accent";
         const tone = toneFor(index);
-        const p = Style.params(d, pal, w, h, deco.margin, { edge: deco.edgeAtStart ? "top" : "bottom", tone: tone !== "" ? tone : undefined,
+        const p = Style.params(d, pal, w, h, deco.margin, { edge: deco.screenEdge, tone: tone !== "" ? tone : undefined,
             blur: AequalynSettings.blurEnabled, blurEnabled: AequalynSettings.blurEnabled });
         p.dir = BarLooks.dirFor(look, region);
         p.r = r;
@@ -72,13 +76,16 @@ Item {
             const row = deco.sections[s];
             if (!row) continue;
             const view = deco.viewports[s];
-            const v0 = view ? view.mapToItem(deco, 0, 0).x : -Infinity;
-            const v1 = view ? v0 + view.width : Infinity;
+            // along the bar: x, or y on a side bar
+            const vp = view ? view.mapToItem(deco, 0, 0) : null;
+            const v0 = vp ? (deco.vertical ? vp.y : vp.x) : -Infinity;
+            const v1 = vp ? v0 + (deco.vertical ? view.height : view.width) : Infinity;
             for (let i = 0; i < row.children.length; i++) {
                 const it = row.children[i];
                 if (!it || !it.visible || it.width < 2 || it.hovered === undefined) continue;
                 const p = it.mapToItem(deco, 0, 0);
-                const a = Math.max(p.x, v0), b = Math.min(p.x + it.width, v1);
+                const start = deco.vertical ? p.y : p.x, size = deco.vertical ? it.height : it.width;
+                const a = Math.max(start, v0), b = Math.min(start + size, v1);
                 if (b - a < 2) continue;
                 out.push({ a: Math.round(a), len: Math.round(b - a), region: deco.regionNames[s],
                            hovered: it.hovered === true, open: false });
@@ -90,7 +97,8 @@ Item {
     property string lastKey: ""
     function refresh() {
         if (!look || !visible || width <= 0) return;
-        const view = { length: width, thickness: height, barSize: deco.barSize, edgeAtStart: deco.edgeAtStart };
+        const view = { length: vertical ? height : width, thickness: vertical ? width : height,
+                       barSize: deco.barSize, edgeAtStart: deco.edgeAtStart };
         const out = Shapes.layout(view, measure(), look);
         const key = JSON.stringify(out);
         if (key === lastKey) return;
@@ -140,11 +148,12 @@ Item {
             // an attached shape has no margin on the screen edge's side
             readonly property real mStart: attached && deco.edgeAtStart ? 0 : m
             readonly property real mEnd: attached && !deco.edgeAtStart ? 0 : m
-            x: a - m
-            y: c - mStart
-            width: len + 2 * m
-            height: w + mStart + mEnd
+            x: deco.vertical ? c - mStart : a - m
+            y: deco.vertical ? a - m : c - mStart
+            width: deco.vertical ? w + mStart + mEnd : len + 2 * m
+            height: deco.vertical ? len + 2 * m : w + mStart + mEnd
             Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
             Canvas {
                 anchors.fill: parent
@@ -160,10 +169,10 @@ Item {
     // a line along the side facing the windows (full band only)
     Rectangle {
         visible: deco.look && deco.look.shape === "full" && deco.look.edgeLine
-        anchors.left: parent.left
-        anchors.right: parent.right
-        y: deco.edgeAtStart ? parent.height - height : 0
-        height: 2
+        x: deco.vertical ? (deco.edgeAtStart ? parent.width - width : 0) : 0
+        y: deco.vertical ? 0 : (deco.edgeAtStart ? parent.height - height : 0)
+        width: deco.vertical ? 2 : parent.width
+        height: deco.vertical ? parent.height : 2
         color: deco.theme ? deco.theme.accentPrimary : "white"
     }
 
@@ -173,7 +182,8 @@ Item {
             required property real a
             required property real c
             required property real w
-            x: a; y: c; width: 1; height: w
+            x: deco.vertical ? c : a; y: deco.vertical ? a : c
+            width: deco.vertical ? w : 1; height: deco.vertical ? 1 : w
             color: deco.theme ? Qt.rgba(deco.theme.textPrimary.r, deco.theme.textPrimary.g, deco.theme.textPrimary.b, 0.22) : "white"
         }
     }
@@ -185,7 +195,11 @@ Item {
             required property real c
             required property real w
             readonly property string kind: deco.look ? deco.look.separators : "none"
-            x: a - 4; y: c; width: 8; height: w
+            // drawn across the bar, then turned a quarter on a side bar
+            x: deco.vertical ? c + (w - 8) / 2 : a - 4
+            y: deco.vertical ? a - w / 2 : c
+            width: 8; height: w
+            rotation: deco.vertical ? 90 : 0
             Rectangle {
                 visible: parent.kind === "line" || parent.kind === "slash"
                 anchors.centerIn: parent
@@ -216,9 +230,12 @@ Item {
             readonly property string style: deco.look ? deco.look.hover : "none"
             readonly property color tone: deco.look && deco.look.hoverColor === "accent" && deco.theme
                 ? deco.theme.accentPrimary : (deco.theme ? deco.theme.textPrimary : "white")
-            x: a; y: c; width: len; height: w
+            x: deco.vertical ? c : a; y: deco.vertical ? a : c
+            width: deco.vertical ? w : len; height: deco.vertical ? len : w
             Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             Rectangle {
                 anchors.fill: parent
                 visible: mark.style === "fill"
@@ -235,14 +252,17 @@ Item {
             }
             Rectangle {
                 visible: mark.style === "underline"
-                width: parent.width * 0.5; height: 2; radius: 1
-                x: (parent.width - width) / 2; y: parent.height - 3
+                // on the windows' side: under the widget, or beside it on a side bar
+                width: deco.vertical ? 2 : parent.width * 0.5; height: deco.vertical ? parent.height * 0.5 : 2; radius: 1
+                x: deco.vertical ? (deco.edgeAtStart ? parent.width - 3 : 1) : (parent.width - width) / 2
+                y: deco.vertical ? (parent.height - height) / 2 : parent.height - 3
                 color: Qt.rgba(mark.tone.r, mark.tone.g, mark.tone.b, 0.7)
             }
             Rectangle {
                 visible: mark.style === "dot"
                 width: 4; height: 4; radius: 2
-                x: (parent.width - 4) / 2; y: parent.height - 6
+                x: deco.vertical ? (deco.edgeAtStart ? parent.width - 6 : 2) : (parent.width - 4) / 2
+                y: deco.vertical ? (parent.height - 4) / 2 : parent.height - 6
                 color: mark.tone
             }
         }

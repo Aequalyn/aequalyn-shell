@@ -9,14 +9,17 @@ Rectangle {
   required property var bar
   // no tray icons: the bar hides the whole slot
   readonly property bool wanted: SystemTray.items.values.length > 0
-  implicitHeight: 24
-  implicitWidth: trayIcons.implicitWidth + 8
+  implicitHeight: bar.vertical ? trayIcons.implicitHeight + 8 : 24
+  implicitWidth: bar.vertical ? bar.chipAcross : trayIcons.implicitWidth + 8
   radius: 12
   color: bar.chipColor
-  RowLayout {
+  // a row of icons, a column on a side bar
+  GridLayout {
     id: trayIcons
     anchors.centerIn: parent
-    spacing: 2
+    columns: bar.vertical ? 1 : 99
+    columnSpacing: 2
+    rowSpacing: 2
     Repeater {
       model: SystemTray.items
       MouseArea {
@@ -40,14 +43,15 @@ Rectangle {
           menu: trayDelegate.modelData.menu
           anchor.window: trayDelegate.QsWindow.window
           anchor.adjustment: PopupAdjustment.Flip
-          // under the icon on a top bar, over it on a bottom bar
-          anchor.edges: bar.atBottom ? Edges.Top : Edges.Bottom
-          anchor.gravity: bar.atBottom ? Edges.Top : Edges.Bottom
+          // on the windows' side of the icon: under it, over it, or beside it on a side bar
+          anchor.edges: bar.position === "bottom" ? Edges.Top : bar.position === "left" ? Edges.Right
+                      : bar.position === "right" ? Edges.Left : Edges.Bottom
+          anchor.gravity: bar.position === "bottom" ? Edges.Top : bar.position === "left" ? Edges.Right
+                        : bar.position === "right" ? Edges.Left : Edges.Bottom
           anchor.onAnchoring: {
             const window = trayDelegate.QsWindow.window;
             const widgetRect = window.contentItem.mapFromItem(
-              trayDelegate, 0, bar.atBottom ? 0 : trayDelegate.height,
-              trayDelegate.width, trayDelegate.height);
+              trayDelegate, 0, 0, trayDelegate.width, trayDelegate.height);
             menuAnchor.anchor.rect = widgetRect;
           }
         }

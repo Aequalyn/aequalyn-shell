@@ -27,7 +27,7 @@ Rectangle {
   Component.onDestruction: AtelierHost.unregister(screenName + ":" + tab, btn)
 
   height: 24
-  width: row.implicitWidth + 16
+  width: bar.vertical ? bar.chipAcross : row.implicitWidth + 16
   radius: 12
   color: active || quick.visible ? btn.bar.theme.bgSelected : (area.containsMouse ? btn.bar.theme.bgHover : btn.bar.chipColor)
   border.width: active ? 1 : 0
@@ -47,7 +47,7 @@ Rectangle {
     }
     Text {
       anchors.verticalCenter: parent.verticalCenter
-      visible: btn.showName && btn.label !== ""
+      visible: btn.showName && btn.label !== "" && !bar.vertical
       text: btn.label
       color: btn.bar.theme.textPrimary
       font.pixelSize: 11

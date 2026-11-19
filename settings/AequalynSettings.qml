@@ -29,7 +29,7 @@ QtObject {
     // Publish the active accent to Chromium-based browsers via a managed policy.
     property bool themeBrowser: false
     property int barHeight: 32
-    // the screen edge the bar sits on: "top" or "bottom"
+    // the screen edge the bar sits on: "top", "bottom", "left" or "right"
     property string barPosition: "top"
     property int barOpacity: 100
     // widest the bar's regions get before they scroll, in % of the bar's width, so it's the
@@ -611,7 +611,7 @@ QtObject {
         root.themeApps = pick(a.themeApps, root.themeApps)
         root.themeBrowser = pick(a.themeBrowser, root.themeBrowser)
         root.barHeight = pick(a.barHeight, root.barHeight)
-        root.barPosition = a.barPosition === "bottom" ? "bottom" : "top"
+        root.barPosition = ["bottom", "left", "right"].indexOf(a.barPosition) >= 0 ? a.barPosition : "top"
         root.barOpacity = pick(a.barOpacity, root.barOpacity)
         root.barSidePercent = Math.max(0, Math.min(100, Math.round(Number(pick(a.barSidePercent, root.barSidePercent)) || 0)))
         root.barClicks = a.barClicks && typeof a.barClicks === "object" && !Array.isArray(a.barClicks) ? a.barClicks : ({})

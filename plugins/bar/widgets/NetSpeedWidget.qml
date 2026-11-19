@@ -13,17 +13,22 @@ Rectangle {
   readonly property var svc: KitHost.get("netSpeed")
   readonly property bool wanted: !!svc && (true)
   visible: wanted
-  height: 24
-  width: wanted ? label.implicitWidth + 18 : 0
+  // one line; on a side bar its icon over its value, as wide as the bar allows
+  height: bar.vertical ? (wanted ? label.implicitHeight + 10 : 0) : 24
+  width: wanted ? (bar.vertical ? bar.chipAcross : label.implicitWidth + 18) : 0
   radius: 12
   color: area.containsMouse || quick.visible ? bar.theme.bgSelected : bar.chipColor
   Text {
     id: label
     anchors.centerIn: parent
-    text: root.wanted ? root.svc.label : ""
+    readonly property string full: root.wanted ? root.svc.label : ""
     color: bar.inked(ink, bar.theme.textPrimary)
-    font.pixelSize: 12
+    font.pixelSize: bar.vertical ? 9 : 12
     font.family: bar.font
+    text: bar.vertical ? full.replace(/ +/, "\n") : full
+    width: bar.vertical ? bar.chipAcross - 4 : implicitWidth
+    wrapMode: bar.vertical ? Text.WrapAnywhere : Text.NoWrap
+    horizontalAlignment: Text.AlignHCenter
   }
   MouseArea {
     id: area

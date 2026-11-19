@@ -10,8 +10,9 @@ Rectangle {
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
   id: battPill
-  height: 24
-  width: battContent.width + 12
+  // icon and value side by side; stacked, narrower, on a side bar
+  height: bar.vertical ? battContent.height + 10 : 24
+  width: bar.vertical ? bar.chipAcross : battContent.width + 12
   radius: 12
   color: quick.visible ? bar.theme.bgSelected : bar.chipColor
   readonly property color batteryColor: {
@@ -21,23 +22,28 @@ Rectangle {
     return bar.theme.batteryCritical;
   }
 
-  Row {
+  Grid {
     id: battContent
     anchors.centerIn: parent
-    spacing: 6
+    columns: bar.vertical ? 1 : 99
+    columnSpacing: 6
+    rowSpacing: 1
+    horizontalItemAlignment: Grid.AlignHCenter
+    verticalItemAlignment: Grid.AlignVCenter
     Text {
-      anchors.verticalCenter: parent.verticalCenter
       text: SystemInfo.batteryIcon
       color: parent.parent.batteryColor
       font.pixelSize: 14
       font.family: bar.font
     }
     Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: SystemInfo.batteryLevel
+      readonly property string full: SystemInfo.batteryLevel
       color: bar.theme.textPrimary
-      font.pixelSize: 11
+      font.pixelSize: bar.vertical ? 9 : 11
       font.family: bar.font
+      // on a side bar: shorter (no %%, no decimals), centred under the icon
+      text: bar.vertical ? bar.compact(full) : full
+      horizontalAlignment: Text.AlignHCenter
     }
   }
 

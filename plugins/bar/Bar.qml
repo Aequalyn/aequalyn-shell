@@ -87,10 +87,17 @@ Scope {
   readonly property int floatGap: styled ? Shapes.floatGapFor(look) : 0
   readonly property int bandThickness: styled ? Shapes.thicknessFor(barSize, look) : barSize
   readonly property int windowThickness: bandThickness + floatGap
-  // the screen edge it sits on (Settings -> Bar): "top" or "bottom". Plugins read
-  // position to open their panels on the other side of it
-  readonly property string position: AequalynSettings.barPosition === "bottom" ? "bottom" : "top"
+  // the screen edge it sits on (Settings -> Bar): "top", "bottom", "left" or "right".
+  // Plugins read position to open their panels on the other side of it
+  readonly property string position: ["bottom", "left", "right"].indexOf(AequalynSettings.barPosition) >= 0
+                                     ? AequalynSettings.barPosition : "top"
   readonly property bool atBottom: position === "bottom"
+  // a side bar: its regions run top to bottom and its widgets stack (bar.vertical)
+  readonly property bool vertical: position === "left" || position === "right"
+  // the screen edge is where the band starts (top, left) or where it ends (bottom, right)
+  readonly property bool edgeAtStart: position === "top" || position === "left"
+  // how wide a widget may be on a side bar
+  readonly property int chipAcross: Math.max(22, barSize - 6)
   readonly property int sectionMargin: styled ? Math.round(Shapes.sectionMargin(look, 8, barSize)) : 8
   readonly property int widgetSpacing: styled && look.shape === "widgets" ? Math.max(6, Shapes.pillSpacing(look, barSize)) : 8
 
@@ -105,6 +112,12 @@ Scope {
   }
   // what a widget paints with: the colour the bar gives it, else its own
   function inked(ink, own) { return ink && ink.a > 0 ? ink : own; }
+  // a reading short enough for a side bar: no %, "°C" as "°", no decimals ("16.2%" -> "16")
+  function compact(t) {
+    let s = String(t === undefined || t === null ? "" : t).replace("%", "").replace(/°[CF]/, "°").trim();
+    const m = s.match(/^(-?\d+(?:\.\d+)?)(°?)$/);
+    return m ? String(Math.round(Number(m[1]))) + m[2] : s;
+  }
 
   property var activePlayer: {
     const players = Mpris.players.values;
@@ -272,8 +285,12 @@ Scope {
       screen: modelData
       visible: root.barVisible
 
-      anchors { top: !root.atBottom; bottom: root.atBottom; left: true; right: true }
+      anchors {
+        top: root.position !== "bottom"; bottom: root.position !== "top"
+        left: root.position !== "right"; right: root.position !== "left"
+      }
       implicitHeight: root.windowThickness
+      implicitWidth: root.windowThickness
       // styled: the shapes are the background; plain: one band in the theme
       color: root.styled ? "transparent"
            : Qt.rgba(root.theme.bgBase.r, root.theme.bgBase.g, root.theme.bgBase.b, AequalynSettings.barOpacity / 100)
@@ -281,10 +298,10 @@ Scope {
       // the strip the shapes and widgets live in (the float gap between it and the edge)
       Item {
         id: band
-        x: 0
-        y: root.atBottom ? 0 : root.floatGap
-        width: parent.width
-        height: root.bandThickness
+        x: root.position === "left" ? root.floatGap : 0
+        y: root.position === "top" ? root.floatGap : 0
+        width: root.vertical ? root.bandThickness : parent.width
+        height: root.vertical ? parent.height : root.bandThickness
 
         property string dragRegion: ""
         property int dragIndex: -1
@@ -314,17 +331,20 @@ Scope {
           const p = slot.mapToItem(band, pos.x, pos.y)
           barDragGhost.x = p.x - barDragGhost.width / 2
           barDragGhost.y = p.y - barDragGhost.height / 2
-          if (p.y < -20 || p.y > band.height + 20) { hoverRegion = ""; hoverIndex = -1; return }
-          const third = band.width / 3
-          const region = p.x < third ? "left" : (p.x < third * 2 ? "center" : "right")
+          // along the bar and across it (a side bar runs top to bottom)
+          const along = root.vertical ? p.y : p.x, across = root.vertical ? p.x : p.y
+          const length = root.vertical ? band.height : band.width, thick = root.vertical ? band.width : band.height
+          if (across < -20 || across > thick + 20) { hoverRegion = ""; hoverIndex = -1; return }
+          const third = length / 3
+          const region = along < third ? "left" : (along < third * 2 ? "center" : "right")
           const section = (region === "left" ? leftSec : (region === "center" ? centerSec : rightSec)).row
           const sp = band.mapToItem(section, p.x, p.y)
-          // count widget slots only (the Row also holds its Repeater) and use their model index
+          // count widget slots only (the row also holds its Repeater) and use their model index
           let idx = 0
           for (let i = 0; i < section.children.length; i++) {
             const c = section.children[i]
             if (c.index === undefined || !c.visible) continue
-            if (sp.x > c.x + c.width / 2) idx = c.index + 1
+            if (root.vertical ? sp.y > c.y + c.height / 2 : sp.x > c.x + c.width / 2) idx = c.index + 1
           }
           const len = region === "left" ? AequalynSettings.barLeft.length
                     : region === "center" ? AequalynSettings.barCenter.length : AequalynSettings.barRight.length
@@ -375,7 +395,8 @@ Scope {
           theme: root.theme
           look: root.look
           barSize: root.barSize
-          edgeAtStart: !root.atBottom
+          edgeAtStart: root.edgeAtStart
+          vertical: root.vertical
           sections: [leftSec.row, centerSec.row, rightSec.row]
           // a widget scrolled out of its region gets no shape
           viewports: [leftSec, centerSec, rightSec]
@@ -386,25 +407,30 @@ Scope {
         // AequalynSettings (barLeft / barCenter / barRight). Each is as wide as its widgets,
         // up to a limit: its share of the bar set in Settings -> Bar (0 = no limit of its own) and the room
         // left before it would run into the next region. Past that it scrolls sideways.
+        // On a side bar "left" is the top region, "center" the middle and "right" the bottom:
+        // everything below is measured along the bar.
         Item {
           id: regions
           anchors.fill: parent
-          anchors.leftMargin: root.sectionMargin
-          anchors.rightMargin: root.sectionMargin
+          anchors.leftMargin: root.vertical ? 0 : root.sectionMargin
+          anchors.rightMargin: root.vertical ? 0 : root.sectionMargin
+          anchors.topMargin: root.vertical ? root.sectionMargin : 0
+          anchors.bottomMargin: root.vertical ? root.sectionMargin : 0
 
           // the room kept free between two regions
           readonly property int gap: 12
-          readonly property real sideMax: AequalynSettings.barSidePercent > 0 ? width * AequalynSettings.barSidePercent / 100 : width
-          readonly property real centerMax: AequalynSettings.barCenterPercent > 0 ? width * AequalynSettings.barCenterPercent / 100 : width
-          readonly property real leftNeed: leftSec.row.width
-          readonly property real centerNeed: centerSec.row.width
-          readonly property real rightNeed: rightSec.row.width
+          readonly property real length: root.vertical ? height : width
+          readonly property real sideMax: AequalynSettings.barSidePercent > 0 ? length * AequalynSettings.barSidePercent / 100 : length
+          readonly property real centerMax: AequalynSettings.barCenterPercent > 0 ? length * AequalynSettings.barCenterPercent / 100 : length
+          readonly property real leftNeed: root.vertical ? leftSec.row.height : leftSec.row.width
+          readonly property real centerNeed: root.vertical ? centerSec.row.height : centerSec.row.width
+          readonly property real rightNeed: root.vertical ? rightSec.row.height : rightSec.row.width
           // the center comes first and stays centered on the bar
-          readonly property real centerW: centerNeed > 0 ? Math.max(0, Math.min(centerNeed, centerMax, width - 2 * gap)) : 0
+          readonly property real centerW: centerNeed > 0 ? Math.max(0, Math.min(centerNeed, centerMax, length - 2 * gap)) : 0
           // with a center, each side gets the room on its half; without one, what the other side leaves
           function sideRoom(otherNeed) {
-            if (centerW > 0) return Math.max(0, (width - centerW) / 2 - gap);
-            return Math.max(0, width - gap - Math.min(otherNeed, sideMax, (width - gap) / 2));
+            if (centerW > 0) return Math.max(0, (length - centerW) / 2 - gap);
+            return Math.max(0, length - gap - Math.min(otherNeed, sideMax, (length - gap) / 2));
           }
           readonly property real leftW: Math.min(leftNeed, sideMax, sideRoom(rightNeed))
           readonly property real rightW: Math.min(rightNeed, sideMax, sideRoom(leftNeed))
@@ -412,29 +438,29 @@ Scope {
           BarSection {
             id: leftSec
             region: "left"; bar: root; band: band; screen: barWindow.screen
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            width: regions.leftW
-            height: parent.height
+            x: 0
+            y: 0
+            width: root.vertical ? parent.width : regions.leftW
+            height: root.vertical ? regions.leftW : parent.height
           }
           BarSection {
             id: centerSec
             region: "center"; bar: root; band: band; screen: barWindow.screen
-            // the colour pattern runs on along the bar, left to right
+            // the colour pattern runs on along the bar, left to right (top to bottom)
             inkStart: leftSec.shown
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            width: regions.centerW
-            height: parent.height
+            x: root.vertical ? 0 : (parent.width - width) / 2
+            y: root.vertical ? (parent.height - height) / 2 : 0
+            width: root.vertical ? parent.width : regions.centerW
+            height: root.vertical ? regions.centerW : parent.height
           }
           BarSection {
             id: rightSec
             region: "right"; bar: root; band: band; screen: barWindow.screen
             inkStart: leftSec.shown + centerSec.shown
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            width: regions.rightW
-            height: parent.height
+            x: root.vertical ? 0 : parent.width - width
+            y: root.vertical ? parent.height - height : 0
+            width: root.vertical ? parent.width : regions.rightW
+            height: root.vertical ? regions.rightW : parent.height
           }
         }
       }

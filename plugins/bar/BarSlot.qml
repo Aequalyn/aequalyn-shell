@@ -49,8 +49,11 @@ Item {
     when: slot.inkable
   }
 
-  width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
-  height: band.height
+  // along the bar: the widget's own size and some room; across it: the whole band
+  readonly property real itemW: loader.item ? (loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) : 24
+  readonly property real itemH: loader.item ? (loader.item.implicitHeight > 0 ? loader.item.implicitHeight : (loader.item.height > 0 ? loader.item.height : 24)) : 24
+  width: bar.vertical ? band.width : (loader.item ? itemW + 8 : 32)
+  height: bar.vertical ? (loader.item ? itemH + 8 : 32) : band.height
   opacity: beingDragged ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
   // a widget with nothing to show (`wanted: false`) or an unknown id takes no room and gets no shape
   visible: (file !== "" && pluginOn && AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))

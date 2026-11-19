@@ -44,14 +44,19 @@ PopupWindow {
     onVisibleChanged: if (!visible && open) { pop.dismissed(); pop.visible = Qt.binding(() => pop.open) }
 
     anchor.item: anchorItem
-    anchor.rect.x: 0
-    // under the widget on a top bar, over it on a bottom bar
-    readonly property bool upward: AequalynSettings.barPosition === "bottom"
-    anchor.rect.y: upward ? -8 : 0
-    anchor.rect.width: anchorItem ? anchorItem.width : 0
-    anchor.rect.height: anchorItem ? anchorItem.height + 8 : 0
-    anchor.edges: upward ? Edges.Top : Edges.Bottom
-    anchor.gravity: upward ? Edges.Top : Edges.Bottom
+    // on the windows' side of the widget: under it on a top bar, over it on a bottom bar,
+    // beside it on a side bar, 8 px off
+    readonly property string barSide: ["bottom", "left", "right"].indexOf(AequalynSettings.barPosition) >= 0
+                                      ? AequalynSettings.barPosition : "top"
+    readonly property bool sideways: barSide === "left" || barSide === "right"
+    readonly property int openEdge: barSide === "bottom" ? Edges.Top : barSide === "left" ? Edges.Right
+                                  : barSide === "right" ? Edges.Left : Edges.Bottom
+    anchor.rect.x: barSide === "right" ? -8 : 0
+    anchor.rect.y: barSide === "bottom" ? -8 : 0
+    anchor.rect.width: anchorItem ? anchorItem.width + (sideways ? 8 : 0) : 0
+    anchor.rect.height: anchorItem ? anchorItem.height + (sideways ? 0 : 8) : 0
+    anchor.edges: openEdge
+    anchor.gravity: openEdge
     anchor.adjustment: PopupAdjustment.Slide
 
     Rectangle {
