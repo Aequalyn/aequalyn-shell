@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import "root:/plugins/plume"
-import "root:/style/Wheel.js" as Wheel
 
 // Plume's button: a pointer, lit while its trails and halos are on.
 //   left click    effects on / off            right click   its quick panel (PlumeQuick.qml)
@@ -14,8 +13,6 @@ Rectangle {
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
   id: plumeButton
-  // the wheel does this widget's own thing, so its bar region doesn't slide under it
-  readonly property bool usesWheel: true
   objectName: "aequalyn-plume-button"
   readonly property var svc: PlumeHost.svc
   readonly property bool wanted: !!svc
@@ -47,10 +44,6 @@ Rectangle {
       else if (role === "right") PlumeHost.openSettings();
       else if (role === "middle") s.find();
       else s.setSetting("enabled", !plumeButton.on);
-    }
-    onWheel: (wheel) => {
-      const s = Wheel.step(wheel, bar.wheelAcc);
-      if (plumeButton.svc && s !== 0) plumeButton.svc.stepLook(-s);
     }
   }
 

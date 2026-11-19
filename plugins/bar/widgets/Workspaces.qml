@@ -3,18 +3,14 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import "root:/settings"
-import "root:/style/Wheel.js" as Wheel
 
 Item {
   required property var bar
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
   property var screen
-  // the wheel does this widget's own thing, so its bar region doesn't slide under it
-  readonly property bool usesWheel: true
   implicitWidth: wsRow.implicitWidth
   implicitHeight: 24
-  Process { id: wsScrollProc; running: false }
   function labelFor(index) {
     const style = AequalynSettings.workspaceLabelStyle;
     if (style === "roman") {
@@ -121,14 +117,6 @@ Item {
         MouseArea {
           anchors.fill: parent
           onClicked: wsPill.modelData.activate()
-          onWheel: (wheel) => {
-            const s = Wheel.step(wheel, bar.wheelAcc);
-            if (s === 0) return;
-            const dir = s > 0 ? "e-1" : "e+1";
-            wsScrollProc.command = ["hyprctl", "dispatch",
-              "hl.dsp.focus({ workspace = \"" + dir + "\" })"];
-            wsScrollProc.running = true;
-          }
         }
         Behavior on width { NumberAnimation { duration: 150 } }
       }

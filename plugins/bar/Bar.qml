@@ -27,8 +27,6 @@ Scope {
   // the quick panel a widget's right click opened ("" for none): one at a time, and
   // never with the gear's (quick/QuickPopup.qml)
   property string widgetPopup: ""
-  // a touchpad swipe over a widget, added up into steps (style/Wheel.js)
-  property var wheelAcc: ({ v: 0 })
   function toggleWidgetPopup(id, scr, byKey) {
     Quick.byKey = byKey === true;
     const open = root.togglePopup(root.widgetPopup === id, scr);
@@ -180,11 +178,6 @@ Scope {
     root.brightnessValue = v / 100;
     if (brightnessSetProc.running) { root.brightnessPending = v; return; }
     brightnessSetProc.command = ["brightnessctl", "-q", "set", v + "%"];
-    brightnessSetProc.running = true;
-  }
-  // the Brightness widget's scroll wheel
-  function stepBrightness(up) {
-    brightnessSetProc.command = ["brightnessctl", "set", up ? "5%+" : "5%-"];
     brightnessSetProc.running = true;
   }
 

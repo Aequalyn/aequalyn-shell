@@ -48,8 +48,6 @@ Item {
     value: slot.tone
     when: slot.inkable
   }
-  // the widget uses the wheel itself (volume, workspaces): its region doesn't slide under it
-  readonly property bool usesWheel: !!(loader.item && loader.item.usesWheel === true)
 
   width: loader.item ? ((loader.item.implicitWidth > 0 ? loader.item.implicitWidth : (loader.item.width > 0 ? loader.item.width : 24)) + 8) : 32
   height: band.height

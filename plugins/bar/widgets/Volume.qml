@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
-import "root:/style/Wheel.js" as Wheel
 
 Rectangle {
   // the bar this widget sits in: theme, font, shared state and actions (Bar.qml)
@@ -9,8 +8,6 @@ Rectangle {
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
   id: volWidget
-  // the wheel does this widget's own thing, so its bar region doesn't slide under it
-  readonly property bool usesWheel: true
   height: 24
   width: volContent.width + 12
   radius: 12
@@ -60,14 +57,6 @@ Rectangle {
       if (role !== "main") return;
       const sink = Pipewire.defaultAudioSink;
       if (sink && sink.audio) sink.audio.muted = !sink.audio.muted;
-    }
-    onWheel: (wheel) => {
-      const sink = Pipewire.defaultAudioSink;
-      if (!sink || !sink.audio) return;
-      const s = Wheel.step(wheel, bar.wheelAcc);
-      if (s === 0) return;
-      const delta = s * 0.05;
-      sink.audio.volume = Math.max(0, Math.min(1.5, sink.audio.volume + delta));
     }
   }
 
