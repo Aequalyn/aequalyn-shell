@@ -205,7 +205,12 @@ Item {
 
                 if (glyph.width > 0 && glyph.height > 0)
                     glyph.grabToImage(function(r) {
-                        cell.dragImage = r.url;
+                        // the folder may have moved on while the grab ran:
+                        // leave the picture it had rather than touch a dead cell
+                        try {
+                            cell.dragImage = r.url;
+                        } catch (e) {
+                        }
                     });
             }
         }

@@ -42,6 +42,9 @@ Scope {
     property var _queue: []
     property int _nextWin: 1
     property int _nextView: 1
+    // windows that asked to go, by id: a daemon reply on its way to one is
+    // dropped instead of landing in a window being taken apart
+    property var _gone: ({})
     // transfers by job id, and what can still be undone, newest last
     property var jobs: ({})
     property int jobsRev: 0
@@ -111,7 +114,12 @@ Scope {
             var cb = app._pending[m.id];
             if (cb) {
                 delete app._pending[m.id];
-                cb(m);
+                // the window or tab a reply was for may have closed while the
+                // daemon worked: let it land nowhere quietly
+                try {
+                    cb(m);
+                } catch (e) {
+                }
             } else if (m.ok === false) {
                 console.warn("aequalyn-fm: " + (m.error || "request failed"));
             }
@@ -932,16 +940,27 @@ Scope {
         to.adoptTab(state, at);
     }
 
-    function closeWindow(wid) {
-        for (var i = 0; i < windows.count; i++) {
-            if (windows.get(i).wid === wid) {
-                windows.remove(i);
-                break;
-            }
-        }
-        if (windows.count === 0)
-            idle.restart();
+    function windowGone(wid) {
+        return app._gone[wid] === true;
+    }
 
+    // a window is never taken apart from inside its own stack: onClosed, a
+    // dialog's answer and a keybind all call this while the window is still
+    // unwinding, and its layers, grabs and queued events need the loop to
+    // turn first. the row leaves a pass later, when nothing of it is below.
+    function closeWindow(wid) {
+        app._gone[wid] = true;
+        Qt.callLater(function() {
+            for (var i = 0; i < windows.count; i++) {
+                if (windows.get(i).wid === wid) {
+                    windows.remove(i);
+                    break;
+                }
+            }
+            if (windows.count === 0)
+                idle.restart();
+
+        });
     }
 
     // with no window left it lingers, so opening one again is instant, then goes
