@@ -8,27 +8,33 @@ Rectangle {
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
   id: cpuWidget
-  height: 24
-  width: cpuContent.width + 12
+  // icon and value side by side; stacked, narrower, on a side bar
+  height: bar.vertical ? cpuContent.height + 10 : 24
+  width: bar.vertical ? bar.chipAcross : cpuContent.width + 12
   radius: 12
   color: area.containsMouse || quick.visible ? bar.theme.bgSelected : bar.chipColor
-  Row {
+  Grid {
     id: cpuContent
     anchors.centerIn: parent
-    spacing: 6
+    columns: bar.vertical ? 1 : 99
+    columnSpacing: 6
+    rowSpacing: 1
+    horizontalItemAlignment: Grid.AlignHCenter
+    verticalItemAlignment: Grid.AlignVCenter
     Text {
-      anchors.verticalCenter: parent.verticalCenter
       text: "󰻠"
       color: bar.inked(ink, bar.theme.accentOrange)
       font.pixelSize: 14
       font.family: bar.font
     }
     Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: SystemInfo.cpuUsage
+      readonly property string full: SystemInfo.cpuUsage
       color: bar.theme.textPrimary
-      font.pixelSize: 11
+      font.pixelSize: bar.vertical ? 9 : 11
       font.family: bar.font
+      // on a side bar: shorter (no %%, no decimals), centred under the icon
+      text: bar.vertical ? bar.compact(full) : full
+      horizontalAlignment: Text.AlignHCenter
     }
   }
   MouseArea {

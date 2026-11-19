@@ -8,7 +8,10 @@ Item {
   required property var bar
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
-  implicitWidth: Math.min(titleText.implicitWidth, 360)
+  // a window title cannot fit a side bar: it takes no room there
+  readonly property bool wanted: !bar.vertical
+  visible: wanted
+  implicitWidth: wanted ? Math.min(titleText.implicitWidth, 360) : 0
   implicitHeight: 24
   width: implicitWidth
   Text {

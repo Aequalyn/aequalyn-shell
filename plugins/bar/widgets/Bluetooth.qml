@@ -47,12 +47,15 @@ Rectangle {
     implicitWidth: btTip.implicitWidth + 16
     implicitHeight: 24
     anchor.item: btPill
-    anchor.rect.x: 0
-    anchor.rect.y: bar.atBottom ? -6 : 0
-    anchor.rect.width: btPill.width
-    anchor.rect.height: btPill.height + 6
-    anchor.edges: bar.atBottom ? Edges.Top : Edges.Bottom
-    anchor.gravity: bar.atBottom ? Edges.Top : Edges.Bottom
+    // on the windows' side of the pill, 6 px off: under, over, or beside it on a side bar
+    readonly property int openEdge: bar.position === "bottom" ? Edges.Top : bar.position === "left" ? Edges.Right
+                                  : bar.position === "right" ? Edges.Left : Edges.Bottom
+    anchor.rect.x: bar.position === "right" ? -6 : 0
+    anchor.rect.y: bar.position === "bottom" ? -6 : 0
+    anchor.rect.width: btPill.width + (bar.vertical ? 6 : 0)
+    anchor.rect.height: btPill.height + (bar.vertical ? 0 : 6)
+    anchor.edges: openEdge
+    anchor.gravity: openEdge
     anchor.adjustment: PopupAdjustment.Slide
     Rectangle {
       anchors.fill: parent

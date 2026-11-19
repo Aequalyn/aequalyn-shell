@@ -9,25 +9,29 @@ Rectangle {
   // the colour the bar gives it (Bar page: the widgets' colours), transparent for its own
   property color ink: "transparent"
   id: clockWidget
-  height: 24
-  width: timeDate.width + 16
+  // on a side bar: hours over minutes, without the date
+  height: bar.vertical ? timeDate.height + 10 : 24
+  width: bar.vertical ? bar.chipAcross : timeDate.width + 16
   radius: 12
   color: quick.visible ? bar.theme.bgSelected : bar.chipColor
-  Row {
+  Grid {
     id: timeDate
     anchors.centerIn: parent
-    spacing: 8
+    columns: bar.vertical ? 1 : 99
+    columnSpacing: 8
+    verticalItemAlignment: Grid.AlignVCenter
+    horizontalItemAlignment: Grid.AlignHCenter
     Text {
-      anchors.verticalCenter: parent.verticalCenter
-      text: Time.timeString
+      text: bar.vertical ? Time.timeString.replace(/[: ]+/g, "\n") : Time.timeString
+      horizontalAlignment: Text.AlignHCenter
+      lineHeight: bar.vertical ? 0.9 : 1
       color: bar.inked(ink, bar.theme.textPrimary)
       font.pixelSize: 12
       font.family: bar.font
     }
     Text {
-      anchors.verticalCenter: parent.verticalCenter
       text: Time.dateString
-      visible: AequalynSettings.showBarDate
+      visible: AequalynSettings.showBarDate && !bar.vertical
       color: bar.theme.textSecondary
       font.pixelSize: 12
       font.family: bar.font

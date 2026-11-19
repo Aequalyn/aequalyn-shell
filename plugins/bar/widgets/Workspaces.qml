@@ -10,7 +10,7 @@ Item {
   property color ink: "transparent"
   property var screen
   implicitWidth: wsRow.implicitWidth
-  implicitHeight: 24
+  implicitHeight: bar.vertical ? wsRow.implicitHeight : 24
   function labelFor(index) {
     const style = AequalynSettings.workspaceLabelStyle;
     if (style === "roman") {
@@ -80,10 +80,13 @@ Item {
     }
     return out;
   }
-  Row {
+  // a row of pills, a column on a side bar (the focused one longer along the bar)
+  Grid {
     id: wsRow
     anchors.fill: parent
-    spacing: 4
+    columns: bar.vertical ? 1 : 99
+    columnSpacing: 4
+    rowSpacing: 4
     Repeater {
       model: visibleWorkspaces
       Rectangle {
@@ -91,8 +94,8 @@ Item {
         required property var modelData
         required property int index
         property bool urgentBlink: false
-        width: modelData.focused ? 32 : 24
-        height: 24
+        width: !bar.vertical && modelData.focused ? 32 : 24
+        height: bar.vertical && modelData.focused ? 32 : 24
         radius: 12
         color: modelData.focused ? bar.inked(ink, bar.theme.accentPrimary) :
                modelData.urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor

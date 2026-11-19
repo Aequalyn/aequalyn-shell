@@ -148,7 +148,8 @@ Scope {
   property var margins: Object.assign({}, defaultMargins)
 
   // a dock on the bar's edge sits past the bar
-  readonly property string barEdge: AequalynSettings.barPosition === "bottom" ? "bottom" : "top"
+  readonly property string barEdge: ["bottom", "left", "right"].indexOf(AequalynSettings.barPosition) >= 0
+                                    ? AequalynSettings.barPosition : "top"
   function barOffset(mon, edge) { return edge === barEdge && barShown ? barThickness : 0; }
   function barInfoFor(mon) { return barShown ? barEdge + " " + barThickness + "px" : "hidden"; }
   function marginOf(edge) { const v = margins[edge]; return v === undefined ? 6 : v; }

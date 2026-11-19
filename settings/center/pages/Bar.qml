@@ -131,10 +131,11 @@ CcPage {
     CcSection {
         visible: page.tab === 2
         title: "Where it sits"
-        hint: "The top or the bottom of every screen. Its panels open on the other side of it."
+        hint: "Any edge of every screen. Its panels open on the windows' side of it; on the left or the right its widgets stack, with their readings shortened, and the window title is left out."
         CcChoice {
             setting: "barPosition"
-            options: [{ key: "top", label: "Top" }, { key: "bottom", label: "Bottom" }]
+            options: [{ key: "top", label: "Top" }, { key: "bottom", label: "Bottom" },
+                      { key: "left", label: "Left" }, { key: "right", label: "Right" }]
         }
     }
     CcSection {
