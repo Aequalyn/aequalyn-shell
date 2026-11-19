@@ -34,6 +34,9 @@ Scope {
   property int selectedIndex: 0
   property bool open: false
 
+  // 1 for a command-line program (a terminal app), 0 for the rest: they always list last
+  function cliRank(d) { return (d.runInTerminal === true) ? 1 : 0; }
+
   ScriptModel {
     id: filteredApps
     objectProp: "id"
@@ -46,13 +49,16 @@ Scope {
         return true;
       });
       const q = searchInput.text.trim().toLowerCase();
-      if (q === "") return all.sort((a, b) => a.name.localeCompare(b.name));
+      if (q === "") return all.sort((a, b) => root.cliRank(a) - root.cliRank(b) || a.name.localeCompare(b.name));
       return all.filter(d =>
         (d.name && d.name.toLowerCase().includes(q)) ||
         (d.genericName && d.genericName.toLowerCase().includes(q)) ||
         (d.keywords && d.keywords.some(k => k.toLowerCase().includes(q))) ||
         (d.categories && d.categories.some(c => c.toLowerCase().includes(q)))
       ).sort((a, b) => {
+        // command-line programs after the apps, whatever matches better
+        const cli = root.cliRank(a) - root.cliRank(b);
+        if (cli !== 0) return cli;
         const an = a.name.toLowerCase();
         const bn = b.name.toLowerCase();
         const aStarts = an.startsWith(q);
