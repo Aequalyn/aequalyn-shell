@@ -450,7 +450,7 @@ Item {
     }
 
     // ---- shared visualizer state -------------------------------------------
-    property string styleOverride: ""      // set by the wheel / IPC, cleared on shell restart
+    property string styleOverride: ""      // set by IPC, cleared on shell restart
     property var levels: []                // 0..1 (spectrum) or -1..1 (scope)
     property bool receiving: false
     property string lastError: ""

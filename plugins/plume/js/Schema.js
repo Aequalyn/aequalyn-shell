@@ -236,8 +236,6 @@ var tabs = [
               hint: "60 is smoother, 30 is lighter. Nothing is drawn while the pointer rests." }
         ] },
         { title: "Bar button", items: [
-            { key: "wheelLooks", label: "Scroll for looks", kind: "bool", fallback: true,
-              hint: "Scroll on the bar button to go through the ready made looks." },
             { key: "startLook", label: "Look at login", kind: "enum", fallback: "keep",
               options: ["keep", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
               labels: { keep: "As I left it" },

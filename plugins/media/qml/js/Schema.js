@@ -44,7 +44,7 @@ var tabs = [
         { title: "Style", items: [
             { key: "vizStyle", label: "Style", kind: "viz", fallback: "bars",
               options: Visuals.keys, labels: Visuals.labels, abouts: Visuals.abouts,
-              hint: "How the music is drawn. Scroll the wheel over the widget to flip through them." },
+              hint: "How the music is drawn." },
             { key: "vizSide", label: "Placement", kind: "enum", fallback: "left",
               options: ["left", "right", "both", "hidden"], labels: lr({ both: "Both", hidden: "Hidden" }),
               hint: "Which side of the text it sits on. Both mirrors it." },
@@ -285,11 +285,7 @@ var tabs = [
         { title: "Mouse", items: [
             { key: "clickAction", label: "Left click", kind: "enum", fallback: "playPause",
               options: ["playPause", "next", "none"], labels: { playPause: "Play / Pause", next: "Next track", none: "Nothing" },
-              hint: "On the visualizer or text. Middle click always skips." },
-            { key: "wheelAction", label: "Scroll wheel", kind: "enum", fallback: "track",
-              options: ["track", "volume", "style", "none"],
-              labels: { track: "Skip tracks", volume: "Volume", style: "Change style", none: "Nothing" },
-              hint: "Volume changes the player's own volume, when it has one. Style changes are saved as you scroll." }
+              hint: "On the visualizer or text. Middle click always skips." }
         ] },
         { title: "Showing", items: [
             { key: "hideWhen", label: "Hide the widget", kind: "enum", fallback: "stopped",
