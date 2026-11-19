@@ -491,6 +491,19 @@ def named_type(name, mime):
     return mime
 
 
+def chooser_shows(app):
+    # whether an app belongs in an "Open with" list. should_show() answers for
+    # app menus, so it drops the NoDisplay=true helpers (Disk Image Mounter,
+    # Disk Image Writer) that exist precisely to be picked from such a list,
+    # and lets a Hidden=true entry through besides. get_is_hidden covers
+    # Hidden, get_show_in covers OnlyShowIn and NotShowIn pointing at other
+    # desktops, and a desktop file whose TryExec binary is missing never even
+    # loads, so it needs no check here.
+    if hasattr(app, "get_is_hidden"):
+        return not app.get_is_hidden() and app.get_show_in(None)
+    return app.should_show()
+
+
 def slot_for(item):
     if item["kind"] == "dir":
         real = os.path.realpath(item["path"]) if item.get("path") else ""
@@ -1297,7 +1310,7 @@ def apps_for(uri, o):
         seen = set()
         apps = ([default] if default else []) + list(Gio.AppInfo.get_recommended_for_type(ctype)) + list(Gio.AppInfo.get_fallback_for_type(ctype))
         for a in apps:
-            if a is None or a.get_id() in seen or not a.should_show():
+            if a is None or a.get_id() in seen or not chooser_shows(a):
                 continue
             seen.add(a.get_id())
             fname = a.get_filename() if hasattr(a, "get_filename") else None

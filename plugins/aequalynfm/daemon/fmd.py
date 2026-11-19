@@ -161,7 +161,8 @@ def captured(fn, *args):
 
 # ---- what each file is drawn as: shared with the desktop, in desktop-icons.py
 
-SPECIAL_DIRS, SPECIALS, named_type, slot_for = dk.SPECIAL_DIRS, dk.SPECIALS, dk.named_type, dk.slot_for
+SPECIAL_DIRS, SPECIALS, named_type, slot_for, chooser_shows = \
+    dk.SPECIAL_DIRS, dk.SPECIALS, dk.named_type, dk.slot_for, dk.chooser_shows
 
 
 # ---- folders you can't read: another user's home, say ------------------------------
@@ -852,7 +853,7 @@ class Fm:
             seen = set()
             apps = ([default] if default else []) + list(Gio.AppInfo.get_recommended_for_type(ctype)) + list(Gio.AppInfo.get_fallback_for_type(ctype))
             for a in apps:
-                if a is None or a.get_id() in seen or not a.should_show():
+                if a is None or a.get_id() in seen or not chooser_shows(a):
                     continue
                 seen.add(a.get_id())
                 icon = self.icons.find(dk.icon_names(a.get_icon())) or self.icons.find(["application-x-executable"])
