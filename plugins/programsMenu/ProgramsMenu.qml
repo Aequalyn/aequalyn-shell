@@ -345,25 +345,8 @@ Scope {
           clip: true
           spacing: 2
           boundsBehavior: Flickable.StopAtBounds
-          currentIndex: root.selectedIndex
-          highlightMoveDuration: 150
-          highlightMoveVelocity: -1
-
-          highlight: Rectangle {
-            radius: 8
-            color: root.theme.bgSelected
-            visible: root.selectedIndex >= 0
-
-            Rectangle {
-              width: 3
-              height: 24
-              radius: 2
-              color: root.theme.accentPrimary
-              anchors.left: parent.left
-              anchors.leftMargin: 2
-              anchors.verticalCenter: parent.verticalCenter
-            }
-          }
+          // the selected row paints itself (below): a highlight that follows the list's own
+          // current item went stale when a search replaced the results
 
           delegate: Rectangle {
             id: delegateRoot
@@ -373,10 +356,22 @@ Scope {
             Accessible.role: Accessible.Button
             Accessible.name: (modelData.name ?? "Application") + (modelData.genericName ? " - " + modelData.genericName : "")
 
+            readonly property bool selected: root.selectedIndex === index
             width: resultsList.width
             height: 44
             radius: 8
-            color: "transparent"
+            color: selected ? root.theme.bgSelected : "transparent"
+
+            Rectangle {
+              visible: delegateRoot.selected
+              width: 3
+              height: 24
+              radius: 2
+              color: root.theme.accentPrimary
+              anchors.left: parent.left
+              anchors.leftMargin: 2
+              anchors.verticalCenter: parent.verticalCenter
+            }
 
             RowLayout {
               anchors.fill: parent
