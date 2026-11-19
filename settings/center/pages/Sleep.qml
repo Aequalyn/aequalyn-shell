@@ -17,47 +17,104 @@ CcPage {
         { on: AequalynSettings.lockEnabled, at: AequalynSettings.lockMinutes, label: "Locked", tone: "accentPrimary" },
         { on: AequalynSettings.suspendEnabled, at: AequalynSettings.suspendMinutes, label: "Asleep", tone: "accentOrange" }
     ].filter(x => x.on).sort((a, b) => a.at - b.at)
-    stageHeight: 120
+    stageHeight: 132
+    // drawn with plain items, not a canvas: sharp at any screen scale, and in the theme's
+    // colours whenever they change
     stage: Rectangle {
         anchors.fill: parent
         radius: 14
         color: Cc.theme.bgSurface
-        Canvas {
-            id: line
+        Item {
+            id: tl
             anchors.fill: parent
-            readonly property var key: [JSON.stringify(page.steps), CaffeineService.active, width, String(Cc.theme.accentPrimary)]
-            onKeyChanged: requestPaint()
-            onPaint: {
-                const ctx = getContext("2d");
-                ctx.reset();
-                const rgba = (c, a) => "rgba(" + Math.round(c.r * 255) + "," + Math.round(c.g * 255) + "," + Math.round(c.b * 255) + "," + a + ")";
-                const steps = page.steps;
-                const last = steps.length ? steps[steps.length - 1].at : 10;
-                const max = Math.max(10, Math.ceil((last * 1.15) / 5) * 5);
-                const x0 = 28, x1 = width - 28, y = height / 2 + 6;
-                const X = m => x0 + (x1 - x0) * Math.min(m, max) / max;
-                ctx.lineCap = "round";
-                ctx.strokeStyle = rgba(Cc.theme.textPrimary, 0.12);
-                ctx.lineWidth = 6;
-                ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
-                // the minute marks
-                ctx.fillStyle = rgba(Cc.theme.textPrimary, 0.45);
-                ctx.font = "10px 'JetBrainsMono Nerd Font'";
-                const every = max <= 30 ? 5 : max <= 60 ? 10 : 30;
-                for (let m = 0; m <= max; m += every) ctx.fillText(m + " min", X(m) - 14, y + 24);
-                // you step away, then each step
-                ctx.fillStyle = rgba(Cc.theme.textPrimary, 0.75);
-                ctx.font = "12px sans-serif";
-                ctx.fillText(CaffeineService.active ? "Kept awake: nothing happens" : "You step away", x0 - 6, y - 22);
-                if (CaffeineService.active) return;
-                steps.forEach((st, i) => {
-                    const c = Cc.theme[st.tone];
-                    ctx.fillStyle = rgba(c, 1);
-                    ctx.beginPath(); ctx.arc(X(st.at), y, 8, 0, Math.PI * 2); ctx.fill();
-                    ctx.font = "600 12px sans-serif";
-                    const tw = ctx.measureText(st.label).width;
-                    ctx.fillText(st.label, Math.min(x1 - tw, Math.max(x0, X(st.at) - tw / 2)), y - 20 - (i % 2) * 16);
-                });
+            anchors.leftMargin: 28
+            anchors.rightMargin: 28
+            readonly property var steps: page.steps
+            readonly property real last: steps.length ? steps[steps.length - 1].at : 10
+            // the line runs a little past the last step, to a round number of minutes
+            readonly property real max: Math.max(10, Math.ceil((last * 1.15) / 5) * 5)
+            readonly property int every: max <= 30 ? 5 : max <= 60 ? 10 : 30
+            // low enough for three rows of names over it, the minutes under it
+            readonly property real lineY: height - 46
+            function at(m) { return width * Math.min(m, max) / max; }
+            // each name on the row nearest the line where it doesn't touch the one before
+            // (or "You step away"); a name only climbs when it has to
+            readonly property var rows: {
+                const out = [], ends = [112];        // where each row is taken up to
+                for (let i = 0; i < steps.length; i++) {
+                    // a name's width, give or take: about 7 px a letter at this size
+                    const w = (steps[i].label + "  " + steps[i].at + " min").length * 7 + 6;
+                    const x0 = Math.max(0, at(steps[i].at) - w / 2);
+                    let r = 0;
+                    while (r < ends.length && x0 < ends[r] + 10) r++;
+                    out.push(Math.min(r, 2));
+                    ends[Math.min(r, 2)] = x0 + w;
+                }
+                return out;
+            }
+
+            Rectangle {
+                y: tl.lineY - 3
+                width: parent.width
+                height: 6
+                radius: 3
+                color: Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.12)
+            }
+            // the minutes under the line, the first and last kept inside it
+            Repeater {
+                model: Math.floor(tl.max / tl.every) + 1
+                delegate: Text {
+                    required property int index
+                    readonly property real m: index * tl.every
+                    x: index === 0 ? 0 : m >= tl.max ? tl.width - width : tl.at(m) - width / 2
+                    y: tl.lineY + 14
+                    text: m + " min"
+                    color: Cc.theme.textMuted
+                    font.family: Cc.mono
+                    font.pixelSize: 11
+                }
+            }
+            // where it starts
+            Rectangle {
+                x: -5; y: tl.lineY - 5
+                width: 10; height: 10; radius: 5
+                color: Cc.theme.textSecondary
+            }
+            Text {
+                x: -6
+                y: tl.lineY - 36
+                text: CaffeineService.active ? "Kept awake: nothing happens" : "You step away"
+                color: CaffeineService.active ? Cc.theme.accentPrimary : Cc.theme.textSecondary
+                font.family: Cc.sans
+                font.pixelSize: 12
+            }
+            // then each step, its dot and its name
+            Repeater {
+                model: CaffeineService.active ? [] : tl.steps
+                delegate: Item {
+                    id: stepItem
+                    required property var modelData
+                    required property int index
+                    readonly property color tone: Cc.theme[modelData.tone]
+                    readonly property real cx: tl.at(modelData.at)
+                    Rectangle {
+                        x: stepItem.cx - 8; y: tl.lineY - 8
+                        width: 16; height: 16; radius: 8
+                        color: stepItem.tone
+                        border.width: 3
+                        border.color: Cc.theme.bgSurface
+                    }
+                    Text {
+                        id: stepName
+                        x: Math.max(0, Math.min(tl.width - width, stepItem.cx - width / 2))
+                        y: tl.lineY - 36 - (tl.rows[stepItem.index] || 0) * 18
+                        text: stepItem.modelData.label + "  " + stepItem.modelData.at + " min"
+                        color: stepItem.tone
+                        font.family: Cc.sans
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                    }
+                }
             }
         }
     }
