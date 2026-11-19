@@ -87,6 +87,10 @@ Scope {
   readonly property int floatGap: styled ? Shapes.floatGapFor(look) : 0
   readonly property int bandThickness: styled ? Shapes.thicknessFor(barSize, look) : barSize
   readonly property int windowThickness: bandThickness + floatGap
+  // the screen edge it sits on (Settings -> Bar): "top" or "bottom". Plugins read
+  // position to open their panels on the other side of it
+  readonly property string position: AequalynSettings.barPosition === "bottom" ? "bottom" : "top"
+  readonly property bool atBottom: position === "bottom"
   readonly property int sectionMargin: styled ? Math.round(Shapes.sectionMargin(look, 8, barSize)) : 8
   readonly property int widgetSpacing: styled && look.shape === "widgets" ? Math.max(6, Shapes.pillSpacing(look, barSize)) : 8
 
@@ -268,17 +272,17 @@ Scope {
       screen: modelData
       visible: root.barVisible
 
-      anchors { top: true; left: true; right: true }
+      anchors { top: !root.atBottom; bottom: root.atBottom; left: true; right: true }
       implicitHeight: root.windowThickness
       // styled: the shapes are the background; plain: one band in the theme
       color: root.styled ? "transparent"
            : Qt.rgba(root.theme.bgBase.r, root.theme.bgBase.g, root.theme.bgBase.b, AequalynSettings.barOpacity / 100)
 
-      // the strip the shapes and widgets live in (below the float gap)
+      // the strip the shapes and widgets live in (the float gap between it and the edge)
       Item {
         id: band
         x: 0
-        y: root.floatGap
+        y: root.atBottom ? 0 : root.floatGap
         width: parent.width
         height: root.bandThickness
 
@@ -371,6 +375,7 @@ Scope {
           theme: root.theme
           look: root.look
           barSize: root.barSize
+          edgeAtStart: !root.atBottom
           sections: [leftSec.row, centerSec.row, rightSec.row]
           // a widget scrolled out of its region gets no shape
           viewports: [leftSec, centerSec, rightSec]

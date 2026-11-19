@@ -130,6 +130,15 @@ CcPage {
     // ---- size and place -------------------------------------------------------------------
     CcSection {
         visible: page.tab === 2
+        title: "Where it sits"
+        hint: "The top or the bottom of every screen. Its panels open on the other side of it."
+        CcChoice {
+            setting: "barPosition"
+            options: [{ key: "top", label: "Top" }, { key: "bottom", label: "Bottom" }]
+        }
+    }
+    CcSection {
+        visible: page.tab === 2
         CcSlider {
             setting: "barHeight"; title: "Height"
             from: 24; to: 48; step: 2; unit: " px"

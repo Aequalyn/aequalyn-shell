@@ -40,10 +40,13 @@ Rectangle {
           menu: trayDelegate.modelData.menu
           anchor.window: trayDelegate.QsWindow.window
           anchor.adjustment: PopupAdjustment.Flip
+          // under the icon on a top bar, over it on a bottom bar
+          anchor.edges: bar.atBottom ? Edges.Top : Edges.Bottom
+          anchor.gravity: bar.atBottom ? Edges.Top : Edges.Bottom
           anchor.onAnchoring: {
             const window = trayDelegate.QsWindow.window;
             const widgetRect = window.contentItem.mapFromItem(
-              trayDelegate, 0, trayDelegate.height,
+              trayDelegate, 0, bar.atBottom ? 0 : trayDelegate.height,
               trayDelegate.width, trayDelegate.height);
             menuAnchor.anchor.rect = widgetRect;
           }

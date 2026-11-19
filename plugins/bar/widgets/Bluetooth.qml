@@ -48,11 +48,11 @@ Rectangle {
     implicitHeight: 24
     anchor.item: btPill
     anchor.rect.x: 0
-    anchor.rect.y: 0
+    anchor.rect.y: bar.atBottom ? -6 : 0
     anchor.rect.width: btPill.width
     anchor.rect.height: btPill.height + 6
-    anchor.edges: Edges.Bottom
-    anchor.gravity: Edges.Bottom
+    anchor.edges: bar.atBottom ? Edges.Top : Edges.Bottom
+    anchor.gravity: bar.atBottom ? Edges.Top : Edges.Bottom
     anchor.adjustment: PopupAdjustment.Slide
     Rectangle {
       anchors.fill: parent

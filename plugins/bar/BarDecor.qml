@@ -28,7 +28,9 @@ Item {
     onHeightChanged: refresh()
 
     readonly property int margin: 16
-    readonly property bool edgeAtStart: true      // the bar sits at the top
+    // the screen edge is at the start (top bar) or the end (bottom bar) of the band
+    property bool edgeAtStart: true
+    onEdgeAtStartChanged: { lastKey = ""; refresh(); }
 
     // ---- colors ---------------------------------------------------------------
     readonly property var pal: look ? Colors.forMode(deco.theme, look.colorMode, look) : Colors.mono
@@ -49,12 +51,12 @@ Item {
         }
         if (region === "center" && look.centerStyle === "tinted") d.gradientTo = "accent";
         const tone = toneFor(index);
-        const p = Style.params(d, pal, w, h, deco.margin, { edge: "top", tone: tone !== "" ? tone : undefined,
+        const p = Style.params(d, pal, w, h, deco.margin, { edge: deco.edgeAtStart ? "top" : "bottom", tone: tone !== "" ? tone : undefined,
             blur: AequalynSettings.blurEnabled, blurEnabled: AequalynSettings.blurEnabled });
         p.dir = BarLooks.dirFor(look, region);
         p.r = r;
         p.ends = look.shape === "full" ? "square" : look.ends;
-        p.edge = attached ? "start" : "";
+        p.edge = attached ? (deco.edgeAtStart ? "start" : "end") : "";
         p.concave = attached && look.concave;
         if (look.shape === "full") p.flat = "";
         // floating shapes cast a shadow; a full band against the edge doesn't
@@ -88,7 +90,7 @@ Item {
     property string lastKey: ""
     function refresh() {
         if (!look || !visible || width <= 0) return;
-        const view = { length: width, thickness: height, barSize: deco.barSize, edgeAtStart: true };
+        const view = { length: width, thickness: height, barSize: deco.barSize, edgeAtStart: deco.edgeAtStart };
         const out = Shapes.layout(view, measure(), look);
         const key = JSON.stringify(out);
         if (key === lastKey) return;
@@ -135,10 +137,13 @@ Item {
             required property int pidx
             required property bool attached
             readonly property real m: deco.margin
+            // an attached shape has no margin on the screen edge's side
+            readonly property real mStart: attached && deco.edgeAtStart ? 0 : m
+            readonly property real mEnd: attached && !deco.edgeAtStart ? 0 : m
             x: a - m
-            y: c - (attached ? 0 : m)
+            y: c - mStart
             width: len + 2 * m
-            height: w + (attached ? 0 : m) + m
+            height: w + mStart + mEnd
             Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
             Canvas {
@@ -157,7 +162,7 @@ Item {
         visible: deco.look && deco.look.shape === "full" && deco.look.edgeLine
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        y: deco.edgeAtStart ? parent.height - height : 0
         height: 2
         color: deco.theme ? deco.theme.accentPrimary : "white"
     }
