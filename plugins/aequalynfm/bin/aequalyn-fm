@@ -75,6 +75,12 @@ Name=New Window
 Exec="$here/aequalyn-fm"
 EOF
     update-desktop-database -q "$apps" 2>/dev/null || true
+    # the entry says Icon=aequalyn-fm: put the shipped one where that is looked
+    # up, never over one already there
+    if [[ -f $root/aequalyn-fm.svg && ! -f $data/icons/hicolor/scalable/apps/aequalyn-fm.svg ]]; then
+        mkdir -p "$data/icons/hicolor/scalable/apps"
+        cp "$root/aequalyn-fm.svg" "$data/icons/hicolor/scalable/apps/aequalyn-fm.svg"
+    fi
 }
 
 # ini_pick file section key value: that one key, in that section; the rest of
