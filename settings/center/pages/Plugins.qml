@@ -20,13 +20,15 @@ CcPage {
     id: page
     // a plugin opened on its own (Plugins › Name), or "" for them all
     property string detail: ""
-    readonly property var detailEntry: detail !== "" ? (PluginRegistry.list.find(p => p.id === detail) || null) : null
+    readonly property var detailEntry: detail !== "" ? (page.plugins.find(p => p.id === detail) || null) : null
+    // what a card says: PluginInfo.js for a built-in, the manifest for a Store plugin
+    function infoOf(id) { const u = UserPlugins.byId(id); return u ? u.info : PluginInfo.of(id); }
     title: detailEntry ? detailEntry.label : "Plugins"
-    sub: detailEntry ? "Plugins › " + detailEntry.label + (PluginInfo.of(detail).pack ? " · built in" : "")
+    sub: detailEntry ? "Plugins › " + detailEntry.label + (page.infoOf(detail).pack ? " · built in" : "")
         : "The parts of your desktop. Turn off what you don't use: it leaves at once, and comes back when you turn it on."
     plugin: detail
     function open(id) {
-        const i = PluginInfo.of(id)
+        const i = page.infoOf(id)
         if (i.page !== "") Cc.go(i.page)
         else page.detail = id
     }
@@ -39,14 +41,14 @@ CcPage {
     onVisibleChanged: if (!visible) page.detail = ""
 
     // this window itself is a plugin too, but turning it off here would lock you out
-    readonly property var plugins: PluginRegistry.list.filter(p => p.id !== "settings")
+    readonly property var plugins: PluginRegistry.list.filter(p => p.id !== "settings").concat(UserPlugins.list)
     function isOn(id) { return AequalynSettings.enabledPlugins.indexOf(id) >= 0; }
     readonly property int onCount: plugins.filter(p => isOn(p.id)).length
 
     // what the list shows
     property string filter: "all"
     function shows(p) {
-        const i = PluginInfo.of(p.id);
+        const i = page.infoOf(p.id);
         if (page.filter === "pack") return i.pack === true;
         if (page.filter === "on") return page.isOn(p.id);
         if (page.filter === "off") return !page.isOn(p.id);
@@ -66,9 +68,9 @@ CcPage {
         plugin: page.detail
     }
     CcNote {
-        visible: page.detail !== "" && PluginInfo.of(page.detail).settings !== true
-        text: PluginInfo.of(page.detail).keys !== ""
-            ? "Nothing to set here. " + PluginInfo.of(page.detail).keys + " calls it up while it is on."
+        visible: page.detail !== "" && page.infoOf(page.detail).settings !== true
+        text: page.infoOf(page.detail).keys !== ""
+            ? "Nothing to set here. " + page.infoOf(page.detail).keys + " calls it up while it is on."
             : "Nothing to set here: it works by itself while it is on."
     }
 
@@ -79,9 +81,9 @@ CcPage {
             { key: "all", label: "All " + page.plugins.length },
             { key: "on", label: "On " + page.onCount },
             { key: "off", label: "Off " + (page.plugins.length - page.onCount) },
-            { key: "keys", label: "Has a shortcut " + page.plugins.filter(p => PluginInfo.of(p.id).keys !== "").length },
-            { key: "page", label: "Has its own page " + page.plugins.filter(p => PluginInfo.of(p.id).page !== "").length },
-            { key: "pack", label: "Built-in pack " + page.plugins.filter(p => PluginInfo.of(p.id).pack === true).length }
+            { key: "keys", label: "Has a shortcut " + page.plugins.filter(p => page.infoOf(p.id).keys !== "").length },
+            { key: "page", label: "Has its own page " + page.plugins.filter(p => page.infoOf(p.id).page !== "").length },
+            { key: "pack", label: "Built-in pack " + page.plugins.filter(p => page.infoOf(p.id).pack === true).length }
         ]
         current: page.filter
         onChosen: key => page.filter = key
@@ -92,7 +94,7 @@ CcPage {
         delegate: CcSection {
             id: group
             required property var modelData
-            readonly property var members: page.plugins.filter(p => PluginInfo.of(p.id).group === group.modelData.key && page.shows(p))
+            readonly property var members: page.plugins.filter(p => page.infoOf(p.id).group === group.modelData.key && page.shows(p))
             visible: page.detail === "" && members.length > 0
             title: modelData.title + " · " + members.length
             hint: modelData.hint
@@ -119,14 +121,14 @@ CcPage {
     }
     CcNote {
         visible: page.detail === ""
-        text: "Make your own: a plugin is a folder under plugins/ in the shell's folder, a line in Plugins.js and one in PluginInfo.js. PLUGINS.md there sets out how, so it looks and works like these."
+        text: "Make your own: a folder with a plugin.json, installed by the Store (Super + Shift + S) into ~/.local/share/aequalyn/plugins. PLUGINS.md in the shell's folder sets out how, so it looks and works like these."
     }
 
     // ---- one plugin -------------------------------------------------------------------
     component PluginCard: Rectangle {
         id: card
         property var plugin: ({})
-        readonly property var info: PluginInfo.of(plugin.id)
+        readonly property var info: page.infoOf(plugin.id)
         readonly property bool on: page.isOn(plugin.id)
         implicitHeight: 92
         radius: 12
