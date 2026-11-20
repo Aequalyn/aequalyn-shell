@@ -6,6 +6,7 @@
 // outside so every plugin can bind to ts.theme.
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import "root:/settings"
 import "Plugins.js" as PluginRegistry
 
@@ -20,6 +21,10 @@ Item {
     function pluginItem(id) { return pm.items[id] || null; }
 
     readonly property var allPlugins: PluginRegistry.list
+    // plugins the Store installed (~/.local/share/aequalyn/plugins/<id>, a plugin.json each)
+    readonly property var userPlugins: UserPlugins.list
+    // a plugin being reloaded is off for a moment
+    property string reloading: ""
 
     readonly property var enabledIds: (AequalynSettings.enabledPlugins && AequalynSettings.enabledPlugins.length)
         ? AequalynSettings.enabledPlugins : allPlugins.map(p => p.id)
@@ -31,7 +36,7 @@ Item {
         delegate: Loader {
             id: loader
             required property var modelData
-            readonly property bool wanted: pm.enabledIds.indexOf(modelData.id) >= 0
+            readonly property bool wanted: pm.enabledIds.indexOf(modelData.id) >= 0 && pm.reloading !== modelData.id
             active: wanted
             source: wanted ? modelData.source : ""
             property var openHandler: null       // Atelier's link to the theme switcher
@@ -75,6 +80,60 @@ Item {
                 }
             }
             onStatusChanged: if (status === Loader.Error) console.error("Plugin failed to load:", modelData.id, source)
+        }
+    }
+
+    // The Store's plugins: the same, on only while they are in enabledPlugins (a user
+    // plugin is never on by default). A rescan that finds nothing new leaves them alone.
+    Repeater {
+        model: pm.userPlugins
+        delegate: Loader {
+            id: userLoader
+            required property var modelData
+            readonly property bool wanted: (AequalynSettings.enabledPlugins || []).indexOf(modelData.id) >= 0
+                                           && pm.reloading !== modelData.id
+            active: wanted
+            source: wanted ? modelData.source : ""
+            onLoaded: {
+                const it = userLoader.item;
+                if (!it) return;
+                try { it.theme = Qt.binding(() => pm.theme); } catch (e) {}
+                const n = Object.assign({}, pm.items);
+                n[modelData.id] = it;
+                pm.items = n;
+            }
+            onItemChanged: {
+                if (userLoader.item || pm.items[modelData.id] === undefined) return;
+                const n = Object.assign({}, pm.items);
+                delete n[modelData.id];
+                pm.items = n;
+            }
+            onStatusChanged: if (status === Loader.Error) console.error("Plugin failed to load:", modelData.id, source)
+        }
+    }
+
+    Timer { id: reloadTimer; interval: 150; onTriggered: pm.reloading = "" }
+
+    // qs ipc call plugins rescan | reload <id> | list
+    IpcHandler {
+        target: "plugins"
+        // look for new, updated and removed Store plugins: a new one that is on loads at once
+        function rescan(): string { UserPlugins.rescan(); return "ok"; }
+        // drop one plugin and load it again
+        function reload(id: string): string {
+            if (!pm.allPlugins.some(p => p.id === id) && !UserPlugins.byId(id)) return "no plugin " + id;
+            pm.reloading = id;
+            reloadTimer.restart();
+            return "ok";
+        }
+        // every plugin: id, loaded, active, source (built-in or store), version
+        function list(): string {
+            const on = AequalynSettings.enabledPlugins || [];
+            const rows = pm.allPlugins.map(p => ({ id: p.id, source: "built-in", version: "",
+                active: pm.enabledIds.indexOf(p.id) >= 0, loaded: pm.items[p.id] !== undefined }))
+                .concat(pm.userPlugins.map(p => ({ id: p.id, source: "store", version: p.version,
+                active: on.indexOf(p.id) >= 0, loaded: pm.items[p.id] !== undefined })));
+            return JSON.stringify(rows);
         }
     }
 }
