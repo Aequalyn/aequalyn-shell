@@ -57,6 +57,22 @@ Scope {
         }
     }
 
+    // ---- the Market's catalog (aequalyn-store refresh keeps it, checked) ---------------
+    property var market: []
+    property bool marketLoaded: false
+    function loadMarket() { if (!marketProc.running) marketProc.running = true; }
+    Process {
+        id: marketProc
+        command: ["aequalyn-store", "market", "--json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.market = JSON.parse(text); root.marketLoaded = true; }
+                catch (e) { root.market = []; root.marketLoaded = false; }
+            }
+        }
+    }
+    onSectionChanged: if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
+
     // ---- one job at a time, its report live -------------------------------------------
     property bool busy: false
     property string jobTitle: ""
@@ -79,6 +95,7 @@ Scope {
             root.busy = false;
             root.jobCode = code;
             root.refresh();
+            root.loadMarket();
             UserPlugins.rescan();
         }
     }
@@ -486,11 +503,64 @@ Scope {
                                     }
                                 }
 
-                                // Market: the catalog
+                                // Market: the catalog, every item pinned to the commit that was checked
                                 Box {
                                     visible: root.section === "market"
                                     title: "The Market"
-                                    hint: "A catalog on GitHub of plugins, themes, cursors, wallpaper packs, looks and apps that others published, each reviewed and pinned to the commit that was checked. Until it is published, install from a git URL on each section's page: the same checks run either way."
+                                    hint: root.market.length > 0
+                                        ? "Published by others, reviewed, and installed at the exact commit that was checked."
+                                        : root.marketLoaded ? "The catalog is empty for now. Publish yours: github.com/Aequalyn/market."
+                                        : "The catalog could not be read yet (it is fetched from github.com/Aequalyn/market). Install from a git URL on each section's page meanwhile: the same checks run."
+                                    Btn {
+                                        text: "Refresh the catalog"
+                                        enabled: !root.busy
+                                        onClicked: root.runJob("Refreshing the catalog", ["refresh"])
+                                    }
+                                    Repeater {
+                                        model: root.section === "market" ? root.market : []
+                                        delegate: Rectangle {
+                                            id: mrow
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            implicitHeight: mcol.implicitHeight + 20
+                                            radius: 10
+                                            color: root.theme.bgBase
+                                            RowLayout {
+                                                id: mcol
+                                                anchors.fill: parent
+                                                anchors.margins: 10
+                                                spacing: 10
+                                                ColumnLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 2
+                                                    RowLayout {
+                                                        spacing: 8
+                                                        Text { text: mrow.modelData.name || mrow.modelData.id; color: root.theme.textPrimary; font.family: root.font; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                                        Pill { text: mrow.modelData.kind; tone: root.theme.accentPrimary }
+                                                        Pill {
+                                                            visible: mrow.modelData.state !== "not installed"
+                                                            text: mrow.modelData.state === "installed" ? "Installed" : "Update available"
+                                                            tone: mrow.modelData.state === "installed" ? root.theme.accentGreen : root.theme.accentOrange
+                                                        }
+                                                    }
+                                                    Text { text: mrow.modelData.about || ""; color: root.theme.textSecondary; font.family: root.font; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                    Text {
+                                                        text: (mrow.modelData.by ? "by " + mrow.modelData.by + "  ·  " : "") + String(mrow.modelData.commit || "").slice(0, 12)
+                                                              + (mrow.modelData.license ? "  ·  " + mrow.modelData.license : "") + "  ·  " + (mrow.modelData.repo || "")
+                                                        color: root.theme.textMuted; font.family: root.font; font.pixelSize: 10; elide: Text.ElideMiddle; Layout.fillWidth: true
+                                                    }
+                                                }
+                                                Btn {
+                                                    visible: mrow.modelData.state !== "installed"
+                                                    text: mrow.modelData.state === "update available" ? "Update" : "Install"
+                                                    primary: true
+                                                    enabled: !root.busy
+                                                    onClicked: root.runJob((mrow.modelData.state === "update available" ? "Updating " : "Installing ") + (mrow.modelData.name || mrow.modelData.id),
+                                                                           ["install-market", mrow.modelData.id])
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
 
                                 // Updates: everything installed, newest commit fetched and checked again
