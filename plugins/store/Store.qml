@@ -73,7 +73,7 @@ Scope {
     }
     onSectionChanged: {
         if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
-        if (section === "apps") detectApps();
+        if (section === "apps") { detectApps(); if (root.foundPage === 0) searchApps("", false); }
     }
 
     // ---- apps: the curated grid (apps.json) and the four backends ----------------------
@@ -128,7 +128,56 @@ Scope {
         terminal.running = true;
     }
     readonly property string flathub: "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+    // every app from every backend: aequalyn-store search-apps (no words: Flathub's most
+    // installed, page by page, and Snap's featured)
+    property var found: []
+    property var foundErrors: ({})
+    property string foundQuery: ""
+    property int foundPage: 0
+    property int flathubPages: 1
+    property string foundSource: "All"
+    property bool searching: false
+    function searchApps(q, more) {
+        if (searchProc.running) return;
+        root.foundPage = more ? root.foundPage + 1 : 1;
+        if (!more) { root.found = []; root.foundQuery = q; }
+        root.searching = true;
+        searchProc.command = ["aequalyn-store", "search-apps"].concat(q !== "" ? [q] : []).concat(["--page", String(root.foundPage)]);
+        searchProc.running = true;
+    }
+    Process {
+        id: searchProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.searching = false;
+                try {
+                    const d = JSON.parse(text);
+                    root.found = root.found.concat(d.results);
+                    root.foundErrors = d.errors || {};
+                    root.flathubPages = d.flathubPages || 1;
+                } catch (e) { root.foundErrors = { all: "the search failed" }; }
+            }
+        }
+    }
+    function foundInstalled(r) {
+        if (r.source === "Arch" || r.source === "AUR") return root.installedPkgs.pacman.indexOf(r.id) >= 0;
+        if (r.source === "Flatpak") return root.installedPkgs.flatpak.indexOf(r.id) >= 0;
+        return root.installedPkgs.snap.indexOf(r.id) >= 0;
+    }
+    function installFound(r) {
+        const a = r.source === "Arch" ? { pacman: r.id } : r.source === "AUR" ? { aur: r.id }
+                : r.source === "Flatpak" ? { flatpak: r.id } : { snap: r.id, snapAsk: true };
+        root.installApp(a, r.source);
+    }
     function installApp(a, via) {
+        // only plain package names ever reach the shell
+        const name = a.pacman || a.aur || a.flatpak || a.snap || "";
+        if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(name)) return;
+        if (via === "Snap" && a.snapAsk) {
+            root.inTerminal("sudo snap install " + name + " || { echo; read -rp \"" + name + " asks for classic confinement: it can reach your whole system. Install it that way? [y/N] \" a; "
+                            + "[ \"$a\" = y ] && sudo snap install " + name + " --classic; }");
+            return;
+        }
         if (via === "Arch") root.inTerminal("sudo pacman -S --needed " + a.pacman);
         else if (via === "AUR") root.inTerminal("yay -S --needed " + a.aur);
         else if (via === "Flatpak") root.inTerminal(root.flathub + " && flatpak install --user -y flathub " + a.flatpak);
@@ -181,6 +230,10 @@ Scope {
             const section = name;
             if (!root.sections.some(s => s.key === section)) return "no section " + section;
             root.section = section; root.open = true; root.refresh(); return "ok";
+        }
+        // look for apps in Arch, the AUR, Flathub and Snap
+        function search(words: string): void {
+            root.section = "apps"; root.open = true; root.detectApps(); root.searchApps(words, false);
         }
         // install from a git URL (or a folder), with every check first
         function install(kind: string, source: string): string {
@@ -658,6 +711,111 @@ Scope {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                                // every app from every backend
+                                Box {
+                                    visible: root.section === "apps"
+                                    title: "All apps"
+                                    hint: root.foundQuery === ""
+                                        ? "Flathub's most installed and Snap's featured apps. Search to look through Arch, the AUR, Flathub and Snap at once."
+                                        : "Everything that matches \"" + root.foundQuery + "\" in Arch, the AUR, Flathub and Snap."
+                                    RowLayout {
+                                        spacing: 8
+                                        Field {
+                                            id: appSearch
+                                            placeholder: "Search every app, like \"obsidian\""
+                                            Keys.onReturnPressed: root.searchApps(appSearch.text.trim(), false)
+                                        }
+                                        Btn { text: root.searching ? "Searching…" : "Search"; primary: true; enabled: !root.searching; onClicked: root.searchApps(appSearch.text.trim(), false) }
+                                    }
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Repeater {
+                                            model: ["All", "Arch", "AUR", "Flatpak", "Snap"]
+                                            delegate: Btn {
+                                                required property string modelData
+                                                readonly property int count: modelData === "All" ? root.found.length : root.found.filter(r => r.source === modelData).length
+                                                text: modelData + "  " + count + (root.foundErrors[modelData] ? "  ⚠" : "")
+                                                primary: root.foundSource === modelData
+                                                implicitHeight: 26
+                                                onClicked: root.foundSource = modelData
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        visible: Object.keys(root.foundErrors).length > 0
+                                        text: "Could not reach: " + Object.keys(root.foundErrors).join(", ") + ". Search again in a moment."
+                                        color: root.theme.accentOrange; font.family: root.font; font.pixelSize: 11
+                                    }
+                                    Repeater {
+                                        model: root.section === "apps" ? root.found.filter(r => root.foundSource === "All" || r.source === root.foundSource).slice(0, 400) : []
+                                        delegate: Rectangle {
+                                            id: frow
+                                            required property var modelData
+                                            readonly property bool have: root.foundInstalled(modelData)
+                                            readonly property bool ready: modelData.source === "Arch" || (modelData.source === "AUR" && root.backends.yay)
+                                                || (modelData.source === "Flatpak" && root.backends.flatpak) || (modelData.source === "Snap" && root.backends.snap)
+                                            Layout.fillWidth: true
+                                            implicitHeight: 54
+                                            radius: 10
+                                            color: root.theme.bgBase
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 10
+                                                anchors.rightMargin: 10
+                                                spacing: 10
+                                                Item {
+                                                    Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                                                    Image {
+                                                        id: ficon
+                                                        anchors.fill: parent
+                                                        source: frow.modelData.icon || ""
+                                                        sourceSize.width: 64; sourceSize.height: 64
+                                                        fillMode: Image.PreserveAspectFit
+                                                        asynchronous: true
+                                                        visible: status === Image.Ready
+                                                    }
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        visible: ficon.status !== Image.Ready
+                                                        text: "\u{F03D6}"
+                                                        color: root.theme.textMuted; font.family: root.font; font.pixelSize: 20
+                                                    }
+                                                }
+                                                ColumnLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 1
+                                                    RowLayout {
+                                                        spacing: 8
+                                                        Text { text: frow.modelData.name; color: root.theme.textPrimary; font.family: root.font; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.maximumWidth: 320 }
+                                                        Pill { text: frow.modelData.source === "Flatpak" ? "Flathub" : frow.modelData.source; tone: root.theme.accentPrimary }
+                                                        Pill { visible: frow.have; text: "Installed"; tone: root.theme.accentGreen }
+                                                    }
+                                                    Text { text: frow.modelData.about; color: root.theme.textSecondary; font.family: root.font; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
+                                                }
+                                                Text {
+                                                    visible: frow.modelData.popularity > 0
+                                                    text: frow.modelData.source === "AUR" ? frow.modelData.popularity + " votes"
+                                                        : Math.round(frow.modelData.popularity / 1000) + "k installs a month"
+                                                    color: root.theme.textMuted; font.family: root.font; font.pixelSize: 10
+                                                }
+                                                Btn {
+                                                    visible: !frow.have
+                                                    text: frow.ready ? "Install" : "Needs " + (frow.modelData.source === "AUR" ? "the AUR" : frow.modelData.source === "Flatpak" ? "Flathub" : "Snap")
+                                                    primary: frow.ready
+                                                    enabled: frow.ready && !terminal.running
+                                                    onClicked: root.installFound(frow.modelData)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Btn {
+                                        visible: root.foundPage > 0 && root.foundPage < root.flathubPages && (root.foundSource === "All" || root.foundSource === "Flatpak")
+                                        text: root.searching ? "Loading…" : "More from Flathub (page " + (root.foundPage + 1) + " of " + root.flathubPages + ")"
+                                        enabled: !root.searching
+                                        onClicked: root.searchApps(root.foundQuery, true)
                                     }
                                 }
                                 Box {
