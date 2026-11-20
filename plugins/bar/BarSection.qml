@@ -53,6 +53,10 @@ Item {
   onWidthChanged: settle()
   onHeightChanged: settle()
   onVerticalChanged: { offset = 0; settle(); }
+  // a region that briefly overflowed (its widgets still loading, a long window title) and
+  // then fits again goes back to rest: left scrolled, its widgets sat partly outside it
+  onOverflowingChanged: settle()
+  onMaxXChanged: if (!flick.moving) settle()
 
   Flickable {
     id: flick
