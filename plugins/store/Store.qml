@@ -218,11 +218,14 @@ Scope {
     property int importedPage: 0
     readonly property int importedPerPage: 15
     readonly property int importedAt: Math.min(root.importedPage, Math.max(0, Math.ceil(root.importedApps.length / root.importedPerPage) - 1)) * root.importedPerPage
-    // the page's cards, as rows of five (a RowLayout gives each its fifth)
+    // the page's cards, as rows of five (a RowLayout gives each its fifth), the
+    // page always holding its three rows -- what the page does not show is empty
+    // rows, so the view keeps its shape and a short page sits its cards top-left
     function importedRows() {
         const shown = root.importedApps.slice(root.importedAt, root.importedAt + root.importedPerPage);
         const rows = [];
         for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
+        while (rows.length < Math.ceil(root.importedPerPage / 5)) rows.push([]);
         return rows;
     }
     function checkHandler() { if (!mimeProc.running) mimeProc.running = true; }
@@ -1213,6 +1216,9 @@ Scope {
                                             id: cardRow
                                             required property var modelData
                                             Layout.fillWidth: true
+                                            // an all-ghost row keeps the card height, so the page
+                                            // holds its 5x3 shape even when nothing is in it
+                                            Layout.preferredHeight: 150
                                             spacing: 10
                                             Repeater {
                                                 model: cardRow.modelData
