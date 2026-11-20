@@ -529,9 +529,20 @@ Scope {
     AtelierHost.open("docks", screenName || "");
   }
 
-  // qs ipc call dock toggle | show | hide | add | settings [n]
+  // qs ipc call dock toggle | show | hide | add | settings [n] | importLook <json>
   IpcHandler {
     target: "dock"
+    // a dock look (a Store look's dock piece): its style keys, worn by every dock, which
+    // stop following the bar. Keys the docks don't know are dropped; cleanDock checks the rest
+    function importLook(json: string): string {
+      let set = null;
+      try { set = JSON.parse(json); } catch (e) { return "not a look"; }
+      if (!set || typeof set !== "object" || Array.isArray(set) || root.docks.length === 0) return "not a look";
+      const picked = {};
+      for (const k of root.barKeys) if (set[k] !== undefined) picked[k] = set[k];
+      if (Object.keys(picked).length === 0) return "not a look";
+      return root.patchManyScope(0, Object.assign({ followBar: false }, picked), "all") ? "ok" : "does not fit";
+    }
     function toggle(): void { AequalynSettings.apply("dockEnabled", !root.enabled); }
     function show(): void { AequalynSettings.apply("dockEnabled", true); }
     function hide(): void { AequalynSettings.apply("dockEnabled", false); }
