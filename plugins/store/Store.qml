@@ -1219,6 +1219,13 @@ Scope {
                                                 model: cardRow.modelData
                                                 delegate: AppCard { Layout.fillWidth: true }
                                             }
+                                            // the row keeps all five of its slots: what the page
+                                            // does not show still holds a fifth, so a short page
+                                            // sits its cards top-left instead of stretching them
+                                            Repeater {
+                                                model: 5 - cardRow.modelData.length
+                                                delegate: Item { Layout.fillWidth: true }
+                                            }
                                         }
                                     }
                                     // the pages of cards, ‹ and › to walk them
