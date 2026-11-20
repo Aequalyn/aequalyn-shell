@@ -1,0 +1,200 @@
+[
+  {
+    "id": "firefox",
+    "name": "Firefox",
+    "about": "The web browser",
+    "icon": "firefox",
+    "pacman": "firefox",
+    "aur": "",
+    "flatpak": "org.mozilla.firefox",
+    "snap": "firefox",
+    "snapClassic": false
+  },
+  {
+    "id": "chromium",
+    "name": "Chromium",
+    "about": "The open web browser Chrome is built on",
+    "icon": "chromium",
+    "pacman": "chromium",
+    "aur": "",
+    "flatpak": "org.chromium.Chromium",
+    "snap": "chromium",
+    "snapClassic": false
+  },
+  {
+    "id": "brave",
+    "name": "Brave",
+    "about": "A browser that blocks ads and trackers",
+    "icon": "brave",
+    "pacman": "",
+    "aur": "brave-bin",
+    "flatpak": "com.brave.Browser",
+    "snap": "brave",
+    "snapClassic": false
+  },
+  {
+    "id": "discord",
+    "name": "Discord",
+    "about": "Voice, video and text chat",
+    "icon": "discord",
+    "pacman": "discord",
+    "aur": "",
+    "flatpak": "com.discordapp.Discord",
+    "snap": "discord",
+    "snapClassic": false
+  },
+  {
+    "id": "spotify",
+    "name": "Spotify",
+    "about": "Music and podcasts",
+    "icon": "spotify",
+    "pacman": "",
+    "aur": "spotify",
+    "flatpak": "com.spotify.Client",
+    "snap": "spotify",
+    "snapClassic": false
+  },
+  {
+    "id": "steam",
+    "name": "Steam",
+    "about": "Games, and Proton to play Windows ones",
+    "icon": "steam",
+    "pacman": "steam",
+    "aur": "",
+    "flatpak": "com.valvesoftware.Steam",
+    "snap": "steam",
+    "snapClassic": false
+  },
+  {
+    "id": "vscode",
+    "name": "Visual Studio Code",
+    "about": "The code editor",
+    "icon": "visual-studio-code",
+    "pacman": "",
+    "aur": "visual-studio-code-bin",
+    "flatpak": "com.visualstudio.code",
+    "snap": "code",
+    "snapClassic": true
+  },
+  {
+    "id": "obsidian",
+    "name": "Obsidian",
+    "about": "Notes in plain markdown, linked",
+    "icon": "obsidian",
+    "pacman": "obsidian",
+    "aur": "",
+    "flatpak": "md.obsidian.Obsidian",
+    "snap": "obsidian",
+    "snapClassic": true
+  },
+  {
+    "id": "gimp",
+    "name": "GIMP",
+    "about": "Edit photos and images",
+    "icon": "gimp",
+    "pacman": "gimp",
+    "aur": "",
+    "flatpak": "org.gimp.GIMP",
+    "snap": "gimp",
+    "snapClassic": false
+  },
+  {
+    "id": "thunderbird",
+    "name": "Thunderbird",
+    "about": "Mail, calendars and contacts",
+    "icon": "thunderbird",
+    "pacman": "thunderbird",
+    "aur": "",
+    "flatpak": "org.mozilla.Thunderbird",
+    "snap": "thunderbird",
+    "snapClassic": false
+  },
+  {
+    "id": "telegram",
+    "name": "Telegram",
+    "about": "Messages, fast and synced",
+    "icon": "telegram",
+    "pacman": "telegram-desktop",
+    "aur": "",
+    "flatpak": "org.telegram.desktop",
+    "snap": "telegram-desktop",
+    "snapClassic": false
+  },
+  {
+    "id": "signal",
+    "name": "Signal",
+    "about": "Private messages and calls",
+    "icon": "signal",
+    "pacman": "signal-desktop",
+    "aur": "",
+    "flatpak": "org.signal.Signal",
+    "snap": "signal-desktop",
+    "snapClassic": false
+  },
+  {
+    "id": "libreoffice",
+    "name": "LibreOffice",
+    "about": "Documents, spreadsheets and slides",
+    "icon": "libreoffice",
+    "pacman": "libreoffice-fresh",
+    "aur": "",
+    "flatpak": "org.libreoffice.LibreOffice",
+    "snap": "libreoffice",
+    "snapClassic": false
+  },
+  {
+    "id": "blender",
+    "name": "Blender",
+    "about": "3D modelling, animation and rendering",
+    "icon": "blender",
+    "pacman": "blender",
+    "aur": "",
+    "flatpak": "org.blender.Blender",
+    "snap": "blender",
+    "snapClassic": true
+  },
+  {
+    "id": "bitwarden",
+    "name": "Bitwarden",
+    "about": "A password manager",
+    "icon": "bitwarden",
+    "pacman": "bitwarden",
+    "aur": "",
+    "flatpak": "com.bitwarden.desktop",
+    "snap": "bitwarden",
+    "snapClassic": false
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "about": "Team chat",
+    "icon": "slack",
+    "pacman": "",
+    "aur": "slack-desktop",
+    "flatpak": "com.slack.Slack",
+    "snap": "slack",
+    "snapClassic": false
+  },
+  {
+    "id": "zoom",
+    "name": "Zoom",
+    "about": "Video meetings",
+    "icon": "zoom",
+    "pacman": "",
+    "aur": "zoom",
+    "flatpak": "us.zoom.Zoom",
+    "snap": "zoom-client",
+    "snapClassic": false
+  },
+  {
+    "id": "postman",
+    "name": "Postman",
+    "about": "Build and test APIs",
+    "icon": "postman",
+    "pacman": "",
+    "aur": "postman-bin",
+    "flatpak": "com.getpostman.Postman",
+    "snap": "postman",
+    "snapClassic": false
+  }
+]
