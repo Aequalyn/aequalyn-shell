@@ -71,7 +71,75 @@ Scope {
             }
         }
     }
-    onSectionChanged: if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
+    onSectionChanged: {
+        if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
+        if (section === "apps") detectApps();
+    }
+
+    // ---- apps: the curated grid (apps.json) and the four backends ----------------------
+    // pacman always; yay (the AUR), flatpak (Flathub) and snap when they are installed.
+    // Installs run in a terminal, where sudo asks for the password.
+    property var apps: []
+    property var backends: ({ yay: false, flatpak: false, snap: false })
+    property var installedPkgs: ({ pacman: [], flatpak: [], snap: [] })
+    FileView {
+        path: Qt.resolvedUrl("apps.json").toString().replace("file://", "")
+        onLoaded: { try { root.apps = JSON.parse(text()); } catch (e) { root.apps = []; } }
+    }
+    function detectApps() { if (!detect.running) detect.running = true; }
+    Process {
+        id: detect
+        command: ["sh", "-c", 'for b in yay flatpak snap; do command -v "$b" >/dev/null 2>&1 && echo "has $b"; done; '
+            + 'echo "#pacman"; pacman -Qq 2>/dev/null; echo "#flatpak"; flatpak list --app --columns=application 2>/dev/null; '
+            + 'echo "#snap"; snap list 2>/dev/null | tail -n +2 | cut -d" " -f1']
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const b = { yay: false, flatpak: false, snap: false };
+                const got = { pacman: [], flatpak: [], snap: [] };
+                let part = "";
+                for (const line of text.split("\n")) {
+                    if (line.startsWith("has ")) b[line.slice(4)] = true;
+                    else if (line.startsWith("#")) part = line.slice(1);
+                    else if (line !== "" && got[part]) got[part].push(line.trim());
+                }
+                root.backends = b;
+                root.installedPkgs = got;
+            }
+        }
+    }
+    // which backend this app is installed from, or ""
+    function installedVia(a) {
+        const pk = a.pacman || a.aur;
+        if (pk && root.installedPkgs.pacman.indexOf(pk) >= 0) return a.pacman ? "Arch" : "AUR";
+        if (a.flatpak && root.installedPkgs.flatpak.indexOf(a.flatpak) >= 0) return "Flatpak";
+        if (a.snap && root.installedPkgs.snap.indexOf(a.snap) >= 0) return "Snap";
+        return "";
+    }
+    // a command in a terminal, kept open at the end so its output can be read
+    Process {
+        id: terminal
+        onExited: root.detectApps()
+    }
+    function inTerminal(cmd) {
+        if (terminal.running) return;
+        const tail = cmd + '; echo; read -rp "Done. Press Enter to close " _';
+        terminal.command = ["sh", "-c", 'if command -v kitty >/dev/null; then exec kitty sh -c "$1"; '
+            + 'elif command -v foot >/dev/null; then exec foot sh -c "$1"; else exec alacritty -e sh -c "$1"; fi', "sh", tail];
+        terminal.running = true;
+    }
+    readonly property string flathub: "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
+    function installApp(a, via) {
+        if (via === "Arch") root.inTerminal("sudo pacman -S --needed " + a.pacman);
+        else if (via === "AUR") root.inTerminal("yay -S --needed " + a.aur);
+        else if (via === "Flatpak") root.inTerminal(root.flathub + " && flatpak install --user -y flathub " + a.flatpak);
+        else if (via === "Snap") root.inTerminal("sudo snap install " + a.snap + (a.snapClassic ? " --classic" : ""));
+    }
+    function installBackend(name) {
+        if (name === "yay") root.inTerminal("sudo pacman -S --needed git base-devel && d=$(mktemp -d) && git clone https://aur.archlinux.org/yay-bin.git \"$d\" && cd \"$d\" && makepkg -si");
+        else if (name === "flatpak") root.inTerminal("sudo pacman -S --needed flatpak && " + root.flathub);
+        else if (name === "snap") root.inTerminal("yay -S --needed snapd && sudo systemctl enable --now snapd.socket && sudo ln -sfn /var/lib/snapd/snap /snap");
+    }
+    onOpenChanged: if (open && section === "apps") detectApps()
 
     // ---- one job at a time, its report live -------------------------------------------
     property bool busy: false
@@ -491,14 +559,113 @@ Scope {
                                 }
                                 InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
 
-                                // Apps: the package search lives in the control center
+                                // Apps: the four backends, then the popular apps, each from any backend that has it
                                 Box {
                                     visible: root.section === "apps"
-                                    title: "Apps from Arch, the AUR, Flathub and Snap"
-                                    hint: "Search the packages and install them with their own tools: pacman for Arch (multilib included), yay for the AUR. Live output, and the password typed in the page."
+                                    title: "Backends"
+                                    hint: "Where apps come from. Arch's own repositories (multilib included) are always here; the AUR, Flathub and Snap are one click away."
+                                    Repeater {
+                                        model: [
+                                            { key: "pacman", label: "Arch repositories", tool: "pacman", needs: "" },
+                                            { key: "yay", label: "AUR", tool: "yay", needs: "" },
+                                            { key: "flatpak", label: "Flathub", tool: "flatpak", needs: "" },
+                                            { key: "snap", label: "Snap Store", tool: "snapd, from the AUR", needs: "yay" }
+                                        ]
+                                        delegate: RowLayout {
+                                            required property var modelData
+                                            readonly property bool ready: modelData.key === "pacman" || root.backends[modelData.key] === true
+                                            Layout.fillWidth: true
+                                            spacing: 10
+                                            Text { text: modelData.label; color: root.theme.textPrimary; font.family: root.font; font.pixelSize: 13; Layout.preferredWidth: 160 }
+                                            Text { text: modelData.tool; color: root.theme.textMuted; font.family: root.font; font.pixelSize: 11; Layout.fillWidth: true }
+                                            Pill { visible: parent.ready; text: "Ready"; tone: root.theme.accentGreen }
+                                            Btn {
+                                                visible: !parent.ready
+                                                text: "Install " + modelData.label
+                                                enabled: !terminal.running && (modelData.needs === "" || root.backends[modelData.needs] === true)
+                                                onClicked: root.installBackend(modelData.key)
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        visible: !root.backends.yay && !root.backends.snap
+                                        text: "Snap comes from the AUR: install the AUR first."
+                                        color: root.theme.textMuted; font.family: root.font; font.pixelSize: 11
+                                    }
+                                }
+                                Box {
+                                    visible: root.section === "apps"
+                                    title: "Popular apps"
+                                    hint: "Each from any backend that carries it. The install opens in a terminal, where sudo asks for your password."
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        Repeater {
+                                            model: root.section === "apps" ? root.apps : []
+                                            delegate: Rectangle {
+                                                id: appCard
+                                                required property var modelData
+                                                readonly property string via: root.installedVia(modelData)
+                                                width: 236
+                                                height: 150
+                                                radius: 12
+                                                color: root.theme.bgBase
+                                                border.width: 1
+                                                border.color: root.theme.bgBorder
+                                                ColumnLayout {
+                                                    anchors.fill: parent
+                                                    anchors.margins: 12
+                                                    spacing: 6
+                                                    RowLayout {
+                                                        spacing: 10
+                                                        Image {
+                                                            source: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + appCard.modelData.icon + ".png"
+                                                            sourceSize.width: 64; sourceSize.height: 64
+                                                            Layout.preferredWidth: 34; Layout.preferredHeight: 34
+                                                            fillMode: Image.PreserveAspectFit
+                                                            asynchronous: true
+                                                            smooth: true
+                                                        }
+                                                        ColumnLayout {
+                                                            spacing: 1
+                                                            Layout.fillWidth: true
+                                                            Text { text: appCard.modelData.name; color: root.theme.textPrimary; font.family: root.font; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                                                            Pill { visible: appCard.via !== ""; text: "Installed · " + appCard.via; tone: root.theme.accentGreen }
+                                                        }
+                                                    }
+                                                    Text { text: appCard.modelData.about; color: root.theme.textSecondary; font.family: root.font; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                    Item { Layout.fillHeight: true }
+                                                    Flow {
+                                                        Layout.fillWidth: true
+                                                        spacing: 6
+                                                        Repeater {
+                                                            model: [
+                                                                { via: appCard.modelData.pacman ? "Arch" : "AUR", has: !!(appCard.modelData.pacman || appCard.modelData.aur),
+                                                                  ready: !!appCard.modelData.pacman || root.backends.yay === true },
+                                                                { via: "Flatpak", has: !!appCard.modelData.flatpak, ready: root.backends.flatpak === true },
+                                                                { via: "Snap", has: !!appCard.modelData.snap, ready: root.backends.snap === true }
+                                                            ].filter(o => o.has)
+                                                            delegate: Btn {
+                                                                required property var modelData
+                                                                text: modelData.via
+                                                                implicitHeight: 26
+                                                                primary: modelData.ready && appCard.via === ""
+                                                                enabled: modelData.ready && !terminal.running
+                                                                onClicked: root.installApp(appCard.modelData, modelData.via)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Box {
+                                    visible: root.section === "apps"
+                                    title: "Anything else"
+                                    hint: "Search every package in Arch's repositories and the AUR."
                                     Btn {
                                         text: "Search packages"
-                                        primary: true
                                         onClicked: { root.open = false; root.runSide(["qs", "ipc", "call", "aequalyn", "page", "store"]); }
                                     }
                                 }
