@@ -26,6 +26,8 @@ var info = {
                       about: "What is playing, on the bar: a live visualizer, the cover and the buttons." },
     appLauncher:    { icon: "\u{F003B}", group: "key",        keys: "Super + D",            page: "apps",
                       about: "Find and open apps." },
+    store:          { icon: "\u{F0110}", group: "key",        keys: "Super + Alt + S",      page: "",
+                      about: "Plugins, themes, cursors, wallpapers and looks from git, checked before they are kept." },
     programsMenu:   { icon: "\u{F035C}", group: "key",        keys: "Super + Space",        page: "",
                       about: "Every program, desktop and command line, by category." },
     defaultApps:    { icon: "\u{F0BE0}", group: "key",        keys: "Super + Alt + A",      page: "apps",

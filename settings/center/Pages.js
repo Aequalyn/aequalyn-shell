@@ -90,7 +90,7 @@ var pages = {
     webapps:   { label: "Web apps", icon: "\u{F0595}", file: "Webapps",
                  words: ["Add a web app", "Remove a web app", "Web app browser", "Web app shortcuts"],
                  also: "webapp web app website site reddit chatgpt youtube music shortcut launcher app window" },
-    store:     { label: "Store", icon: "\u{F034A}", file: "Store",
+    store:     { label: "Packages", icon: "\u{F034A}", file: "Store",
                   words: ["Install a package", "Install from the AUR", "Arch packages", "AUR packages"],
                   also: "store install software package aur pacman yay app application" },
     clipboard: { label: "Clipboard", icon: "\u{F0336}", file: "Clipboard",
