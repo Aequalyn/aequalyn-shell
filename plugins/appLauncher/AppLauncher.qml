@@ -29,10 +29,95 @@ Scope {
         searchInput.forceActiveFocus()
       }
     }
+    // every app the launcher would list whose name matches, as text: a way to
+    // see the list from a terminal (and to check one is seen at all)
+    function search(words: string): string {
+      const q = words.trim().toLowerCase();
+      const hits = root.mergedApps()
+        .filter(d => String(d.name || d.id || "").toLowerCase().includes(q))
+        .map(d => String(d.name || d.id) + " [" + d.id + "]");
+      return hits.length ? hits.join("\n") : "(nothing matches \"" + words + "\")";
+    }
+    // re-read the applications directories: the startup model never sees a file
+    // written after it (apps installed while the shell ran)
+    function refresh(): string { root.scan(); return "ok"; }
   }
 
   property int selectedIndex: 0
   property bool open: false
+  // a look at the directories as the launcher opens: an app may have arrived since
+  onOpenChanged: if (root.open) root.scan()
+
+  // ---- what the launcher lists ----------------------------------------------------------
+  // Quickshell reads the desktop entries once, as the shell starts, and is never told
+  // of a file written after: an app installed while the shell ran -- a package, an
+  // AppImage the Store imported -- stays invisible until the next restart. So the
+  // applications directories are read again as the launcher opens, and what the
+  // model missed is listed beside it, launched the same way.
+  property var scanApps: []
+  readonly property string scanLs: 'shopt -s nullglob\n'
+    + 'A=\'\n'
+    + 'FNR == 1 { id = FILENAME; sub(/.*\\//, "", id); sub(/\\.desktop$/, "", id) }\n'
+    + '/^\\[Desktop Entry\\]$/ { inentry = 1; next }\n'
+    + '/^\\[/ { inentry = 0; next }\n'
+    + 'inentry && /^(Name|GenericName|Exec|Icon|Terminal|NoDisplay|Type|Categories|Keywords)=/ {\n'
+    + '  print id "\\t" substr($0, 1, index($0, "=") - 1) "\\t" substr($0, index($0, "=") + 1)\n'
+    + '}\n'
+    + '\'\n'
+    + 'scan() { local f=("$1"/*.desktop); [ ${#f[@]} -gt 0 ] && awk "$A" "${f[@]}"; return 0; }\n'
+    + 'scan "${XDG_DATA_HOME:-$HOME/.local/share}/applications"\n'
+    + 'oldifs=$IFS; IFS=:\n'
+    + 'for x in ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do scan "$x/applications"; done\n'
+    + 'IFS=$oldifs\n'
+    + 'scan /var/lib/flatpak/exports/share/applications\n'
+    + 'scan "$HOME/.local/share/flatpak/exports/share/applications"\n'
+  function scanLaunch(e) {
+    // a desktop Exec with its field codes left out, in a terminal when it asks for one
+    const cmd = String(e.exec).replace(/%[a-zA-Z]/g, "").trim();
+    if (e.runInTerminal)
+      Quickshell.execDetached(["sh", "-c",
+        't=kitty; command -v kitty >/dev/null 2>&1 || t=foot; command -v foot >/dev/null 2>&1 || t=alacritty; '
+        + 'exec "$t" -e sh -c "$1"', "sh", cmd]);
+    else
+      Quickshell.execDetached(["sh", "-c", cmd]);
+  }
+  Process {
+    id: scanProc
+    command: ["bash", "-c", root.scanLs]
+    stdout: StdioCollector {
+      onStreamFinished: {
+        // one line an id, a key and a value of its [Desktop Entry]
+        const byId = {};
+        for (const line of text.split("\n")) {
+          const f = line.split("\t");
+          if (f.length === 3) (byId[f[0]] = byId[f[0]] || {})[f[1]] = f[2];
+        }
+        const out = [];
+        for (const id in byId) {
+          const e = byId[id];
+          if (e.Type !== "Application" || e.NoDisplay === "true" || !e.Name || !e.Exec) continue;
+          out.push({ id: id, name: e.Name, genericName: e.GenericName || "", icon: e.Icon || "",
+                     runInTerminal: e.Terminal === "true",
+                     categories: (e.Categories || "").split(";").filter(c => c !== ""),
+                     keywords: (e.Keywords || "").split(/[; ]/).filter(k => k !== ""),
+                     exec: e.Exec, execute: () => root.scanLaunch(e) });
+        }
+        root.scanApps = out;
+      }
+    }
+  }
+  function scan() { if (!scanProc.running) scanProc.running = true; }
+  // the list as the launcher shows it: the model first (its entries are the richer
+  // ones), then what the scan saw that the model never did
+  function mergedApps() {
+    const seenId = new Set(), seenName = new Set(), all = [];
+    for (const d of [...DesktopEntries.applications.values, ...root.scanApps]) {
+      const n = String(d.name || d.id || "").trim().toLowerCase();
+      if (!n || seenName.has(n) || seenId.has(d.id)) continue;
+      seenId.add(d.id); seenName.add(n); all.push(d);
+    }
+    return all;
+  }
 
   // 1 for a command-line program (a terminal app), 0 for the rest: they always list last
   function cliRank(d) { return (d.runInTerminal === true) ? 1 : 0; }
@@ -41,13 +126,7 @@ Scope {
     id: filteredApps
     objectProp: "id"
     values: {
-      const seen = new Set();
-      const all = [...DesktopEntries.applications.values].filter(d => {
-        const key = String(d.name || d.id || "").trim().toLowerCase();
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      const all = root.mergedApps();
       const q = searchInput.text.trim().toLowerCase();
       if (q === "") return all.sort((a, b) => root.cliRank(a) - root.cliRank(b) || a.name.localeCompare(b.name));
       return all.filter(d =>
