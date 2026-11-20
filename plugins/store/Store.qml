@@ -509,8 +509,8 @@ Scope {
                                     title: "The Market"
                                     hint: root.market.length > 0
                                         ? "Published by others, reviewed, and installed at the exact commit that was checked."
-                                        : root.marketLoaded ? "The catalog is empty for now. Publish yours: github.com/Aequalyn/market."
-                                        : "The catalog could not be read yet (it is fetched from github.com/Aequalyn/market). Install from a git URL on each section's page meanwhile: the same checks run."
+                                        : root.marketLoaded ? "The catalog is empty for now. Publish yours: github.com/Aequalyn/aequalyn-market."
+                                        : "The catalog could not be read yet (it is fetched from github.com/Aequalyn/aequalyn-market). Install from a git URL on each section's page meanwhile: the same checks run."
                                     Btn {
                                         text: "Refresh the catalog"
                                         enabled: !root.busy
