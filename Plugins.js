@@ -38,5 +38,6 @@ var list = [
     { id: "batteryGuard",  label: "Battery guard",     source: "plugins/batteryGuard/BatteryGuard.qml" },
     { id: "breaks",        label: "Break reminder",    source: "plugins/breaks/Breaks.qml" },
     { id: "diskWatch",     label: "Disk watch",        source: "plugins/diskWatch/DiskWatch.qml" },
+    { id: "store",          label: "Store",          source: "plugins/store/Store.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
