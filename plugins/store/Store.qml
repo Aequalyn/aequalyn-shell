@@ -520,10 +520,9 @@ Scope {
     component AppCard: Rectangle {
         id: card
         required property var modelData
-        // a fifth of its row when a RowLayout lays it out (fillWidth); this fixed
-        // width is only the fallback outside a layout -- a positioner's children
-        // must never size it from its own width (that loops)
-        width: 203
+        // laid out by its row: no width of its own (a fixed one made the layouts
+        // treat a lone card as the whole row); every slot of the row carries the
+        // same preferred width, so all fifths come out equal
         height: 150
         radius: 12
         color: root.theme.bgBase
@@ -1217,14 +1216,15 @@ Scope {
                                             spacing: 10
                                             Repeater {
                                                 model: cardRow.modelData
-                                                delegate: AppCard { Layout.fillWidth: true }
+                                                delegate: AppCard { Layout.fillWidth: true; Layout.preferredWidth: 203 }
                                             }
-                                            // the row keeps all five of its slots: what the page
-                                            // does not show still holds a fifth, so a short page
-                                            // sits its cards top-left instead of stretching them
+                                            // the row keeps all five of its slots, each the same
+                                            // preferred width so the fifths come out equal: what the
+                                            // page does not show holds a fifth unseen, and a short
+                                            // page sits its cards top-left instead of stretching them
                                             Repeater {
                                                 model: 5 - cardRow.modelData.length
-                                                delegate: Item { Layout.fillWidth: true }
+                                                delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
                                             }
                                         }
                                     }
