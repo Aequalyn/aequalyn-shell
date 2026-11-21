@@ -118,6 +118,15 @@ plugin crashes, leaks and crashes again on purpose -- three narrated failures
 in its own process -- while the shell never goes down, until the watchdog
 turns it off with a notification. Turn it on again to watch once more.
 
+**Root goes through one gate, too.** A plugin that wants root declares its
+actions in its manifest (command pinned, printed by the Store before
+installing) and asks through `aequalyn-watchdog exec-root`; a window names
+the plugin and the exact command, and the password feeds `sudo -S` on a
+pipe. Anything that looks like sudo/pkexec outside the gate is stopped and
+counts as a failure. The supervisor itself refuses to run as root: the
+whole chain is the user's session. The full story is in
+[`tools/watchdog/README.md`](tools/watchdog/README.md).
+
 Started at login by `aequalyn-session-start` (and by the shell itself if it
 finds no supervisor), it adopts an already-running shell instead of
 replacing it. The full contract — failure classes, budgets

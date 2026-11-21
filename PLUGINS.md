@@ -69,6 +69,52 @@ To see all of it happen on purpose, turn on **Watchdog self-test** in Settings â
 Plugins: it crashes, leaks and crashes again in its own process -- with a message
 narrating each step -- while the shell stays up, until the watchdog turns it off.
 
+## Root: one gate, declared up front
+
+Your plugin runs as the user, and it may never reach for root on its own -- not
+`sudo`, not `pkexec`, not `su`. The watchdog watches every plugin's process tree
+for exactly that, stops the attempt, and turns the plugin off after three. The
+only door is the gate, and the command is never yours to pass in: you declare
+each action in your manifest, command included, and ask for it by name.
+
+In `plugin.json` (a Store plugin):
+
+```json
+"needsRoot": [
+  {
+    "id": "fix-service",
+    "label": "Restart the disk monitor",
+    "about": "After swapping a disk, so it sees the new one",
+    "command": ["/usr/bin/systemctl", "restart", "smartd"]
+  }
+]
+```
+
+- `command` is a fixed argv, run through `sudo -S` by the watchdog itself: no
+  shell, no arguments you make up at run time, no `sudo` inside it (the gate
+  adds sudo). At most 8 actions, 64 words, and 512 characters a word.
+- The Store says all of this out loud while it checks your plugin, before
+  anything is installed; the Plugins page badges the card with
+  `runs as root`.
+- A built-in declares the same shape on its line in `Plugins.js`:
+  `needsRoot: [{ id: "fix-service", label: "...", command: ["..."] }]`.
+
+Calling it (sandboxed or not, from a `Process`):
+
+```qml
+Process {
+    command: ["aequalyn-watchdog", "exec-root", "fix-service"]
+    // stdout: {"ok": true, "code": 0, "out": "...", "err": "..."}
+}
+```
+
+What the user sees, every time: a window naming your plugin, the action and
+the exact command, with the password field that feeds sudo. No answer in two
+minutes is a denial. "Always allow this" only remembers consent -- the
+password is asked again on the next run. The exit code is the command's own;
+a denial answers `{"ok": false, "error": "denied by the user"}` with exit
+126.
+
 ## The host singleton
 
 Other parts of the shell (a bar button, the control center) reach your plugin through

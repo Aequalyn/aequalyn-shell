@@ -79,7 +79,13 @@ aequalyn-watchdog log [-n N]     # the supervisor's log
 aequalyn-watchdog ensure         # start unless running or stopped by hand (the shell's keep-alive)
 aequalyn-watchdog stop [--kill]  # stop supervising (processes keep running unless --kill)
 aequalyn-watchdog test <id> leak|hang|crash   # restart a plugin in a failure-test mode
+aequalyn-watchdog root-actions   # every root action every plugin declared (and its exact command)
+aequalyn-watchdog exec-root <id> [--as <built-in>]   # a plugin's one door to root (see below)
+aequalyn-watchdog decide <request> once|always|deny # the escalation window's answer (the window calls this)
 ```
+
+The supervisor refuses to run as root, and everything under it -- the shell,
+every plugin, every escalation -- is the user's session, by design.
 
 `start` is what `aequalyn-session-start` runs at login, and what
 `Watchdog.qml` spawns if it finds no supervisor. `stop` leaves everything
@@ -97,6 +103,60 @@ The supervisor's own log is
 is next to it in `logs/`, and the per-plugin host configs are generated
 under `~/.local/state/aequalyn/watchdog/hosts/<id>/` (symlinks to the
 real config folders, so `root:/` imports resolve as in the shell).
+
+## Root: one gate, declared up front
+
+Plugins are user code, and none of them may reach for root on their own.
+The gate is the only door, and it has three locks on it, in this order:
+
+1. **Declared.** A plugin that wants root says so in its manifest, before it
+   is ever installed: `needsRoot` in `plugin.json` (a Store plugin) or a
+   `needsRoot: [...]` on its line in `Plugins.js` (a built-in). Each action
+   has an id, a label and a **fixed command** -- an argv pinned in the
+   manifest, never something the plugin passes in at run time. The Store
+   prints every declared action and its exact command while it checks the
+   plugin; the Plugins page badges the card with `runs as root`.
+2. **Pinned.** `aequalyn-watchdog exec-root <actionId>` connects to the
+   supervisor's socket, and the kernel says who is on the other end
+   (`SO_PEERCRED`): the caller is matched to the supervised unit its process
+   chain really belongs to, so a plugin cannot ask as another one, and a
+   process outside the supervised tree (a terminal, an orphan) is refused
+   outright. A plugin unit may only ever ask for escalations: every other
+   control command is refused when the caller belongs to one.
+3. **Asked.** The supervisor calls the shell, which opens the escalation
+   window (`plugins/watchdog/EscalationWindow.qml`): the plugin's name and
+   version, the action, and the exact command about to run as root -- with
+   the password field that feeds it. The password goes to
+   `aequalyn-watchdog decide` on a pipe (never argv, never a log line), and
+   from there over the uid-checked socket to the supervisor, which runs
+   `sudo -S -- <the declared argv>` with the password on stdin. No answer in
+   two minutes is a denial; "Always allow this" only remembers consent (the
+   password is asked again, because sudo wants it); the run and its exit
+   code are logged.
+
+And under all of it, a tripwire: the supervisor walks every unit's process
+tree on every RAM pass, and anything that looks like `sudo`, `pkexec`,
+`su` or `doas` -- directly, in a shell script argument, behind `env` or
+`timeout` -- is killed with its subtree, notified with the exact command
+line, and counted as a failure like any other fault (three in ten minutes
+turns the plugin off). The gate's own sudo is a child of the supervisor,
+never of a unit, so it is never mistaken for a bypass. The shell's own two
+first-party helpers that still use `sudo -A` (About's theme pack,
+LockScreens' SDDM, the browser theme policy) are the only excused
+callers, and only inside the shell unit -- trusted code watching itself.
+A sandboxed plugin unit gets no excuse at all.
+
+Honest limits, so nobody thinks this is more than it is: the tripwire is a
+3-second sample over `/proc`, so a run that starts and exits between
+samples is missed; a plugin can build its `sudo` call from concatenated
+strings (the Store's static check over QML sources bans the words, but
+cannot catch construction); and same-user code can in principle do
+anything the user can. The gate is **consent made explicit and audited**,
+not a hard wall -- a hard wall would need OS-level sandboxing
+(bubblewrap/seccomp) around every plugin, which this watchdog
+deliberately does not attempt. What it does guarantee: no plugin can run
+so much as one root command without its command being written down in
+its manifest for everyone to read, and a person pressing a button.
 
 ## Configuration
 
@@ -117,7 +177,9 @@ overrides any of it (create the file; it is read at `start`):
   "maxFailures": 3,
   "backoffMaxSeconds": 30,
   "forceSandbox": [],
-  "noSandbox": []
+  "noSandbox": [],
+  "escalationTimeoutSeconds": 120,
+  "escalationCommandTimeoutSeconds": 300
 }
 ```
 
@@ -199,6 +261,7 @@ Two ways to watch the protection work:
 | `leak` | ~100 MiB/s of live JS | RAM budget: breach, stop, failure, restart |
 | `hang` | event loop blocked forever | heartbeat: two misses, stop, failure |
 | `crash` | `kill -9` on itself | crash: backoff restarts, then turn-off |
+| `esc` | `sudo` straight from the process, no gate | tripwire: subtree killed, notification with the command, failure; three turn the plugin off |
 
 A `restart` (by hand) clears the failure window and the test mode.
 All three modes have been run for real against live sandboxed plugins,
