@@ -51,6 +51,20 @@ id to `newPlugins` in `settings/AequalynSettings.qml`.
   `bgSurface`, `textPrimary`, `textMuted`, `accentPrimary`, ...). Take every colour from
   it: when the theme changes, so does your plugin.
 
+## The sandbox
+
+A plugin with no windows of its own in the shell can run in its own process instead:
+add `sandbox: true` to its line in `Plugins.js` (a Store plugin gets it automatically
+when its manifest says `"group": "background"`). The watchdog (`tools/watchdog/`,
+`aequalyn-watchdog`) then runs it as its own QuickShell instance, and a crash, a hang
+or a leak can only take that one process down: the watchdog restarts it, and turns it
+off (with a notification) if it keeps failing. Notifications (`KitHost.notify`),
+file-based settings (`KitStore`) and per-pid IPC keep working out of process; what
+does not: the shared `theme`, being found through `KitHost` by the shell's own UI, and
+being summoned by a bare `qs ipc call <id>` (only the main shell's targets answer
+that). Plugins people summon with a key, or that draw inside the shell's windows
+(bar widgets, docks, embedded panels), stay in-process and are not sandboxable.
+
 ## The host singleton
 
 Other parts of the shell (a bar button, the control center) reach your plugin through
@@ -199,6 +213,7 @@ CcPage {
 
 - [ ] A folder under `plugins/`, a `qmldir` in each folder imported by `root:/`
 - [ ] A line in `Plugins.js` and one in `PluginInfo.js`
+- [ ] Background only? `sandbox: true`, so a failure costs just your plugin
 - [ ] Loads and unloads cleanly while the shell runs
 - [ ] Colours from the theme; nothing hard-coded but fallbacks
 - [ ] An `IpcHandler` named after its id

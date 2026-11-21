@@ -25,6 +25,7 @@ import "settings"
 import "plugins/clipboard"
 import "plugins/powerMenu"
 import "plugins/docks"
+import "plugins/watchdog"
 import "root:/settings"
 
 // Root scope: instantiates every UI module once and shares a single active
@@ -42,7 +43,15 @@ Scope {
   // All shell elements are loaded as plugins (see PluginManager.qml), so each
   // can be enabled/disabled independently from Settings -> Plugins.
   PluginManager {
+    id: pm
     theme: ts.theme
     themeSwitcher: ts
+  }
+
+  // The in-shell side of the plugin sandbox: the external supervisor pings it
+  // (a hang goes unanswered and the shell is restarted) and turns plugins on
+  // and off through it. plugins/watchdog/Watchdog.qml; see tools/watchdog/.
+  Watchdog {
+    pluginManager: pm
   }
 }

@@ -94,6 +94,32 @@ and `currentIndex`, exposing `columns` (for Up / Down) and emitting
 `hovered(index)` and `picked(index)`. Add it to `layouts/qmldir`, to the
 switch in `Atelier.qml` and to `LayoutPicker.qml`.
 
+## Watchdog and plugin sandbox
+
+One broken plugin must never take the desktop down. `aequalyn-watchdog`
+(`tools/watchdog/`, a Python supervisor) runs the shell and watches it, and
+runs the risky plugins out of process so a failure costs only that one
+plugin — never the shell, never the other plugins.
+
+| | |
+| --- | --- |
+| **Sandboxed** | Plugins marked `sandbox: true` in `Plugins.js` (`batteryGuard`, `breaks`, `diskWatch`, `nightLight`) and Store plugins whose manifest group is `background`: each runs as its own Quickshell instance with its own RAM budget, heartbeat and IPC. A crash, hang or leak restarts it; three failures in ten minutes turn it off, with a notification saying why. |
+| **Watched, not sandboxed** | The bar, docks, panels and every visual plugin share the shell's process (their pixels are painted on its windows). A plugin too broken to load is turned off on the spot; the shell itself is supervised: crash restart, freeze detection by heartbeat, a 900 MiB memory ceiling. |
+
+```sh
+aequalyn-watchdog status                     # shell + sandboxed plugins: pid, RAM, failures
+aequalyn-watchdog restart shell              # in place, what aequalyn-shell-restart now does
+aequalyn-watchdog sandboxed                  # what would run out of process, and why
+aequalyn-watchdog test <id> leak|hang|crash  # inject a fault and watch the policy work
+```
+
+Started at login by `aequalyn-session-start` (and by the shell itself if it
+finds no supervisor), it adopts an already-running shell instead of
+replacing it. The full contract — failure classes, budgets
+(`~/.config/aequalyn/watchdog.json`), the sandbox host, what a plugin can
+expect out of process — is in [`tools/watchdog/README.md`](tools/watchdog/README.md);
+`PLUGINS.md` says how to mark a plugin for the sandbox.
+
 ## Layout
 
 ```

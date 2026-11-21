@@ -209,6 +209,10 @@ QtObject {
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
     readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps", "media", "fm", "keybinds", "store"]
     property var pluginsKnown: []
+    // Plugins that must never run in the supervisor's sandbox, even when marked for
+    // it in Plugins.js or by a Store manifest (watchdog.json's noSandbox list ends up
+    // here; the supervisor sets it through the watchdog IPC target). Saved as noSandboxPlugins.
+    property var noSandboxPlugins: []
 
     // ---- Dock -------------------------------------------------------------
     // Docks are a plugin now: enabled iff "docks" is in enabledPlugins.
@@ -471,6 +475,7 @@ QtObject {
             backdrop: root.backdropCfg,
             plugins: root.enabledPlugins,
             pluginsKnown: root.pluginsKnown,
+            noSandboxPlugins: root.noSandboxPlugins,
             barStyle: root.barStyleCfg,
             dock: {
                 enabled: (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).indexOf("docks") >= 0,
@@ -698,6 +703,9 @@ QtObject {
             if (dk.enabled === false) on = on.filter(x => x !== "docks")
             root.pluginsKnown = known.concat(fresh)
             if (JSON.stringify(on) !== JSON.stringify(root.enabledPlugins)) root.enabledPlugins = on
+            // the sandbox exceptions the supervisor pushed (watchdog.json's noSandbox)
+            if (Array.isArray(d.noSandboxPlugins))
+                root.noSandboxPlugins = d.noSandboxPlugins.filter(x => typeof x === "string")
         }
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })

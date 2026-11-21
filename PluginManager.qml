@@ -29,14 +29,40 @@ Item {
     readonly property var enabledIds: (AequalynSettings.enabledPlugins && AequalynSettings.enabledPlugins.length)
         ? AequalynSettings.enabledPlugins : allPlugins.map(p => p.id)
 
+    // ---- the sandbox ------------------------------------------------------
+    // A plugin marked sandbox: true in Plugins.js (and a Store plugin whose
+    // manifest says group "background") is NOT loaded in-process: the
+    // aequalyn-watchdog supervisor runs it as its own QuickShell instance, so
+    // a crash, a hang or a leak in it can only take that one process down.
+    // See tools/watchdog/README.md. Everything else stays right here.
+    function findPlugin(id) {
+        return allPlugins.find(p => p.id === id) || UserPlugins.byId(id) || null
+    }
+    function isSandboxed(p) {
+        if (!p) return false
+        if (noSandboxIds.indexOf(p.id) >= 0) return false
+        return !!p.sandbox || (!!p.info && !!p.info.user && p.info.group === "background")
+    }
+    function labelOf(id) {
+        const p = findPlugin(id)
+        return p ? (p.label || p.id) : id
+    }
+    // ids the supervisor must never move out of process, even if listed here
+    // (settings/watchdog.json can add to this from outside the shell)
+    readonly property var noSandboxIds: (AequalynSettings.noSandboxPlugins || [])
+
     // One loader per plugin, on while the plugin is: turning one on or off in the
     // control center loads or drops that plugin alone, at once, without a restart.
+    // A sandboxed plugin is deliberately never loaded here: the supervisor runs
+    // it out of process (pm.isSandboxed), and toggling it here would run a second
+    // copy of it inside the shell.
     Repeater {
         model: pm.allPlugins
         delegate: Loader {
             id: loader
             required property var modelData
             readonly property bool wanted: pm.enabledIds.indexOf(modelData.id) >= 0 && pm.reloading !== modelData.id
+                                           && !pm.isSandboxed(modelData)
             active: wanted
             source: wanted ? modelData.source : ""
             property var openHandler: null       // Atelier's link to the theme switcher
@@ -79,19 +105,32 @@ Item {
                     pm.items = n;
                 }
             }
-            onStatusChanged: if (status === Loader.Error) console.error("Plugin failed to load:", modelData.id, source)
+            // a plugin that cannot even load is turned off, once, with a message
+            // in the corner: the shell keeps running, and it comes back on when
+            // the plugin is fixed and re-enabled in Settings.
+            onStatusChanged: if (status === Loader.Error) {
+                console.error("Plugin failed to load:", modelData.id, source)
+                pm.loadFailed(modelData.id, source)
+            }
         }
     }
 
     // The Store's plugins: the same, on only while they are in enabledPlugins (a user
     // plugin is never on by default). A rescan that finds nothing new leaves them alone.
+    // A Store plugin whose manifest group is "background" runs in the sandbox instead
+    // (pm.isSandboxed), for the same reasons as a marked built-in.
     Repeater {
         model: pm.userPlugins
         delegate: Loader {
             id: userLoader
             required property var modelData
-            readonly property bool wanted: (AequalynSettings.enabledPlugins || []).indexOf(modelData.id) >= 0
+            // A Store plugin may never sit on a built-in's id (UserPlugins
+            // refuses those; this is the second lock on the same door).
+            readonly property bool clash: pm.allPlugins.some(p => p.id === modelData.id)
+            readonly property bool wanted: !userLoader.clash
+                                           && (AequalynSettings.enabledPlugins || []).indexOf(modelData.id) >= 0
                                            && pm.reloading !== modelData.id
+                                           && !pm.isSandboxed(modelData)
             active: wanted
             source: wanted ? modelData.source : ""
             onLoaded: {
@@ -108,11 +147,34 @@ Item {
                 delete n[modelData.id];
                 pm.items = n;
             }
-            onStatusChanged: if (status === Loader.Error) console.error("Plugin failed to load:", modelData.id, source)
+            onStatusChanged: if (status === Loader.Error) {
+                console.error("Plugin failed to load:", modelData.id, source)
+                pm.loadFailed(modelData.id, source)
+            }
         }
     }
 
+    // One failed load is enough to turn the plugin off: a broken plugin must never
+    // take anything with it. The supervisor's own failures (crash, hang, memory)
+    // end up here too, through the watchdog IPC target.
+    function loadFailed(id, why) {
+        if (enabledIds.indexOf(id) < 0) return
+        try { AequalynSettings.togglePlugin(id, false) } catch (e) { console.warn("could not turn off", id, e) }
+        Quickshell.execDetached(["notify-send", "-a", "Aequalyn", "Plugin turned off",
+            labelOf(id) + " failed to load and was turned off; the rest of the shell is unaffected."
+            + "\nFix it and turn it back on in Settings \u2192 Plugins." + (why ? "\n(" + why + ")" : "")])
+    }
+
     Timer { id: reloadTimer; interval: 150; onTriggered: pm.reloading = "" }
+
+    // drop one plugin and load it again (in-process ones; the sandboxed ones
+    // are restarted by aequalyn-watchdog, not here)
+    function reloadPlugin(id): bool {
+        if (!findPlugin(id)) return false
+        pm.reloading = id
+        reloadTimer.restart()
+        return true
+    }
 
     // qs ipc call plugins rescan | reload <id> | list
     IpcHandler {
@@ -121,10 +183,7 @@ Item {
         function rescan(): string { UserPlugins.rescan(); return "ok"; }
         // drop one plugin and load it again
         function reload(id: string): string {
-            if (!pm.allPlugins.some(p => p.id === id) && !UserPlugins.byId(id)) return "no plugin " + id;
-            pm.reloading = id;
-            reloadTimer.restart();
-            return "ok";
+            return pm.reloadPlugin(id) ? "ok" : "no plugin " + id
         }
         // every plugin: id, loaded, active, source (built-in or store), version
         function list(): string {
@@ -137,3 +196,10 @@ Item {
         }
     }
 }
+
+
+
+
+
+
+
