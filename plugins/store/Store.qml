@@ -329,11 +329,18 @@ Scope {
             root.runCmd("Renaming category", ["aequalyn-webapp", "category-rename", id, label]);
     }
     // the web apps page: cards like the AppImages ones, five to a row, three rows
-    // to a page; a plain list while they are few
+    // to a page; a plain list while they are few. The category chips above them
+    // narrow the list to one of your own categories, or to those with none
     property int webPage: 0
-    readonly property int webAt: Math.min(root.webPage, Math.max(0, Math.ceil(root.webapps.length / 15) - 1)) * 15
+    property string webFilter: "all"
+    readonly property bool webHasUncategorised: root.webapps.some(a => !a.category)
+    readonly property var webShown: root.webFilter === "all" ? root.webapps
+        : root.webFilter === "none" ? root.webapps.filter(a => !a.category)
+        : root.webapps.filter(a => a.category === root.webFilter)
+    function setWebFilter(id) { root.webFilter = id; root.webPage = 0; }
+    readonly property int webAt: Math.min(root.webPage, Math.max(0, Math.ceil(root.webShown.length / 15) - 1)) * 15
     function webRows() {
-        const shown = root.webapps.slice(root.webAt, root.webAt + 15);
+        const shown = root.webShown.slice(root.webAt, root.webAt + 15);
         const rows = [];
         for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
         while (rows.length < 3) rows.push([]);
@@ -364,8 +371,12 @@ Scope {
         command: ["aequalyn-webapp", "categories", "--json"]
         stdout: StdioCollector {
             onStreamFinished: {
-                try { root.webCategories = JSON.parse(text.trim()) || []; }
-                catch (e) { root.webCategories = []; }
+                try {
+                    const cats = JSON.parse(text.trim()) || [];
+                    root.webCategories = cats;
+                    if (root.webFilter !== "all" && root.webFilter !== "none"
+                        && !cats.some(c => c.id === root.webFilter)) root.webFilter = "all";
+                } catch (e) { root.webCategories = []; }
             }
         }
     }
@@ -1718,11 +1729,39 @@ Scope {
                                     visible: root.section === "web"
                                     title: "Your web apps"
                                     hint: root.webapps.length === 0
-                                          ? "No web apps yet. Add one below; the default set can be seeded from a terminal with aequalyn-webapp seed." : ""
+                                          ? "No web apps yet. Add one below; the default set can be seeded from a terminal with aequalyn-webapp seed."
+                                          : root.webShown.length === 0 ? "No web apps in this category." : ""
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Btn {
+                                            text: "All"
+                                            primary: root.webFilter === "all"
+                                            implicitHeight: 26
+                                            onClicked: root.setWebFilter("all")
+                                        }
+                                        Repeater {
+                                            model: root.webCategories.filter(c => root.webapps.some(a => a.category === c.id))
+                                            delegate: Btn {
+                                                required property var modelData
+                                                text: modelData.label
+                                                primary: root.webFilter === modelData.id
+                                                implicitHeight: 26
+                                                onClicked: root.setWebFilter(modelData.id)
+                                            }
+                                        }
+                                        Btn {
+                                            visible: root.webHasUncategorised
+                                            text: "Uncategorised"
+                                            primary: root.webFilter === "none"
+                                            implicitHeight: 26
+                                            onClicked: root.setWebFilter("none")
+                                        }
+                                    }
                                     // a few: the plain list; more: cards, fifteen to a page
                                     Repeater {
-                                        visible: root.webapps.length <= 5
-                                        model: root.section === "web" && root.webapps.length <= 5 ? root.webapps : []
+                                        visible: root.webShown.length <= 5
+                                        model: root.section === "web" && root.webShown.length <= 5 ? root.webShown : []
                                         delegate: ColumnLayout {
                                             id: wrow
                                             required property var modelData
@@ -1796,8 +1835,8 @@ Scope {
                                     // cards like the AppImages ones: five to a row, the
                                     // page holding its three rows, ‹ › to walk the pages
                                     Repeater {
-                                        visible: root.webapps.length > 5
-                                        model: root.section === "web" && root.webapps.length > 5 ? root.webRows() : []
+                                        visible: root.webShown.length > 5
+                                        model: root.section === "web" && root.webShown.length > 5 ? root.webRows() : []
                                         delegate: RowLayout {
                                             id: webRow
                                             required property var modelData
@@ -1823,11 +1862,11 @@ Scope {
                                         }
                                     }
                                     RowLayout {
-                                        visible: root.webapps.length > 15
+                                        visible: root.webShown.length > 15
                                         spacing: 6
                                         Item { Layout.fillWidth: true }
                                         Text {
-                                            text: root.webapps.length + (root.webapps.length === 1 ? " app" : " apps")
+                                            text: root.webShown.length + (root.webShown.length === 1 ? " app" : " apps")
                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
                                         }
                                         StepBtn {
@@ -1836,13 +1875,13 @@ Scope {
                                             onClicked: root.webPage = root.webAt / 15 - 1
                                         }
                                         Text {
-                                            text: (root.webAt + 1) + "–" + Math.min(root.webAt + 15, root.webapps.length)
-                                                  + " of " + root.webapps.length
+                                            text: (root.webAt + 1) + "–" + Math.min(root.webAt + 15, root.webShown.length)
+                                                  + " of " + root.webShown.length
                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
                                         }
                                         StepBtn {
                                             glyph: "›"
-                                            enabled: root.webAt + 15 < root.webapps.length
+                                            enabled: root.webAt + 15 < root.webShown.length
                                             onClicked: root.webPage = root.webAt / 15 + 1
                                         }
                                     }
