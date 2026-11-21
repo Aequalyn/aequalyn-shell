@@ -431,10 +431,14 @@ QtObject {
 
     property bool ready: false
     readonly property string configPath: Quickshell.env("HOME") + "/.config/aequalyn/settings.json"
+    // Keep the full document that was loaded so saving one section cannot drop
+    // settings owned by other tools, such as per-workspace layouts.
+    property var rawSettings: ({})
 
     function _data() {
-        return {
-            version: 1,
+        const data = Object.assign({}, root.rawSettings || {})
+        data.version = 1
+        Object.assign(data, {
             appearance: {
                 themeMode: root.themeMode,
                 themeApps: root.themeApps,
@@ -528,7 +532,8 @@ QtObject {
                 suspendMinutes: root.suspendMinutes,
                 lockStyle: root.lockStyle
             }
-        }
+        })
+        return data
     }
 
     // Write the JSON and re-apply the Hyprland half. It's written next to settings.json and
@@ -623,6 +628,7 @@ QtObject {
             console.error("Aequalyn: could not parse settings.json:", e)
             return
         }
+        root.rawSettings = d
         const a = d.appearance || {}
         const h = d.hyprland || {}
         const p = d.power || {}
