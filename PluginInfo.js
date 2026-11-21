@@ -83,6 +83,8 @@ var info = {
                       about: "Every 20 minutes, a reminder to rest your eyes." },
     diskWatch:      { icon: "\u{F02CA}", group: "background", keys: "",                     page: "", pack: true, settings: true,
                       about: "A message when a disk is nearly full." },
+    watchdogTest:   { icon: "\u{F0318}", group: "background", keys: "",                    page: "", pack: true,
+                      about: "A demo of the sandbox: turned on, it crashes, leaks and crashes again on purpose -- three failures -- while the shell stays up, until the watchdog turns it off. Turn it on again to watch once more." },
 };
 
 var groups = [

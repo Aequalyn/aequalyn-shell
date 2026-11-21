@@ -38,6 +38,7 @@ var list = [
     { id: "batteryGuard",  label: "Battery guard",     source: "plugins/batteryGuard/BatteryGuard.qml", sandbox: true },
     { id: "breaks",        label: "Break reminder",    source: "plugins/breaks/Breaks.qml", sandbox: true },
     { id: "diskWatch",     label: "Disk watch",        source: "plugins/diskWatch/DiskWatch.qml", sandbox: true },
+    { id: "watchdogTest",  label: "Watchdog self-test", source: "plugins/watchdogTest/WatchdogTest.qml", sandbox: true },
     { id: "store",          label: "Store",          source: "plugins/store/Store.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
