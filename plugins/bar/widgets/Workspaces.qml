@@ -96,15 +96,15 @@ Item {
         required property var modelData
         required property int index
         property bool urgentBlink: false
-        width: !bar.vertical && modelData.focused ? 32 : 24
-        height: bar.vertical && modelData.focused ? 32 : 24
+        width: !bar.vertical && (modelData.focused || modelData.active) ? 32 : 24
+        height: bar.vertical && (modelData.focused || modelData.active) ? 32 : 24
         radius: 12
-        color: modelData.focused ? bar.inked(ink, bar.theme.accentPrimary) :
+        color: (modelData.focused || modelData.active) ? bar.inked(ink, bar.theme.accentPrimary) :
                modelData.urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
         Behavior on color { ColorAnimation { duration: 150 } }
         SequentialAnimation {
           loops: Animation.Infinite
-          running: wsPill.modelData.urgent && !wsPill.modelData.focused
+          running: wsPill.modelData.urgent && !(wsPill.modelData.focused || wsPill.modelData.active)
           PropertyAction { target: wsPill; property: "urgentBlink"; value: true }
           PauseAnimation { duration: 500 }
           PropertyAction { target: wsPill; property: "urgentBlink"; value: false }
@@ -114,10 +114,10 @@ Item {
         Text {
           anchors.centerIn: parent
           text: labelFor(Number(modelData.id))
-          color: wsPill.modelData.focused ? bar.theme.bgBase : bar.theme.textPrimary
+          color: (wsPill.modelData.focused || wsPill.modelData.active) ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
-          font.bold: wsPill.modelData.focused
+          font.bold: wsPill.modelData.focused || wsPill.modelData.active
         }
         MouseArea {
           anchors.fill: parent
