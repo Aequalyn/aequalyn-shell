@@ -121,15 +121,10 @@ Scope {
     // pacman always; yay (the AUR), flatpak (Flathub) and snap when they are installed.
     // Installs run in a terminal, where sudo asks for the password.
     property var apps: []
-    // the popular grid, fifteen to a page like the cards everywhere else; the
-    // four buttons narrow it to one backend (click the active one for all again)
+    // the popular grid, fifteen to a page like the cards everywhere else; each
+    // card carries its own four install buttons, greyed where there is no build
     property int popPage: 0
-    property string popSource: "All"
-    readonly property var popShown: root.apps.filter(a =>
-        root.popSource === "All" ||
-        (root.popSource === "Arch" ? !!a.pacman :
-         root.popSource === "AUR" ? !!a.aur :
-         root.popSource === "Flathub" ? !!a.flatpak : !!a.snap))
+    readonly property var popShown: root.apps
     readonly property int popAt: Math.min(root.popPage, Math.max(0, Math.ceil(root.popShown.length / 15) - 1)) * 15
     // the page's apps, as rows of five, the page always holding its three rows
     function popRows() {
@@ -1415,30 +1410,7 @@ Scope {
                                 Box {
                                     visible: root.section === "apps"
                                     title: "Popular apps"
-                                    hint: "Each from any backend that carries it. Pick one of the four to see only that backend; click it again to see them all. Installs open in a terminal, where sudo asks for your password."
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 6
-                                        Repeater {
-                                            model: ["Arch", "AUR", "Flathub", "Snap"]
-                                            delegate: Btn {
-                                                required property string modelData
-                                                readonly property int count: root.apps.filter(a =>
-                                                    modelData === "Arch" ? !!a.pacman : modelData === "AUR" ? !!a.aur
-                                                    : modelData === "Flathub" ? !!a.flatpak : !!a.snap).length
-                                                Layout.fillWidth: true
-                                                Layout.preferredWidth: 0
-                                                Layout.minimumWidth: 0
-                                                text: modelData + "  " + count
-                                                primary: root.popSource === modelData
-                                                implicitHeight: 26
-                                                onClicked: {
-                                                    root.popSource = root.popSource === modelData ? "All" : modelData;
-                                                    root.popPage = 0;
-                                                }
-                                            }
-                                        }
-                                    }
+                                    hint: "Every card shows all four ways to install it. A greyed button means that app has no build there; installs open in a terminal, where sudo asks for your password."
                                     // five to a row (a RowLayout shares its width out), three
                                     // rows to a page, ghost slots keeping every page's shape
                                     Repeater {
@@ -1489,20 +1461,20 @@ Scope {
                                                     Item { Layout.fillHeight: true }
                                                     Flow {
                                                         Layout.fillWidth: true
-                                                        spacing: 6
+                                                        spacing: 4
                                                         Repeater {
                                                             model: [
                                                                 { via: "Arch", has: !!appCard.modelData.pacman, ready: true },
                                                                 { via: "AUR", has: !!appCard.modelData.aur, ready: root.backends.yay === true },
                                                                 { via: "Flatpak", has: !!appCard.modelData.flatpak, ready: root.backends.flatpak === true },
                                                                 { via: "Snap", has: !!appCard.modelData.snap, ready: root.backends.snap === true }
-                                                            ].filter(o => o.has)
+                                                            ]
                                                             delegate: Btn {
                                                                 required property var modelData
                                                                 text: modelData.via
-                                                                implicitHeight: 26
-                                                                primary: modelData.ready && appCard.via === ""
-                                                                enabled: modelData.ready && !terminal.running
+                                                                implicitHeight: 24
+                                                                primary: modelData.has && modelData.ready && appCard.via === ""
+                                                                enabled: modelData.has && modelData.ready && !terminal.running
                                                                 onClicked: root.installApp(appCard.modelData, modelData.via)
                                                             }
                                                         }
