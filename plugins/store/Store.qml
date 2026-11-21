@@ -338,6 +338,9 @@ Scope {
         : root.webFilter === "none" ? root.webapps.filter(a => !a.category)
         : root.webapps.filter(a => a.category === root.webFilter)
     function setWebFilter(id) { root.webFilter = id; root.webPage = 0; }
+    // a category filter keeps the same card grid even when only a few apps match
+    readonly property bool webUseCards: root.webShown.length > 0 &&
+        (root.webFilter !== "all" || root.webShown.length > 5)
     readonly property int webAt: Math.min(root.webPage, Math.max(0, Math.ceil(root.webShown.length / 15) - 1)) * 15
     function webRows() {
         const shown = root.webShown.slice(root.webAt, root.webAt + 15);
@@ -1758,10 +1761,10 @@ Scope {
                                             onClicked: root.setWebFilter("none")
                                         }
                                     }
-                                    // a few: the plain list; more: cards, fifteen to a page
+                                    // a few unfiltered: the plain list; filtered or more: cards
                                     Repeater {
-                                        visible: root.webShown.length <= 5
-                                        model: root.section === "web" && root.webShown.length <= 5 ? root.webShown : []
+                                        visible: !root.webUseCards
+                                        model: root.section === "web" && !root.webUseCards ? root.webShown : []
                                         delegate: ColumnLayout {
                                             id: wrow
                                             required property var modelData
@@ -1835,8 +1838,8 @@ Scope {
                                     // cards like the AppImages ones: five to a row, the
                                     // page holding its three rows, ‹ › to walk the pages
                                     Repeater {
-                                        visible: root.webShown.length > 5
-                                        model: root.section === "web" && root.webShown.length > 5 ? root.webRows() : []
+                                        visible: root.webUseCards
+                                        model: root.section === "web" && root.webUseCards ? root.webRows() : []
                                         delegate: RowLayout {
                                             id: webRow
                                             required property var modelData
