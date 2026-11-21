@@ -44,9 +44,8 @@ Item {
       return (w.toplevels && w.toplevels.values && w.toplevels.values.length > 0)
         || w.active || w.focused || w.urgent;
     }
-    // Show at least `count` slots, but grow to cover any workspace actually in
-    // use on this monitor (e.g. a window moved to workspace 6 while only 5
-    // slots are configured). It shrinks back once that workspace is empty.
+    // Keep the configured slots, and only add positions above them while a
+    // workspace there has windows. Empty positions between are never shown.
     let needed = count;
     for (let i = 0; i < mine.length; i++) {
       if (occupied(mine[i]) && i + 1 > needed) needed = i + 1;
@@ -76,7 +75,10 @@ Item {
     }
     for (let i = 0; i < slots.length; i++) {
       const w = slots[i];
-      if (AequalynSettings.workspaceShowEmpty || occupied(w)) out.push(w);
+      // "show empty" applies to the configured slots only; positions above
+      // them exist just to keep an occupied workspace visible, and disappear
+      // once it is empty again
+      if (occupied(w) || (i < count && AequalynSettings.workspaceShowEmpty)) out.push(w);
     }
     return out;
   }
