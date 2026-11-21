@@ -1260,8 +1260,8 @@ Scope {
                                                         spacing: 6
                                                         Repeater {
                                                             model: [
-                                                                { via: appCard.modelData.pacman ? "Arch" : "AUR", has: !!(appCard.modelData.pacman || appCard.modelData.aur),
-                                                                  ready: !!appCard.modelData.pacman || root.backends.yay === true },
+                                                                { via: "Arch", has: !!appCard.modelData.pacman, ready: true },
+                                                                { via: "AUR", has: !!appCard.modelData.aur, ready: root.backends.yay === true },
                                                                 { via: "Flatpak", has: !!appCard.modelData.flatpak, ready: root.backends.flatpak === true },
                                                                 { via: "Snap", has: !!appCard.modelData.snap, ready: root.backends.snap === true }
                                                             ].filter(o => o.has)
@@ -1430,29 +1430,42 @@ Scope {
                                                             maximumLineCount: 2; Layout.fillWidth: true
                                                         }
                                                         Item { Layout.fillHeight: true }
+                                                        // Installed cards keep the badge and both actions inside the
+                                                        // 203px card: badge above, two half-width buttons below
+                                                        ColumnLayout {
+                                                            visible: fcard.installedHere
+                                                            Layout.fillWidth: true
+                                                            spacing: 4
+                                                            Pill { text: "Installed"; tone: root.theme.accentGreen }
+                                                            RowLayout {
+                                                                Layout.fillWidth: true
+                                                                spacing: 6
+                                                                Btn {
+                                                                    Layout.fillWidth: true
+                                                                    implicitHeight: 26
+                                                                    text: "Update"
+                                                                    primary: true
+                                                                    enabled: !terminal.running
+                                                                    onClicked: root.appAction(fcard.modelData, "update")
+                                                                }
+                                                                Btn {
+                                                                    Layout.fillWidth: true
+                                                                    implicitHeight: 26
+                                                                    text: "Remove"
+                                                                    danger: true
+                                                                    enabled: !terminal.running
+                                                                    onClicked: root.appAction(fcard.modelData, "remove")
+                                                                }
+                                                            }
+                                                        }
                                                         RowLayout {
+                                                            visible: !fcard.installedHere
                                                             Layout.fillWidth: true
                                                             spacing: 6
-                                                            Pill { visible: fcard.have || fcard.installedHere; text: "Installed"; tone: root.theme.accentGreen }
+                                                            Pill { visible: fcard.have; text: "Installed"; tone: root.theme.accentGreen }
                                                             Item { Layout.fillWidth: true }
                                                             Btn {
-                                                                visible: fcard.installedHere
-                                                                implicitHeight: 26
-                                                                text: "Update"
-                                                                primary: true
-                                                                enabled: !terminal.running
-                                                                onClicked: root.appAction(fcard.modelData, "update")
-                                                            }
-                                                            Btn {
-                                                                visible: fcard.installedHere
-                                                                implicitHeight: 26
-                                                                text: "Remove"
-                                                                danger: true
-                                                                enabled: !terminal.running
-                                                                onClicked: root.appAction(fcard.modelData, "remove")
-                                                            }
-                                                            Btn {
-                                                                visible: !fcard.have && !fcard.installedHere
+                                                                visible: !fcard.have
                                                                 implicitHeight: 26
                                                                 text: fcard.ready ? "Install" : "Needs " + (fcard.modelData.source === "AUR" ? "the AUR" : fcard.modelData.source === "Flatpak" ? "Flathub" : "Snap")
                                                                 primary: fcard.ready
