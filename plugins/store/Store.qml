@@ -33,14 +33,39 @@ Scope {
     property bool open: false
     property string section: "home"
     property string category: ""
-    // the title-bar search, as the control center's: type to look through apps
+    // the title-bar search, as the control center's: type and the results take
+    // the place of the page, with a chip for each source and keys to move
     property string query: ""
+    property string querySource: "All"
+    property int pick: 0
+    readonly property bool queryActive: root.query.trim() !== ""
+    readonly property var resultSources: ["All", "Arch", "AUR", "Flatpak", "Snap", "Installed"]
+    function resultCount(source) {
+        if (source === "All") return root.found.length;
+        if (source === "Installed") return root.installedResults.length;
+        return root.found.filter(r => r.source === source).length;
+    }
+    readonly property var resultShown: root.querySource === "Installed" ? root.installedResults
+        : root.querySource === "All" ? root.found
+        : root.found.filter(r => r.source === root.querySource)
     function searchFromTitle() {
-        root.openSection("apps");
+        if (!root.queryActive) return;
         root.open = true;
-        root.foundSource = "All";
+        root.foundSource = root.querySource;
+        root.foundAt = 0;
         root.detectApps();
         root.searchApps(root.query.trim(), false);
+    }
+    onQueryChanged: {
+        root.pick = 0;
+        root.foundAt = 0;
+        if (root.queryActive) titleSearchTimer.restart();
+        else { titleSearchTimer.stop(); root.found = []; root.foundErrors = {}; }
+    }
+    Timer {
+        id: titleSearchTimer
+        interval: 350
+        onTriggered: root.searchFromTitle()
     }
 
     readonly property var sections: [
@@ -333,6 +358,8 @@ Scope {
                     root.foundErrors = d.errors || {};
                     root.flathubPages = d.flathubPages || 1;
                 } catch (e) { root.foundErrors = { all: "the search failed" }; }
+                // typing while a search was in flight: run the newest words
+                if (root.queryActive && root.query.trim() !== root.foundQuery) titleSearchTimer.restart();
             }
         }
     }
@@ -1508,9 +1535,23 @@ Scope {
                             clip: true
                             selectByMouse: true
                             onTextChanged: root.query = text
-                            onAccepted: root.searchFromTitle()
                             Keys.onPressed: event => {
-                                if (event.key === Qt.Key_Escape && text !== "") { text = ""; event.accepted = true; }
+                                if (event.key === Qt.Key_Escape && text !== "") {
+                                    text = ""; event.accepted = true;
+                                } else if (event.key === Qt.Key_Down) {
+                                    root.pick = Math.min(root.resultShown.length - 1, root.pick + 1); event.accepted = true;
+                                } else if (event.key === Qt.Key_Up) {
+                                    root.pick = Math.max(0, root.pick - 1); event.accepted = true;
+                                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                                    const r = root.resultShown[root.pick];
+                                    if (r && !r.installed && !root.foundInstalled(r)) root.installFound(r);
+                                    event.accepted = true;
+                                } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+                                    const srcs = root.resultSources.filter(s => s === "All" || root.resultCount(s) > 0);
+                                    const i = srcs.indexOf(root.querySource);
+                                    root.querySource = srcs[(i + (event.key === Qt.Key_Tab ? 1 : srcs.length - 1)) % srcs.length];
+                                    root.pick = 0; event.accepted = true;
+                                }
                             }
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -2813,7 +2854,9 @@ Scope {
                         anchors.left: parent.left
                         anchors.leftMargin: 20
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "super alt s  open     esc  close"
+                        text: root.queryActive
+                            ? "↑ ↓  move     ⏎  install     tab  source     esc  clear"
+                            : "super alt s  open     esc  close"
                         color: root.theme.textMuted
                         font.family: root.mono
                         font.pixelSize: 10
@@ -2829,6 +2872,167 @@ Scope {
                     }
                 }
 
+            }
+            // ---- the search: every match, in place of the page -------------------------
+            // the control center's results view: the rail stays, the page becomes a
+            // list of what matched, with a source chip and keys to move and install
+            Rectangle {
+                id: resultsView
+                visible: root.queryActive
+                // past the rail (6 + 96) and its hairline, below the title (68 + 1)
+                anchors.left: parent.left
+                anchors.leftMargin: 103
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.topMargin: 69
+                anchors.bottom: parent.bottom
+                color: root.theme.bgBase
+                z: 20
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 30
+                    anchors.rightMargin: 22
+                    anchors.topMargin: 18
+                    anchors.bottomMargin: 8
+                    spacing: 10
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Repeater {
+                            model: root.resultSources
+                            delegate: Rectangle {
+                                id: chip
+                                required property var modelData
+                                readonly property int n: root.resultCount(modelData)
+                                readonly property bool on: root.querySource === modelData
+                                visible: modelData === "All" || n > 0 || on
+                                width: chipText.implicitWidth + 20
+                                height: 28
+                                radius: 8
+                                color: chip.on ? root.theme.bgSelected
+                                    : chipMa.containsMouse ? root.theme.bgHover : root.theme.bgSurface
+                                border.width: 1
+                                border.color: chip.on ? root.theme.accentPrimary : root.theme.bgBorder
+                                Text {
+                                    id: chipText
+                                    anchors.centerIn: parent
+                                    text: chip.modelData + "  " + chip.n
+                                    color: chip.on ? root.theme.accentPrimary : root.theme.textSecondary
+                                    font.family: root.mono
+                                    font.pixelSize: 11
+                                }
+                                MouseArea {
+                                    id: chipMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: { root.querySource = chip.modelData; root.pick = 0; titleSearch.forceActiveFocus(); }
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        text: root.searching ? "Searching…"
+                            : root.resultShown.length + (root.resultShown.length === 1 ? " app" : " apps")
+                        color: root.theme.textMuted
+                        font.family: root.mono
+                        font.pixelSize: 11
+                    }
+                    Text {
+                        visible: !root.searching && root.resultShown.length === 0
+                        Layout.fillWidth: true
+                        text: "Nothing matches “" + root.query.trim() + "”. Try another app name."
+                        color: root.theme.textMuted
+                        font.family: root.sans
+                        font.pixelSize: 13
+                        wrapMode: Text.WordWrap
+                    }
+                    ListView {
+                        id: resultList
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
+                        spacing: 2
+                        model: root.resultShown
+                        currentIndex: root.pick
+                        highlightMoveDuration: 120
+                        boundsBehavior: Flickable.StopAtBounds
+                        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                        highlight: Rectangle {
+                            radius: 8
+                            color: root.theme.bgSelected
+                            Rectangle {
+                                width: 3; height: 24; radius: 2
+                                anchors.left: parent.left
+                                anchors.leftMargin: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: root.theme.accentPrimary
+                            }
+                        }
+                        delegate: Item {
+                            id: res
+                            required property var modelData
+                            required property int index
+                            readonly property bool on: root.pick === res.index
+                            readonly property bool have: !!res.modelData.installed || root.foundInstalled(res.modelData)
+                            width: resultList.width
+                            height: 52
+                            MouseArea {
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onPositionChanged: root.pick = res.index
+                                onClicked: { root.pick = res.index; if (!res.have) root.installFound(res.modelData); }
+                            }
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 14
+                                anchors.rightMargin: 12
+                                spacing: 12
+                                Image {
+                                    Layout.preferredWidth: 28; Layout.preferredHeight: 28
+                                    source: res.modelData.icon || ""
+                                    sourceSize.width: 56; sourceSize.height: 56
+                                    fillMode: Image.PreserveAspectFit
+                                    asynchronous: true
+                                }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 1
+                                    Text {
+                                        text: res.modelData.name
+                                        color: res.on ? root.theme.textPrimary : root.theme.textSecondary
+                                        font.family: root.sans
+                                        font.pixelSize: 13
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                    Text {
+                                        text: (res.modelData.source === "Flatpak" ? "Flathub" : res.modelData.source)
+                                            + (res.modelData.about ? "  ·  " + res.modelData.about : "")
+                                        color: root.theme.textMuted
+                                        font.family: root.mono
+                                        font.pixelSize: 10
+                                        elide: Text.ElideRight
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                                Pill {
+                                    visible: res.have
+                                    text: "Installed"
+                                    tone: root.theme.accentGreen
+                                }
+                                Btn {
+                                    visible: !res.have
+                                    text: "Install"
+                                    primary: true
+                                    onClicked: root.installFound(res.modelData)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             // the picker, drawn inside this window: a layer-shell panel sits over
             // every normal window, so the desktop's own dialog cannot be seen above
