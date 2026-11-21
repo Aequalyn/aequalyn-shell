@@ -197,7 +197,9 @@ Item {
                 Chip {
                     required property var modelData
                     theme: pane.theme; font: pane.font; compact: true
-                    text: modelData[1] + (modelData[0] === "all" ? "" : "  " + LayoutService.catalogue.filter(l => l.group === modelData[0]).length)
+                    text: modelData[1] + "  " + (modelData[0] === "all"
+                        ? LayoutService.catalogue.length
+                        : LayoutService.catalogue.filter(l => l.group === modelData[0]).length)
                     selected: pane.group === modelData[0]
                     onClicked: { pane.group = modelData[0]; pane.currentIndex = 0; }
                 }
