@@ -33,6 +33,15 @@ Scope {
     property bool open: false
     property string section: "home"
     property string category: ""
+    // the title-bar search, as the control center's: type to look through apps
+    property string query: ""
+    function searchFromTitle() {
+        root.openSection("apps");
+        root.open = true;
+        root.foundSource = "All";
+        root.detectApps();
+        root.searchApps(root.query.trim(), false);
+    }
 
     readonly property var sections: [
         { key: "home",      label: "Home",       glyph: "\u{F02DC}" },
@@ -1405,6 +1414,12 @@ Scope {
             opacity: veil.progress
             scale: 0.97 + 0.03 * veil.progress
             focus: true
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_K && (event.modifiers & Qt.ControlModifier)) {
+                    titleSearch.forceActiveFocus();
+                    event.accepted = true;
+                }
+            }
             Keys.onEscapePressed: {
                 // the picker over the page closes first, then the window
                 if (root.pickOpen) { root.pickOpen = false; return; }
@@ -1416,7 +1431,8 @@ Scope {
                 anchors.fill: parent
                 spacing: 0
 
-                // title bar, as the control center's: the mark, the name, the close
+                // title bar, as the control center's: the mark, the name, where
+                // you are, the search and the close
                 Item {
                     id: titleBar
                     Layout.fillWidth: true
@@ -1445,13 +1461,76 @@ Scope {
                         font.weight: Font.DemiBold
                     }
                     Text {
+                        id: sectionText
                         anchors.left: titleText.right
                         anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, 220)
+                        elide: Text.ElideRight
                         text: (root.sections.find(s => s.key === root.section) || {}).label || ""
                         color: root.theme.textMuted
                         font.family: root.sans
                         font.pixelSize: 13
+                    }
+                    // the control center's search, here for the Store's apps
+                    Rectangle {
+                        id: searchBox
+                        anchors.left: sectionText.right
+                        anchors.leftMargin: 28
+                        anchors.right: closeButton.left
+                        anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 42
+                        radius: 12
+                        color: root.theme.bgSurface
+                        border.width: titleSearch.activeFocus ? 2 : 1
+                        border.color: titleSearch.activeFocus ? root.theme.accentPrimary : root.theme.bgBorder
+                        Text {
+                            id: searchIcon
+                            anchors.left: parent.left
+                            anchors.leftMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "\u{F0349}"
+                            color: root.theme.accentPrimary
+                            font.family: root.mono
+                            font.pixelSize: 16
+                        }
+                        TextInput {
+                            id: titleSearch
+                            anchors.left: searchIcon.right
+                            anchors.leftMargin: 10
+                            anchors.right: keyHint.left
+                            anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: root.theme.textPrimary
+                            font.family: root.sans
+                            font.pixelSize: 14
+                            clip: true
+                            selectByMouse: true
+                            onTextChanged: root.query = text
+                            onAccepted: root.searchFromTitle()
+                            Keys.onPressed: event => {
+                                if (event.key === Qt.Key_Escape && text !== "") { text = ""; event.accepted = true; }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: titleSearch.text === ""
+                                text: "Search every app, like “obsidian”"
+                                color: root.theme.textMuted
+                                font: titleSearch.font
+                            }
+                        }
+                        Text {
+                            id: keyHint
+                            anchors.right: parent.right
+                            anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "ctrl k"
+                            color: root.theme.textMuted
+                            font.family: root.mono
+                            font.pixelSize: 11
+                        }
+                        MouseArea { anchors.fill: parent; onClicked: titleSearch.forceActiveFocus(); z: -1 }
                     }
                     Rectangle {
                         id: closeButton

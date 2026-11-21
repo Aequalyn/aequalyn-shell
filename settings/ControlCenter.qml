@@ -345,11 +345,20 @@ Scope {
                             }
                         }
                         Text {
-                            text: "Aequalyn"
+                            text: "Control Center"
                             color: Cc.theme.textPrimary
                             font.family: Cc.sans
                             font.pixelSize: 16
                             font.weight: Font.DemiBold
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            // as the Store shows its section beside its name: the
+                            // page you are on, quieter than the window's title
+                            text: Pages.pages[root.page] ? Pages.pages[root.page].label : ""
+                            color: Cc.theme.textMuted
+                            font.family: Cc.sans
+                            font.pixelSize: 13
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
