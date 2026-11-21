@@ -257,7 +257,10 @@ Scope {
         const full = root.fullGeometry(mon, idx)
         const res = mon && Array.isArray(mon.reserved) ? mon.reserved : [0, 0, 0, 0]
         const l = Math.max(0, Number(res[0]) || 0)
-        const t = Math.max(0, Number(res[1]) || 0)
+        // Fall back to a small top margin when no exclusive zone is reported,
+        // so snapped windows (and their titlebars) never slide under an
+        // overlay bar.
+        const t = Math.max(Math.max(0, Number(res[1]) || 0), (Number(res[1]) || 0) === 0 ? 40 : 0)
         const r = Math.max(0, Number(res[2]) || 0)
         const b = Math.max(0, Number(res[3]) || 0)
         const gap = root.zoneGap
