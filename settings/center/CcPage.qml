@@ -1,8 +1,10 @@
 // One page of the control center: a plain title and a line saying what the page is
 // for, an optional row of sub pages, then the page itself, which scrolls.
 //
-// A sub page set in `fills` holds one big piece that scrolls by itself (an Atelier
-// pane); it then takes the whole height instead of scrolling with the page.
+// The tabs are compact and underlined, and the body uses tight spacing and quiet
+// hairlines. A sub page set in `fills` holds one big piece that scrolls by itself
+// (an Atelier pane); it then takes the whole height instead of scrolling with the
+// page. Stages (live previews) keep their own size and place.
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -95,19 +97,19 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        spacing: 14
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 10
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 3
                 Text {
                     text: page.title
                     color: Cc.theme.textPrimary
                     font.family: Cc.sans
-                    font.pixelSize: 24
+                    font.pixelSize: 22
                     font.weight: Font.DemiBold
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
@@ -117,7 +119,8 @@ Item {
                     text: page.sub
                     color: Cc.theme.textMuted
                     font.family: Cc.sans
-                    font.pixelSize: 13
+                    font.pixelSize: 11
+                    opacity: 0.65
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
                 }
@@ -125,7 +128,7 @@ Item {
             RowLayout {
                 id: actionRow
                 Layout.alignment: Qt.AlignTop
-                spacing: 8
+                spacing: 6
             }
         }
 
@@ -133,38 +136,38 @@ Item {
         Rectangle {
             visible: page.plugin !== ""
             Layout.fillWidth: true
-            implicitHeight: 58
-            radius: 12
-            color: Cc.theme.bgSurface
+            implicitHeight: 46
+            radius: 6
+            color: Cc.alpha(Cc.theme.textPrimary, 0.04)
             border.width: 1
-            border.color: page.pluginOn ? Cc.alpha(Cc.theme.accentPrimary, 0.35) : Cc.theme.bgBorder
+            border.color: page.pluginOn ? Cc.alpha(Cc.theme.accentPrimary, 0.5) : Cc.alpha(Cc.theme.textPrimary, 0.08)
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 14
-                spacing: 12
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: 10
                 Rectangle {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    radius: 10
-                    color: Cc.theme.bgBase
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    radius: 6
+                    color: Cc.alpha(Cc.theme.textPrimary, 0.06)
                     Text {
                         anchors.centerIn: parent
                         text: page.pluginInfo.icon
                         color: Cc.theme.accentPrimary
                         font.family: Cc.mono
-                        font.pixelSize: 17
+                        font.pixelSize: 14
                     }
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 2
+                    spacing: 1
                     Text {
                         Layout.fillWidth: true
                         text: (page.pluginEntry ? page.pluginEntry.label : page.title) + (page.pluginOn ? "  ·  on" : "  ·  off")
                         color: Cc.theme.textPrimary
                         font.family: Cc.sans
-                        font.pixelSize: 12
+                        font.pixelSize: 11
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
@@ -174,25 +177,24 @@ Item {
                             : "Turned off: nothing of it runs, and the settings below wait until it is back on."
                         color: Cc.theme.textMuted
                         font.family: Cc.sans
-                        font.pixelSize: 11
+                        font.pixelSize: 9
+                        opacity: 0.55
                         elide: Text.ElideRight
                     }
                 }
                 Rectangle {
                     visible: page.pluginInfo.keys !== ""
-                    implicitWidth: pluginKeys.implicitWidth + 14
-                    implicitHeight: 22
-                    radius: 6
-                    color: Cc.theme.bgBase
-                    border.width: 1
-                    border.color: Cc.theme.bgBorder
+                    implicitWidth: pluginKeys.implicitWidth + 12
+                    implicitHeight: 20
+                    radius: 4
+                    color: Cc.alpha(Cc.theme.textPrimary, 0.06)
                     Text {
                         id: pluginKeys
                         anchors.centerIn: parent
                         text: page.pluginInfo.keys
                         color: Cc.theme.textSecondary
                         font.family: Cc.mono
-                        font.pixelSize: 10
+                        font.pixelSize: 9
                     }
                 }
                 CcSwitch {
@@ -202,45 +204,99 @@ Item {
             }
         }
 
-        // the sub pages, as chips (the same as every choice)
-        Flow {
+        // the sub pages, as underlined tabs
+        Item {
             visible: page.tabs.length > 0
             Layout.fillWidth: true
-            spacing: 6
-            Repeater {
-                model: page.tabs
-                delegate: Rectangle {
-                        required property string modelData
-                        required property int index
-                        readonly property bool on: page.tab === index
-                        width: segText.implicitWidth + 26
-                        height: 32
-                        radius: 8
-                        color: on ? Cc.theme.bgSelected : (segArea.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSurface)
-                        border.width: 1
-                        border.color: on ? Cc.theme.accentPrimary : Cc.theme.bgBorder
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Accessible.role: Accessible.PageTab
-                        Accessible.name: modelData
-                        Text {
-                            id: segText
-                            anchors.centerIn: parent
-                            text: modelData
-                            color: parent.on ? Cc.theme.accentPrimary : Cc.theme.textSecondary
-                            font.family: Cc.sans
-                            font.pixelSize: 12
-                            font.weight: parent.on ? Font.DemiBold : Font.Normal
-                        }
-                        MouseArea {
-                            id: segArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: page.tab = index
+            Layout.preferredHeight: 32
+            implicitHeight: 32
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: Cc.alpha(Cc.theme.textPrimary, 0.10)
+            }
+
+            Flickable {
+                id: tabsFlick
+                anchors.fill: parent
+                contentWidth: Math.max(width, tabsRow.implicitWidth)
+                contentHeight: height
+                flickableDirection: Flickable.HorizontalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
+
+                // keep the open tab in view when the tab row is wider than the page
+                function reveal(item) {
+                    if (!item || contentWidth <= width) return;
+                    const pad = 24;
+                    if (item.x - pad < contentX) contentX = Math.max(0, item.x - pad);
+                    else if (item.x + item.width + pad > contentX + width)
+                        contentX = Math.min(contentWidth - width, item.x + item.width + pad - width);
+                }
+
+                RowLayout {
+                    id: tabsRow
+                    TextMetrics {
+                        id: widest
+                        font.family: Cc.sans
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        text: page.tabs.reduce((a, b) => b.length > a.length ? b : a, "")
+                    }
+                    readonly property real tabW: Math.ceil(widest.width) + 24
+                    implicitWidth: tabsRow.tabW * page.tabs.length
+                    width: tabsFlick.contentWidth
+                    height: tabsFlick.height
+                    spacing: 0
+
+                    Repeater {
+                        model: page.tabs
+                        delegate: Item {
+                            required property string modelData
+                            required property int index
+                            readonly property bool on: page.tab === index
+                            Layout.preferredWidth: tabsRow.tabW
+                            Layout.minimumWidth: tabsRow.tabW
+                            Layout.fillHeight: true
+                            Accessible.role: Accessible.PageTab
+                            Accessible.name: modelData
+                            onOnChanged: if (on) Qt.callLater(tabsFlick.reveal, this)
+                            onXChanged: if (on) Qt.callLater(tabsFlick.reveal, this)
+
+                            Text {
+                                anchors.centerIn: parent
+                                anchors.verticalCenterOffset: -1
+                                text: modelData
+                                color: Cc.theme.textPrimary
+                                opacity: parent.on ? 1 : (tabArea.containsMouse ? 0.8 : 0.5)
+                                font.family: Cc.sans
+                                font.pixelSize: 12
+                                font.weight: parent.on ? Font.DemiBold : Font.Normal
+                            }
+                            Rectangle {
+                                visible: parent.on
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: 2
+                                radius: 1
+                                color: Cc.theme.accentPrimary
+                            }
+                            MouseArea {
+                                id: tabArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { page.tab = index; }
+                            }
                         }
                     }
                 }
             }
+        }
     }
 
     Item {
@@ -257,7 +313,7 @@ Item {
     Flickable {
         id: flick
         anchors.top: stageHolder.bottom
-        anchors.topMargin: page.hasStage ? 16 : 20
+        anchors.topMargin: page.hasStage ? 16 : 14
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -265,20 +321,20 @@ Item {
         interactive: !page.fill
         boundsBehavior: Flickable.StopAtBounds
         contentWidth: width
-        contentHeight: page.fill ? height : body.implicitHeight + 24
+        contentHeight: page.fill ? height : body.implicitHeight + 14
         ScrollBar.vertical: ScrollBar { policy: page.fill ? ScrollBar.AlwaysOff : ScrollBar.AsNeeded }
 
         ColumnLayout {
             id: body
             width: flick.width - (page.fill ? 0 : 14)
             height: page.fill ? flick.height : implicitHeight
-            spacing: 22
+            spacing: 10
         }
         // the outline that lights up a setting the search found
         Rectangle {
             id: flash
             z: 5
-            radius: 14
+            radius: 6
             color: "transparent"
             border.width: 2
             border.color: Cc.theme.accentPrimary

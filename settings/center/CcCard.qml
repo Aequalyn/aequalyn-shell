@@ -1,4 +1,5 @@
 // A small card that opens a page: an icon, what it is and how it is right now.
+// The card itself is a quiet tile; live previews are never drawn here.
 import QtQuick
 import QtQuick.Layouts
 
@@ -11,24 +12,25 @@ Rectangle {
     signal clicked()
 
     Layout.fillWidth: true
-    implicitHeight: 72
-    radius: 12
-    color: lit ? Cc.theme.bgSelected : (area.containsMouse ? Cc.theme.bgHover : Cc.theme.bgSurface)
+    implicitHeight: 62
+    radius: 6
+    color: lit ? Cc.alpha(Cc.theme.accentPrimary, 0.12)
+         : (area.containsMouse ? Cc.alpha(Cc.theme.textPrimary, 0.10) : Cc.alpha(Cc.theme.textPrimary, 0.04))
     border.width: 1
-    border.color: lit ? Cc.theme.accentPrimary : Cc.theme.bgBorder
-    Behavior on color { ColorAnimation { duration: 120 } }
+    border.color: lit ? Cc.theme.accentPrimary : Cc.alpha(Cc.theme.textPrimary, 0.08)
+    Behavior on color { ColorAnimation { duration: 90 } }
     Accessible.role: Accessible.Button
     Accessible.name: title + ": " + sub
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: 14
-        spacing: 12
+        anchors.margins: 10
+        spacing: 8
         Text {
             text: card.icon
             color: Cc.theme.accentPrimary
             font.family: Cc.mono
-            font.pixelSize: 20
+            font.pixelSize: 16
         }
         ColumnLayout {
             Layout.fillWidth: true
@@ -37,7 +39,7 @@ Rectangle {
                 text: card.title
                 color: Cc.theme.textPrimary
                 font.family: Cc.sans
-                font.pixelSize: 13
+                font.pixelSize: 11
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
                 Layout.fillWidth: true
@@ -45,8 +47,9 @@ Rectangle {
             Text {
                 text: card.sub
                 color: card.lit ? Cc.theme.accentPrimary : Cc.theme.textMuted
+                opacity: card.lit ? 1 : 0.55
                 font.family: Cc.sans
-                font.pixelSize: 11
+                font.pixelSize: 9
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }

@@ -1,7 +1,7 @@
 // A question and what answers it: a short title, an optional hint, then the settings.
-// The settings that are rows (switches, amounts, items) sit together in one rounded
-// group with a hairline between them, as every page shows them; a section holding no
-// rows (a gallery, a row of choices) shows its content as it is, without the group.
+// Rows sit together in one quiet framed group with hairlines between them; a section
+// holding no rows (a gallery, a row of choices) shows its content as it is, without
+// the group. Previews are never framed here.
 import QtQuick
 import QtQuick.Layouts
 
@@ -17,24 +17,28 @@ ColumnLayout {
     readonly property bool boxed: rows > 0
 
     Layout.fillWidth: true
-    spacing: 8
+    spacing: 6
 
     Text {
         visible: sec.title !== ""
-        text: sec.title
+        text: sec.title.toUpperCase()
         color: Cc.theme.textSecondary
         font.family: Cc.sans
-        font.pixelSize: 13
+        font.pixelSize: 9
         font.weight: Font.DemiBold
+        font.letterSpacing: 1
+        opacity: 0.45
         Layout.fillWidth: true
         Layout.leftMargin: 2
+        Layout.topMargin: 6
     }
     Text {
         visible: sec.hint !== ""
         text: sec.hint
         color: Cc.theme.textMuted
         font.family: Cc.sans
-        font.pixelSize: 12
+        font.pixelSize: 10
+        opacity: 0.55
         wrapMode: Text.WordWrap
         Layout.fillWidth: true
         Layout.leftMargin: 2
@@ -46,17 +50,17 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.topMargin: 2
         implicitHeight: body.implicitHeight + (sec.boxed ? 8 : 0)
-        radius: 12
-        color: sec.boxed ? Cc.theme.bgSurface : "transparent"
+        radius: 6
+        color: sec.boxed ? Cc.alpha(Cc.theme.textPrimary, 0.03) : "transparent"
         border.width: sec.boxed ? 1 : 0
-        border.color: Cc.theme.bgBorder
+        border.color: Cc.alpha(Cc.theme.textPrimary, 0.08)
         ColumnLayout {
             id: body
             x: sec.boxed ? 4 : 0
             y: sec.boxed ? 4 : 0
             width: box.width - (sec.boxed ? 8 : 0)
             // rows sit flush with a hairline between them; anything else keeps its room
-            spacing: sec.boxed ? 0 : 8
+            spacing: sec.boxed ? 0 : 6
         }
     }
 }

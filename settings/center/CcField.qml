@@ -1,4 +1,4 @@
-// A one-line text field, looking like the rest of the control center.
+// A one-line text field, with a quiet frame.
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -12,12 +12,13 @@ Rectangle {
     signal accepted()
 
     function forceInput() { input.forceActiveFocus(); }
-    implicitHeight: 38
+    implicitHeight: 34
     implicitWidth: inputWidth > 0 ? inputWidth : 220
-    radius: 10
-    color: grouped ? Cc.theme.bgBase : Cc.theme.bgSurface
+    radius: 6
+    color: Cc.alpha(Cc.theme.textPrimary, 0.05)
     border.width: 1
-    border.color: input.activeFocus ? Cc.theme.accentPrimary : Cc.theme.bgBorder
+    border.color: Cc.alpha(Cc.theme.textPrimary, input.activeFocus ? 0.28 : 0.08)
+    Behavior on border.color { ColorAnimation { duration: 90 } }
     // in a section's group: room of its own beside the rows
     readonly property bool grouped: Cc.inGroup(f)
     readonly property bool roomy: Cc.inGroupBody(f)
@@ -34,15 +35,15 @@ Rectangle {
         id: input
         echoMode: f.echoMode
         anchors.left: parent.left
-        anchors.leftMargin: 12
+        anchors.leftMargin: 10
         anchors.right: parent.right
-        anchors.rightMargin: 12
+        anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         color: Cc.theme.textPrimary
         selectionColor: Cc.theme.accentPrimary
         selectedTextColor: Cc.theme.bgBase
         font.family: Cc.sans
-        font.pixelSize: 13
+        font.pixelSize: 12
         clip: true
         selectByMouse: true
         Keys.onReturnPressed: f.accepted()
@@ -52,7 +53,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             visible: input.text === "" && !input.activeFocus
             text: f.placeholder
-            color: Cc.theme.textMuted
+            color: Cc.alpha(Cc.theme.textPrimary, 0.4)
             font: input.font
         }
     }
