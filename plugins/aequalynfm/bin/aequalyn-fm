@@ -39,7 +39,21 @@ ensure_shell() {
     if [[ -f $root/daemon/holdname.py ]]; then
         python3 "$root/daemon/holdname.py" &>/dev/null &
     fi
-    qs -n -d -p "$qs_config" &>/dev/null || true
+    # The shell must be brought up by the supervisor, never by a bare
+    # `qs -n -d`: a qs launched behind the watchdog's back is an unsupervised
+    # fork-parent that dies within a few seconds and looks like a crash at
+    # Hyprland spawn ("crashed: process gone", then "refused its duplicate").
+    # If the supervisor is already up, just wait for its shell's IPC. If it is
+    # not up yet, start it (idempotent) so the shell is launched exactly once,
+    # through the watchdog. Only when the supervisor cannot be started at all
+    # do we fall back to a bare qs.
+    if command -v aequalyn-watchdog >/dev/null 2>&1; then
+        if ! aequalyn-watchdog status >/dev/null 2>&1; then
+            aequalyn-watchdog start >/dev/null 2>&1 || true
+        fi
+    else
+        qs -n -d -p "$qs_config" &>/dev/null || true
+    fi
     for _ in $(seq 100); do
         running && return 0
         sleep 0.1
