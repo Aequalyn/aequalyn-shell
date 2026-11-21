@@ -210,13 +210,10 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             cellWidth: Math.floor(width / pane.columns)
-            // the body of CcPage is clipped, so three rows have to fit what is left
-            // after the two chip rows, the hint, the key row and the pager
-            readonly property int overhead: wsRow.height + groupRow.height + 44 + 62
-                + col.spacing * (pane.count > pane.perPage ? 5 : 4)
-                + (pane.count > pane.perPage ? 32 : 0)
-            cellHeight: Math.max(84, Math.min(Math.floor(cellWidth * 0.56) + 46,
-                Math.floor((pane.height - overhead) / 3)))
+            // size from the grid's own height: CcPage clips the body, so the three
+            // rows must fit exactly what the layout actually gives us here
+            cellHeight: Math.max(70, Math.min(Math.floor(cellWidth * 0.56) + 46,
+                Math.floor(height / 3)))
             model: pane.pageItems
             // GridView takes its column count from cellWidth; width / 5 gives five across
             clip: true
