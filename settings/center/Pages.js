@@ -10,12 +10,12 @@
 // and timers only run while you look at them.
 // Six categories, each a few pages: the window lists the categories, then the pages
 // of the one chosen (two levels, so neither list ever grows long). Home stands apart.
+// (Apps -- default apps, web apps, packages, AI tools -- live in the Store, not here.)
 var categories = [
     { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "cursor", "lockscreens"] },
     { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "dock", "media", "clipboard"] },
     { key: "windows", title: "Windows", icon: "\u{F05AF}", pages: ["arrange", "windows", "switcher"] },
     { key: "devices", title: "Devices", icon: "\u{F0379}", pages: ["screens", "sound", "input", "keybinds", "bluetooth", "wifi"] },
-    { key: "apps",    title: "Apps",    icon: "\u{F003B}", pages: ["apps", "webapps", "store", "aiTools"] },
     { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["sleep", "clock", "plugins", "updates", "backup", "about"] }
 ];
 // the same, as the flat groups other parts of the shell read
@@ -84,22 +84,10 @@ var pages = {
     sound:     { label: "Sound", icon: "\u{F057E}", file: "Sound",
                  words: ["Volume", "Mute", "Play sound through", "Microphone"],
                  also: "audio speakers headphones output input mic" },
-    apps:      { label: "Apps", icon: "\u{F003B}", file: "Apps",
-                 words: ["Default browser", "Default AI tool", "Default coding agent", "Default terminal", "Default file manager", "Default text editor", "Default video player"],
-                 also: "default applications open with browser ai tool coding agent" },
-    webapps:   { label: "Web apps", icon: "\u{F0595}", file: "Webapps",
-                 words: ["Add a web app", "Remove a web app", "Web app browser", "Web app shortcuts"],
-                 also: "webapp web app website site reddit chatgpt youtube music shortcut launcher app window" },
-    store:     { label: "Packages", icon: "\u{F034A}", file: "Store",
-                  words: ["Install a package", "Install from the AUR", "Arch packages", "AUR packages"],
-                  also: "store install software package aur pacman yay app application" },
     clipboard: { label: "Clipboard", icon: "\u{F0336}", file: "Clipboard",
                  words: ["Clear clipboard cache", "Clear clipboard history", "Clipboard shortcut", "Super + Ctrl + V",
                          "Clips kept", "Paste with", "Never keep copies from", "Bar button shows"],
                  also: "clipscape clips copy paste history cache clear keybind super ctrl v pins privacy images picker colors appearance window bar" },
-    aiTools:   { label: "AI tools", icon: "\u{F06A9}", file: "AiTools",
-                 words: ["Install a coding agent", "Update an AI CLI", "Remove an AI CLI", "Claude Code", "Codex", "Copilot CLI", "Gemini CLI", "OpenCode", "Qwen Code", "Kilo Code", "Cline", "Crush", "Amp"],
-                 also: "ai artificial intelligence coding agent cli terminal claude codex copilot gemini opencode qwen kilo cline crush amp developer development programming mise node npm" },
     media:     { label: "Media", icon: "\u{F075A}", file: "Media",
                  words: ["Now playing", "Music visualizer", "Music controls", "Album cover", "Follow a player", "Media looks"],
                  also: "mpris player spotify music song album cover art visualizer spectrum bars audio playback pause next previous" },
@@ -129,7 +117,7 @@ for (var g = 0; g < groups.length; g++) order = order.concat(groups[g].pages);
 
 // the names older parts of the shell open pages by (IPC methods, bar buttons, and
 // Atelier's former tabs), with the sub page to show: "page" or "page:tab"
-var aliases = { appearance: "theme", defaultApps: "apps", hyprland: "windows",
+var aliases = { appearance: "theme", hyprland: "windows",
                 displays: "screens", power: "sleep", docks: "dock",
                 themes: "theme", wallpapers: "wallpaper", layouts: "arrange",
                 rotation: "wallpaper:1", palette: "theme:1", panel: "picker", backdrop: "windows:1" };

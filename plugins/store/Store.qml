@@ -1,10 +1,11 @@
 // The Store: plugins, themes, cursors, wallpaper packs and looks from git, every one
-// checked before it is kept (bin/aequalyn-store does the work; this is its window),
-// a door to the package search for apps, and the way AppImages come in: checked
-// without anything inside them ever running, moved to ~/Applications with a menu
-// entry of their own. Super + Alt + S, or `qs ipc call store open`
-// (`section <name>` opens it on a section, `install <kind> <git-url>` installs,
-// `appimage <path>` brings an opened .AppImage to its page).
+// checked before it is kept (bin/aequalyn-store does the work; this is its window);
+// the way to search apps in Arch, the AUR, Flathub and Snap; web apps and AI tools
+// (aequalyn-webapp and aequalyn-ai-tool do the work, the same live report shows it);
+// and the way AppImages come in: checked without anything inside them ever running,
+// moved to ~/Applications with a menu entry of their own. Super + Alt + S, or
+// `qs ipc call store open` (`section <name>` opens it on a section,
+// `install <kind> <git-url>` installs, `appimage <path>` brings one over).
 //
 // Dressed as the control center: the same palette (the live one the shell binds into
 // every plugin), the same two fonts (words in a plain sans, numbers, paths and icons
@@ -38,6 +39,8 @@ Scope {
         { key: "wallpaper", label: "Wallpapers", glyph: "\u{F02E9}" },
         { key: "look",      label: "Looks",      glyph: "\u{F0E09}" },
         { key: "apps",      label: "Apps",       glyph: "\u{F003B}" },
+        { key: "web",       label: "Web apps",   glyph: "\u{F0595}" },
+        { key: "ai",        label: "AI tools",   glyph: "\u{F06A9}" },
         { key: "appimage",  label: "AppImages",  glyph: "\u{F01D4}" },
         { key: "market",    label: "Market",     glyph: "\u{F0110}" },
         { key: "updates",   label: "Updates",    glyph: "\u{F06B0}" }
@@ -204,7 +207,56 @@ Scope {
     }
     onOpenChanged: {
         if (open && section === "apps") detectApps();
+        if (open && section === "web") loadWebapps();
+        if (open && section === "ai") loadAi();
         if (open && section === "appimage") checkHandler();
+    }
+
+    // ---- web apps: websites in their own window ----------------------------------------
+    // aequalyn-webapp owns everything (the desktop entries, the Super + Shift
+    // binds, ~/.config/aequalyn/webapps.json); this page shows what it holds and
+    // runs it, the same way the rest of the Store runs aequalyn-store.
+    property var webapps: []
+    property var webBrowsers: []
+    property string webBrowser: ""
+    function loadWebapps() { if (!webProc.running) webProc.running = true; }
+    Process {
+        id: webProc
+        command: ["aequalyn-webapp", "list", "--json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const j = JSON.parse(text.trim());
+                    root.webapps = j.apps || [];
+                    root.webBrowsers = j.browsers || [];
+                    root.webBrowser = j.browser || "auto";
+                } catch (e) { root.webapps = []; }
+            }
+        }
+    }
+
+    // ---- ai tools: the coding agents ------------------------------------------------------
+    // aequalyn-ai-tool installs, updates and removes them (their publisher's npm
+    // package, Google's own installer for Antigravity); this page lists what it
+    // knows and runs it.
+    property var aiTools: []
+    function loadAi() { if (!aiProc.running) aiProc.running = true; }
+    // a coding agent in a terminal: they are terminal programs
+    function aiLaunch(command) {
+        const q = "'" + String(command).replace(/'/g, "'\\''") + "'";
+        const script = "if command -v xdg-terminal-exec >/dev/null 2>&1; then exec xdg-terminal-exec " + q
+            + "; elif command -v kitty >/dev/null 2>&1; then exec kitty sh -lc " + q
+            + "; elif command -v foot >/dev/null 2>&1; then exec foot sh -lc " + q
+            + "; elif command -v alacritty >/dev/null 2>&1; then exec alacritty -e sh -lc " + q
+            + "; else echo 'No terminal emulator found.'; fi";
+        Quickshell.execDetached(["sh", "-c", script]);
+    }
+    Process {
+        id: aiProc
+        command: ["aequalyn-ai-tool", "list", "--json"]
+        stdout: StdioCollector {
+            onStreamFinished: { try { root.aiTools = JSON.parse(text.trim()); } catch (e) { root.aiTools = []; } }
+        }
     }
 
     // ---- appimages: the Store as their default handler ---------------------------------
@@ -302,6 +354,8 @@ Scope {
     onSectionChanged: {
         if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
         if (section === "apps") { detectApps(); if (root.foundPage === 0) searchApps("", false); }
+        if (section === "web") loadWebapps();
+        if (section === "ai") loadAi();
         if (section === "appimage") checkHandler();
         pageIn.restart();
     }
@@ -313,13 +367,18 @@ Scope {
     property var jobArgs: []
     ListModel { id: logModel }
     function runJob(title, args) {
+        root.jobArgs = args;
+        root.runCmd(title, ["aequalyn-store"].concat(args));
+    }
+    // one job at a time over any of this window's commands -- the engine, the web
+    // app tool, the ai tool -- all into the same live report
+    function runCmd(title, cmd) {
         if (root.busy) return;
         logModel.clear();
         root.jobTitle = title;
         root.jobCode = -1;
-        root.jobArgs = args;
         root.busy = true;
-        job.command = ["aequalyn-store"].concat(args);
+        job.command = cmd;
         job.running = true;
     }
     Process {
@@ -332,6 +391,8 @@ Scope {
             root.refresh();
             root.loadMarket();
             UserPlugins.rescan();
+            if (root.section === "web") root.loadWebapps();
+            if (root.section === "ai") root.loadAi();
             if (root.section === "appimage") root.checkHandler();
             // a fresh import lands on the last page: show it where it arrives
             if (root.section === "appimage" && root.jobArgs[0] === "import-appimage") root.importedPage = 99;
@@ -1182,13 +1243,188 @@ Scope {
                                         onClicked: root.searchApps(root.foundQuery, true)
                                     }
                                 }
+                                // Web apps: what you have, the form, and the browser
                                 Box {
-                                    visible: root.section === "apps"
-                                    title: "Anything else"
-                                    hint: "Search every package in Arch's repositories and the AUR."
+                                    visible: root.section === "web"
+                                    title: "Your web apps"
+                                    hint: root.webapps.length === 0
+                                          ? "No web apps yet. Add one below; the default set can be seeded from a terminal with aequalyn-webapp seed." : ""
+                                    Repeater {
+                                        model: root.section === "web" ? root.webapps : []
+                                        delegate: ColumnLayout {
+                                            id: wrow
+                                            required property var modelData
+                                            required property int index
+                                            Layout.fillWidth: true
+                                            spacing: 0
+                                            Rectangle { visible: wrow.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 12
+                                                Layout.rightMargin: 12
+                                                Layout.topMargin: 9
+                                                Layout.bottomMargin: 9
+                                                spacing: 10
+                                                Item {
+                                                    Layout.preferredWidth: 30
+                                                    Layout.preferredHeight: 30
+                                                    Image {
+                                                        id: wicon
+                                                        anchors.fill: parent
+                                                        visible: !!wrow.modelData.iconFile && status === Image.Ready
+                                                        source: wrow.modelData.iconFile ? "file://" + wrow.modelData.iconFile : ""
+                                                        sourceSize.width: 64; sourceSize.height: 64
+                                                        fillMode: Image.PreserveAspectFit
+                                                        asynchronous: true
+                                                        smooth: true
+                                                    }
+                                                    Text {
+                                                        anchors.centerIn: parent
+                                                        visible: !wicon.visible
+                                                        text: "\u{F0595}"
+                                                        color: root.theme.accentPrimary; font.family: root.mono; font.pixelSize: 16
+                                                    }
+                                                }
+                                                ColumnLayout {
+                                                    spacing: 2
+                                                    Layout.fillWidth: true
+                                                    RowLayout {
+                                                        spacing: 8
+                                                        Layout.fillWidth: true
+                                                        Text { text: wrow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                                        Pill { visible: !!wrow.modelData.categoryLabel; text: wrow.modelData.categoryLabel; tone: root.theme.accentPrimary }
+                                                        Pill { visible: !!wrow.modelData.shortcut; text: wrow.modelData.shortcut; tone: root.theme.textMuted }
+                                                        Item { Layout.fillWidth: true }
+                                                    }
+                                                    Text {
+                                                        text: wrow.modelData.url
+                                                        color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                                        elide: Text.ElideMiddle; Layout.fillWidth: true
+                                                    }
+                                                }
+                                                Btn {
+                                                    text: "Open"
+                                                    primary: true
+                                                    onClicked: Quickshell.execDetached(["aequalyn-webapp", "launch", wrow.modelData.slug])
+                                                }
+                                                Btn {
+                                                    text: "Remove"
+                                                    danger: true
+                                                    enabled: !root.busy
+                                                    onClicked: root.runCmd("Removing " + wrow.modelData.name, ["aequalyn-webapp", "remove", "--slug", wrow.modelData.slug])
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Box {
+                                    visible: root.section === "web"
+                                    title: "Add a web app"
+                                    hint: "Name it as it should appear in the launcher, then the address, and a category if you like. The icon comes from the site when it can."
+                                    RowLayout {
+                                        spacing: 8
+                                        Field { id: webName; placeholder: "Reddit" }
+                                        Field { id: webUrl; placeholder: "https://www.reddit.com/" }
+                                        Field { id: webCat; Layout.preferredWidth: 170; Layout.fillWidth: false; placeholder: "category (optional)" }
+                                    }
                                     Btn {
-                                        text: "Search packages"
-                                        onClicked: { root.open = false; root.runSide(["qs", "ipc", "call", "aequalyn", "page", "store"]); }
+                                        text: "Add"
+                                        primary: true
+                                        enabled: !root.busy && webName.text.trim() !== "" && webUrl.text.trim() !== ""
+                                        onClicked: {
+                                            const cat = webCat.text.trim();
+                                            root.runCmd("Adding " + webName.text.trim(),
+                                                        ["aequalyn-webapp", "add", "--name", webName.text.trim(),
+                                                         "--url", webUrl.text.trim()].concat(cat !== "" ? ["--category", cat] : []));
+                                            webName.text = ""; webUrl.text = ""; webCat.text = "";
+                                        }
+                                    }
+                                }
+                                Box {
+                                    visible: root.section === "web"
+                                    title: "Browser"
+                                    hint: "Chromium-based browsers open a web app as its own app window. Firefox-based browsers use a separate profile with the browser chrome hidden, so the window reads as an app too."
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 8
+                                        Repeater {
+                                            model: root.section === "web" ? root.webBrowsers : []
+                                            delegate: Btn {
+                                                required property var modelData
+                                                text: modelData.label
+                                                primary: modelData.id === root.webBrowser
+                                                enabled: !root.busy && modelData.available
+                                                onClicked: root.runCmd("Opening web apps with " + modelData.label,
+                                                                       ["aequalyn-webapp", "set-browser", modelData.id])
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // AI tools: the coding agents, each one click away
+                                Box {
+                                    visible: root.section === "ai"
+                                    title: "Coding agents"
+                                    hint: "Most tools use their publisher's npm package; Antigravity uses Google's official installer. Sign-in stays with each provider."
+                                    Repeater {
+                                        model: root.section === "ai" ? root.aiTools : []
+                                        delegate: ColumnLayout {
+                                            id: arow
+                                            required property var modelData
+                                            required property int index
+                                            Layout.fillWidth: true
+                                            spacing: 0
+                                            Rectangle { visible: arow.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 12
+                                                Layout.rightMargin: 12
+                                                Layout.topMargin: 9
+                                                Layout.bottomMargin: 9
+                                                spacing: 10
+                                                ColumnLayout {
+                                                    spacing: 2
+                                                    Layout.fillWidth: true
+                                                    Text { text: arow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                                    Text {
+                                                        text: (arow.modelData.description || "")
+                                                            + (arow.modelData.installed ? "  ·  " + arow.modelData.command + " " + (arow.modelData.version || "")
+                                                               : arow.modelData.availableElsewhere ? "  ·  already at " + arow.modelData.availablePath
+                                                               : arow.modelData.launcherConflict ? "  ·  the " + arow.modelData.command + " command is taken"
+                                                               : "  ·  " + arow.modelData.command)
+                                                        color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11
+                                                        wrapMode: Text.WordWrap; Layout.fillWidth: true
+                                                    }
+                                                }
+                                                Btn {
+                                                    text: arow.modelData.installed ? "Update"
+                                                        : arow.modelData.availableElsewhere ? "Open"
+                                                        : arow.modelData.launcherConflict ? "In use" : "Install"
+                                                    primary: !arow.modelData.installed && !arow.modelData.availableElsewhere && !arow.modelData.launcherConflict
+                                                    enabled: !root.busy && (arow.modelData.installed || arow.modelData.availableElsewhere || !arow.modelData.launcherConflict)
+                                                    onClicked: {
+                                                        if (arow.modelData.installed)
+                                                            root.runCmd("Updating " + arow.modelData.name, ["aequalyn-ai-tool", "update", arow.modelData.id]);
+                                                        else if (arow.modelData.availableElsewhere)
+                                                            root.aiLaunch(arow.modelData.command);
+                                                        else if (!arow.modelData.launcherConflict)
+                                                            root.runCmd("Installing " + arow.modelData.name, ["aequalyn-ai-tool", "install", arow.modelData.id]);
+                                                    }
+                                                }
+                                                Btn {
+                                                    visible: !!arow.modelData.installed
+                                                    text: "Remove"
+                                                    danger: true
+                                                    enabled: !root.busy
+                                                    onClicked: root.runCmd("Removing " + arow.modelData.name, ["aequalyn-ai-tool", "remove", arow.modelData.id])
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        visible: root.aiTools.length === 0
+                                        text: "Reading the AI tool list…"
+                                        color: root.theme.textMuted; font.family: root.sans; font.pixelSize: 11
                                     }
                                 }
 

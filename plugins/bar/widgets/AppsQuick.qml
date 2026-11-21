@@ -16,8 +16,8 @@ QuickPopup {
     glyph: "\u{F003B}"
     title: "Apps"
     sub: "Super + D finds one by name"
-    settingsLabel: "Apps settings"
-    onSettingsClicked: q.page("apps")
+    settingsLabel: "Get apps"
+    onSettingsClicked: q.ipc(["store", "section", "apps"])
 
     GridLayout {
         Layout.fillWidth: true
@@ -35,7 +35,7 @@ QuickPopup {
             enabled: q.on("defaultApps")
             onToggled: q.ipc(["defaults", "toggle"])
         }
-        QuickTile { glyph: "\u{F0595}"; title: "Web apps"; sub: "Sites as apps"; onToggled: q.page("webapps") }
+        QuickTile { glyph: "\u{F0595}"; title: "Web apps"; sub: "Sites as apps"; onToggled: q.ipc(["store", "section", "web"]) }
     }
-    QuickWide { glyph: "\u{F034A}"; label: "Get more apps"; onClicked: q.page("store") }
+    QuickWide { glyph: "\u{F034A}"; label: "Get more apps"; onClicked: q.ipc(["store", "section", "apps"]) }
 }

@@ -141,8 +141,6 @@ Scope {
 
     // pages and the controls read the palette from here
     Binding { target: Cc; property: "theme"; value: root.theme }
-    Binding { target: Cc; property: "apps"; value: apps }
-    Binding { target: Cc; property: "webapps"; value: webapps }
     Binding { target: Cc; property: "updates"; value: updates }
     Binding { target: Cc; property: "backup"; value: backup }
     Connections {
@@ -151,10 +149,8 @@ Scope {
         function onCloseRequested() { root.panelVisible = false; }
     }
 
-    AppsService { id: apps }
-    WebappsService { id: webapps }
-    UpdatesService { id: updates }
     BackupService { id: backup }
+    UpdatesService { id: updates }
     Component.onCompleted: updates.refresh()
 
     // the wallpaper on the screen right now, for the pictures on the pages
@@ -217,13 +213,8 @@ Scope {
         function page(name: string): void { root.open(name) }
         // the control center, already searching: `qs ipc call aequalyn search "dark"`
         function search(words: string): void { root.panelVisible = true; searchText.restart(); root.pendingSearch = words }
-        function setDefault(category: string, appId: string): void { apps.set(category, appId, appId) }
         // the page names older parts of the shell use
         function appearance(): void { root.open("theme") }
-        function defaultApps(): void { root.open("apps") }
-        function webapps(): void { root.open("webapps") }
-        function store(): void { root.open("store") }
-        function install(): void { root.open("store") }
 
         function displays(): void { root.open("screens") }
         function bluetooth(): void { root.open("bluetooth") }

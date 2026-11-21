@@ -1,6 +1,5 @@
 // Default apps: which app opens web pages, folders, text, videos and the terminal.
-// Lives as long as the control center, so `qs ipc call aequalyn setDefault` works
-// with the window closed.
+// Lives as long as the default apps plugin, so its chooser is always ready.
 import QtQuick
 import Quickshell
 import Quickshell.Io

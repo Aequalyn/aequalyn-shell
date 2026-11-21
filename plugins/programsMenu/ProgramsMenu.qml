@@ -538,7 +538,7 @@ Scope {
               cursorShape: Qt.PointingHandCursor
               onClicked: {
                 root.open = false;
-                Quickshell.execDetached(["qs", "ipc", "call", "aequalyn", "page", "webapps"]);
+                Quickshell.execDetached(["qs", "ipc", "call", "store", "section", "web"]);
               }
             }
           }
