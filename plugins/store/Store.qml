@@ -203,7 +203,10 @@ Scope {
     // a command in a terminal, kept open at the end so its output can be read
     Process {
         id: terminal
-        onExited: root.detectApps()
+        onExited: {
+            root.detectApps();
+            if (root.section === "ai") root.loadAi();
+        }
     }
     function inTerminal(cmd) {
         if (terminal.running) return;
@@ -423,6 +426,14 @@ Scope {
             + "; elif command -v alacritty >/dev/null 2>&1; then exec alacritty -e sh -lc " + q
             + "; else echo 'No terminal emulator found.'; fi";
         Quickshell.execDetached(["sh", "-c", script]);
+    }
+    // a command in /usr/bin still has an owner: an Arch package or a system-wide
+    // npm install. The tool CLI knows that owner and needs sudo, so give it a
+    // terminal rather than running it in the Store's own process.
+    function aiSystemAction(a, action) {
+        const id = a.id || "";
+        if (!/^[a-z]{1,32}$/.test(id) || (action !== "update" && action !== "remove")) return;
+        root.inTerminal("aequalyn-ai-tool " + action + " " + id);
     }
     Process {
         id: aiProc
@@ -857,10 +868,12 @@ Scope {
         required property var modelData
         readonly property bool installedHere: !!modelData.installed
         readonly property bool elsewhere: !!modelData.availableElsewhere
+        readonly property bool systemManaged: !installedHere && !!modelData.systemManager
         readonly property bool conflict: !!modelData.launcherConflict
         readonly property string label: modelData.name || modelData.id || ""
         readonly property string stateText: installedHere
             ? "Installed · " + (modelData.version || modelData.command)
+            : systemManaged ? "System · " + (modelData.systemId || modelData.availablePath)
             : elsewhere ? "Available · " + (modelData.availablePath || modelData.command)
             : conflict ? "Command in use" : "Not installed"
         readonly property color stateTone: installedHere ? root.theme.accentGreen
@@ -943,7 +956,7 @@ Scope {
                 }
             }
             RowLayout {
-                visible: card.installedHere
+                visible: card.installedHere || card.systemManaged
                 Layout.fillWidth: true
                 spacing: 6
                 Btn {
@@ -2224,7 +2237,7 @@ Scope {
                                 Box {
                                     visible: root.section === "ai"
                                     title: "Coding agents"
-                                    hint: "Open launches the agent in a terminal. Install, update and remove go through Aequalyn's tool manager; sign-in stays with each provider."
+                                    hint: "Open launches the agent in a terminal. Tools installed by Arch or a system-wide npm package can be updated and removed here too; those need sudo. Sign-in stays with each provider."
                                     Repeater {
                                         model: root.section === "ai" ? root.aiRows() : []
                                         delegate: RowLayout {
@@ -2241,10 +2254,20 @@ Scope {
                                                     onOpenRequested: root.aiLaunch(modelData.command)
                                                     onInstallRequested: root.runCmd("Installing " + (modelData.name || modelData.id),
                                                                                    ["aequalyn-ai-tool", "install", modelData.id])
-                                                    onUpdateRequested: root.runCmd("Updating " + (modelData.name || modelData.id),
-                                                                                  ["aequalyn-ai-tool", "update", modelData.id])
-                                                    onRemoveRequested: root.runCmd("Removing " + (modelData.name || modelData.id),
-                                                                                  ["aequalyn-ai-tool", "remove", modelData.id])
+                                                    onUpdateRequested: {
+                                                        if (modelData.systemManager)
+                                                            root.aiSystemAction(modelData, "update");
+                                                        else
+                                                            root.runCmd("Updating " + (modelData.name || modelData.id),
+                                                                        ["aequalyn-ai-tool", "update", modelData.id]);
+                                                    }
+                                                    onRemoveRequested: {
+                                                        if (modelData.systemManager)
+                                                            root.aiSystemAction(modelData, "remove");
+                                                        else
+                                                            root.runCmd("Removing " + (modelData.name || modelData.id),
+                                                                        ["aequalyn-ai-tool", "remove", modelData.id]);
+                                                    }
                                                 }
                                             }
                                             Repeater {
