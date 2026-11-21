@@ -1,9 +1,10 @@
 // Snap flyout for floating workspaces.
 //
-// Hover the top-right (maximize) corner of a floating window and a compact grid of
-// snap arrangements appears; clicking one places that window in the highlighted
+// Leave the pointer in the top edge strip for a moment and a compact grid of
+// snap arrangements appears. Dragging a floating window up to that same strip
+// also opens it; clicking a layout places the active window in the highlighted
 // zone and the other floating windows of the workspace in the remaining ones.
-// Super + G opens the same flyout without the mouse.
+// Super + G opens the same flyout without depending on the pointer.
 
 import QtQuick
 import Quickshell
@@ -31,6 +32,9 @@ Scope {
 
     property real cursorX: -1
     property real cursorY: -1
+    // Hyprland 0.57 no longer puts a focused flag in `clients`, and Quickshell's
+    // activeToplevel can be null in Lua mode, so poll the active window too.
+    property string focusedAddress: ""
     property var clients: []
     property var monitors: []
     property var active: null
@@ -58,20 +62,35 @@ Scope {
     property double blockedAt: 0
     property string dragAddr: ""
 
-    // normalized zones; the first one is where the focused window goes
+    // Top-edge hotspot: dwell in the strip, no drag or click required.
+    readonly property int hoverDwellMs: 180
+    property double hoverEnteredAt: 0
+
+    // Normalized zones; the first one is where the focused window goes.
+    // Each entry is a distinct partition, and the later ones cover sessions
+    // with many windows instead of repeating the same halves/quarters/thirds
+    // with the zone order shuffled.
     readonly property var presets: [
-        { name: "Left half",    icon: "󰉝", zones: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
-        { name: "Right half",   icon: "󰉞", zones: [[.5, 0, .5, 1], [0, 0, .5, 1]] },
-        { name: "Top half",     icon: "󰉟", zones: [[0, 0, 1, .5], [0, .5, 1, .5]] },
-        { name: "Bottom half",  icon: "󰉠", zones: [[0, .5, 1, .5], [0, 0, 1, .5]] },
-        { name: "Top left",     icon: "󰉡", zones: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
-        { name: "Top right",    icon: "󰉢", zones: [[.5, 0, .5, .5], [0, 0, .5, .5], [.5, .5, .5, .5], [0, .5, .5, .5]] },
-        { name: "Bottom left",  icon: "󰉣", zones: [[0, .5, .5, .5], [.5, .5, .5, .5], [0, 0, .5, .5], [.5, 0, .5, .5]] },
-        { name: "Bottom right", icon: "󰉤", zones: [[.5, .5, .5, .5], [0, .5, .5, .5], [.5, 0, .5, .5], [0, 0, .5, .5]] },
-        { name: "Left third",   icon: "󰉥", zones: [[0, 0, .3333, 1], [.3333, 0, .3334, 1], [.6667, 0, .3333, 1]] },
-        { name: "Middle third", icon: "󰉦", zones: [[.3333, 0, .3334, 1], [0, 0, .3333, 1], [.6667, 0, .3333, 1]] },
-        { name: "Right third",  icon: "󰉧", zones: [[.6667, 0, .3333, 1], [0, 0, .3333, 1], [.3333, 0, .3334, 1]] },
-        { name: "Center",       icon: "󰉨", zones: [[.2, .15, .6, .7], [0, 0, .2, 1], [.8, 0, .2, 1]] }
+        { name: "Halves",        icon: "󰉝", zones: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
+        { name: "Stack",         icon: "󰉟", zones: [[0, 0, 1, .5], [0, .5, 1, .5]] },
+        { name: "Thirds",        icon: "󰉥", zones: [[0, 0, .3333, 1], [.3333, 0, .3334, 1], [.6667, 0, .3333, 1]] },
+        { name: "Rows",          icon: "󰉧", zones: [[0, 0, 1, .3333], [0, .3333, 1, .3334], [0, .6667, 1, .3333]] },
+        { name: "Quarters",      icon: "󰉡", zones: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
+        { name: "Columns",       icon: "󰉫", zones: [[0, 0, .25, 1], [.25, 0, .25, 1], [.5, 0, .25, 1], [.75, 0, .25, 1]] },
+        { name: "Rails",         icon: "󰉭", zones: [[0, 0, 1, .25], [0, .25, 1, .25], [0, .5, 1, .25], [0, .75, 1, .25]] },
+        { name: "Focus left",    icon: "󰉮", zones: [[0, 0, .66, 1], [.66, 0, .34, .5], [.66, .5, .34, .5]] },
+        { name: "Focus right",   icon: "󰉯", zones: [[.34, 0, .66, 1], [0, 0, .34, .5], [0, .5, .34, .5]] },
+        { name: "Focus top",     icon: "󰉰", zones: [[0, 0, 1, .6], [0, .6, .3333, .4], [.3333, .6, .3334, .4], [.6667, .6, .3333, .4]] },
+        { name: "Focus bottom",  icon: "󰉱", zones: [[0, .4, 1, .6], [0, 0, .3333, .4], [.3333, 0, .3334, .4], [.6667, 0, .3333, .4]] },
+        { name: "Center stage",  icon: "󰉨", zones: [[.2, .15, .6, .7], [0, 0, .2, 1], [.8, 0, .2, 1]] },
+        { name: "Gallery",       icon: "󰉲", zones: [[0, 0, .3333, .5], [.3333, 0, .3334, .5], [.6667, 0, .3333, .5], [0, .5, .3333, .5], [.3333, .5, .3334, .5], [.6667, .5, .3333, .5]] },
+        { name: "Master stack",  icon: "󰉳", zones: [[0, 0, .6, 1], [.6, 0, .4, .3333], [.6, .3333, .4, .3334], [.6, .6667, .4, .3333]] },
+        { name: "Sidebar grid",  icon: "󰉴", zones: [[0, 0, .25, 1], [.25, 0, .375, .5], [.625, 0, .375, .5], [.25, .5, .375, .5], [.625, .5, .375, .5]] },
+        { name: "Top strip",     icon: "󰉵", zones: [[0, 0, 1, .25], [0, .25, .5, .375], [.5, .25, .5, .375], [0, .625, .5, .375], [.5, .625, .5, .375]] },
+        { name: "Bento",         icon: "󰉶", zones: [[0, 0, .4, .66], [0, .66, .4, .34], [.4, 0, .3, .5], [.4, .5, .3, .5], [.7, 0, .3, .5], [.7, .5, .3, .5]] },
+        { name: "Crosshair",     icon: "󰉷", zones: [[.3, .25, .4, .5], [0, 0, 1, .25], [0, .75, 1, .25], [0, .25, .3, .5], [.7, .25, .3, .5]] },
+        { name: "Filmstrip",     icon: "󰉸", zones: [[0, 0, 1, .55], [0, .55, .25, .45], [.25, .55, .25, .45], [.5, .55, .25, .45], [.75, .55, .25, .45]] },
+        { name: "Mosaic",        icon: "󰉹", zones: [[0, 0, .5, .6], [0, .6, .5, .4], [.5, 0, .25, 1], [.75, 0, .25, .5], [.75, .5, .25, .5]] }
     ]
 
     function norm(a) { return String(a || "").replace(/^0x/, "").toLowerCase() }
@@ -91,8 +110,10 @@ Scope {
     function refreshLayout() { layoutProc.running = true }
 
     function activeIndex() {
-        let addr = ""
-        try { addr = norm(Hyprland.activeToplevel && Hyprland.activeToplevel.address) } catch (e) {}
+        let addr = norm(root.focusedAddress)
+        if (!addr) {
+            try { addr = norm(Hyprland.activeToplevel && Hyprland.activeToplevel.address) } catch (e) {}
+        }
         if (!addr) {
             const focused = root.clients.find(c => c.focused === true)
             addr = focused ? norm(focused.address) : ""
@@ -152,6 +173,21 @@ Scope {
         return 0
     }
 
+    // Which monitor the cursor is actually on; the active window can be on a
+    // different one when the pointer sits over a top bar or dock.
+    function monitorAtCursor() {
+        const px = root.cursorX, py = root.cursorY
+        if (px < 0 || py < 0) return -1
+        for (let i = 0; i < root.monitors.length; i++) {
+            const mon = root.monitors[i]
+            const scale = Number(mon.scale) > 0 ? Number(mon.scale) : 1
+            const x = Number(mon.x) || 0, y = Number(mon.y) || 0
+            const w = Number(mon.width) / scale, h = Number(mon.height) / scale
+            if (px >= x && px <= x + w && py >= y - 12 && py <= y + h) return i
+        }
+        return -1
+    }
+
     // Global geometry of the screen the flyout is on, from live monitor data.
     function targetGeometry() {
         const mon = root.monitors[root.targetMonitor]
@@ -189,13 +225,18 @@ Scope {
         }
     }
 
-    // Dragging up always targets the top of the usable area. A top bar shifts
-    // that line below the bar; other bar edges leave it at the monitor top. The
-    // decoration sits above the client geometry, so include its height too.
-    function snapTopLine(mon) {
+    // Dragging up always targets the top of the usable area. A top bar or dock
+    // shifts that edge below itself; other edges leave it at the monitor top.
+    function snapTopEdge(mon) {
         const res = mon && Array.isArray(mon.reserved) ? mon.reserved : [0, 0, 0, 0]
         const reservedTop = Math.max(0, Number(res[1]) || 0)
-        return Number((mon && mon.y) || 0) + reservedTop + root.titleHeight
+        return Number((mon && mon.y) || 0) + reservedTop
+    }
+
+    function inTopStrip(mon) {
+        if (!mon || root.cursorY < 0) return false
+        const monY = Number(mon.y) || 0
+        return root.cursorY >= monY - 12 && root.cursorY <= root.snapTopEdge(mon) + 56
     }
 
     // zones rotated so the chosen zone is first (where the focused window lands)
@@ -286,13 +327,15 @@ Scope {
         if (list.length) placeZones(preset, s.chosen, list)
     }
 
-    // A window dragged to the top of the usable area opens the arrangement
-    // picker. A new drag is the only thing that re-arms it after a snap/cancel.
+    // A window dragged to the top, or the pointer dwelling in the top strip,
+    // opens the arrangement picker. A new approach is needed to re-arm it after
+    // a snap/cancel.
     function beginDragSnap() {
         root.dragSnap = true
         root.snapArmBlocked = false
         root.blockedAt = 0
         root.selectedPreset = null
+        root.hoverEnteredAt = 0
         root.show()
         // Keep the zones assigned to the dragged window even after focus moves
         // to the picker.
@@ -303,9 +346,26 @@ Scope {
         }
     }
 
+    // Hover-opened picker uses the same latch as a drag: it stays up until a
+    // layout/zone is chosen or the click-outside surface dismisses it.
+    function beginEdgeSnap(monIdx) {
+        root.dragSnap = true
+        root.snapArmBlocked = false
+        root.blockedAt = 0
+        root.selectedPreset = null
+        root.hoverEnteredAt = 0
+        root.showAt(root.cursorX, root.cursorY, Math.max(0, monIdx))
+        const c = root.dragCandidate() || root.active
+        if (c && c.floating === true) {
+            root.active = c
+            root.dragAddr = norm(c.address)
+        }
+    }
+
     function endDragSnap() {
         root.dragSnap = false
         root.dragAddr = ""
+        root.hoverEnteredAt = 0
     }
 
     function showAt(x, y, monitor) {
@@ -349,7 +409,9 @@ Scope {
 
     // ---- pointer -----------------------------------------------------------
     function ask() {
-        if (!cursorProc.running) cursorProc.running = true
+        // exec() restarts the command every tick; a plain running=true can
+        // leave a finished Process latched and the cursor stuck at -1.
+        cursorProc.exec(cursorProc.command)
     }
 
     Timer {
@@ -377,43 +439,33 @@ Scope {
             }
             root.active = picked || null
             if (!root.open && root.active && root.active.floating === true && root.onFloatingWorkspace()) {
-                const g = root.geom(root.active)
-                const x = g.x, y = g.y, w = g.w, h = g.h
-                const mon = root.monitors[monitorIndex(root.active.monitor)]
+                const monIdx = root.monitorAtCursor()
+                const mon = root.monitors[monIdx]
+                            || root.monitors[monitorIndex(root.active.monitor)]
                             || { x: 0, y: 0, width: 1920, height: 1080 }
-                // Drag upward to the top of the usable area. With a top bar the
-                // line sits just below it, so the window never has to leave the
-                // screen to arm the picker.
-                const topLine = root.snapTopLine(mon)
-                const atEdge = y >= topLine - 8 && y <= topLine + 48
-                const onWindow = root.cursorX >= x - 24 && root.cursorX <= x + w + 24
-                                 && root.cursorY >= y - 40 && root.cursorY <= y + Math.min(h, 220)
-                if (root.snapArmBlocked) {
-                    // Let the snapped window finish moving, then require a real
-                    // departure from the trigger line before re-arming.
-                    if (Date.now() - root.blockedAt > 1200 && !atEdge) {
-                        root.snapArmBlocked = false
-                        root.blockedAt = 0
-                    }
-                    root.wasAtEdge = atEdge
-                } else if (atEdge && onWindow && !root.wasAtEdge) {
-                    root.wasAtEdge = true
-                    root.beginDragSnap()
+                const atEdge = root.inTopStrip(mon)
+                // The cooldown ends only after the cursor has left the strip,
+                // so a snap or cancel cannot immediately reopen the flyout.
+                if (root.snapArmBlocked && Date.now() - root.blockedAt > 1200 && !atEdge) {
+                    root.snapArmBlocked = false
+                    root.blockedAt = 0
+                }
+                root.wasAtEdge = atEdge
+                if (!root.snapArmBlocked && monIdx >= 0 && atEdge) {
+                    if (root.hoverEnteredAt <= 0) root.hoverEnteredAt = Date.now()
+                    else if (Date.now() - root.hoverEnteredAt >= root.hoverDwellMs)
+                        root.beginEdgeSnap(monIdx)
                 } else {
-                    root.wasAtEdge = atEdge
+                    root.hoverEnteredAt = 0
                 }
-                if (!root.snapArmBlocked) {
-                    const inMax = root.cursorX >= x + w - 90 && root.cursorX <= x + w
-                                  && root.cursorY >= y && root.cursorY <= y + 34
-                    if (inMax) showAt(root.cursorX, y, monitorIndex(root.active.monitor))
-                }
-            } else if (!root.active) {
-                root.wasAtEdge = false
+            } else {
+                root.hoverEnteredAt = 0
+                if (!root.active) root.wasAtEdge = false
             }
             if (root.open) {
                 const g = root.targetGeometry()
                 const mx = g.x, my = g.y, mw = g.w, mh = g.h
-                const cw = Math.min(660, mw - 16)
+                const cw = Math.min(1400, mw - 32)
                 const ch = Math.min(root.selectedPreset ? 208 : 120, mh - 16)
                 const left = Math.max(mx + 8, Math.min(root.anchorX - cw / 2, mx + mw - cw - 8))
                 const top = Math.max(my + 8, Math.min(root.anchorY + 18, my + mh - ch - 8))
@@ -488,6 +540,25 @@ Scope {
         }
     }
     Process {
+        id: activeProc
+        command: ["sh", "-c", "hyprctl activewindow -j 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const v = JSON.parse(text || "{}")
+                    root.focusedAddress = norm(v.address)
+                } catch (e) {}
+            }
+        }
+    }
+    Timer {
+        interval: 300
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: activeProc.exec(activeProc.command)
+    }
+    Process {
         id: decoProc
         command: ["sh", "-c", "hyprctl getoption plugin:hyprbars:bar_height -j 2>/dev/null"]
         stdout: StdioCollector {
@@ -553,7 +624,7 @@ Scope {
 
             Rectangle {
                 id: card
-                width: Math.min(660, win.width - 16)
+                width: Math.min(1400, win.width - 32)
                 height: Math.min(root.selectedPreset ? 208 : 120, win.height - 16)
                 x: Math.max(8, Math.min(root.anchorX - (modelData.x || 0) - width / 2, win.width - width - 8))
                 y: Math.max(8, Math.min(root.anchorY - (modelData.y || 0) + 18, win.height - height - 8))
@@ -608,7 +679,7 @@ Scope {
 
                     Row {
                         width: parent.width
-                        height: root.selectedPreset === null ? implicitHeight : 0
+                        height: root.selectedPreset === null ? 32 : 0
                         visible: root.selectedPreset === null
                         spacing: 4
                         Repeater {
@@ -616,7 +687,8 @@ Scope {
                             delegate: Rectangle {
                                 required property var modelData
                                 required property int index
-                                width: 48
+                                width: Math.max(16,
+                                    (parent.width - (root.presets.length - 1) * 4) / root.presets.length)
                                 height: 32
                                 radius: 7
                                 color: hovered ? root.c_surface : "transparent"
@@ -637,7 +709,7 @@ Scope {
 
                                 Rectangle {
                                     anchors.centerIn: parent
-                                    width: 36
+                                    width: Math.min(36, parent.width - 8)
                                     height: 20
                                     color: "transparent"
                                     Repeater {
