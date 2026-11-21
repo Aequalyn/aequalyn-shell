@@ -211,6 +211,14 @@ Scope {
         function openSettings(): void { root.panelVisible = true }
         function closeSettings(): void { root.panelVisible = false }
         function page(name: string): void { root.open(name) }
+        // another module found a setting: open its page and light the control up
+        function reveal(name: string, label: string): void {
+            const target = Pages.resolve(name);
+            root.open(target.page);
+            root.revealWhat = label || "";
+            root.revealPage = target.page;
+            revealTimer.restart();
+        }
         // the live ISO's "Install Aequalyn" launcher calls this: the gate's
         // window opens (the password feeds sudo on a pipe), and the installer
         // GUI starts as root on this session's Wayland. Reached through the
