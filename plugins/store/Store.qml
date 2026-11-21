@@ -1741,18 +1741,13 @@ Scope {
                                     hint: root.webapps.length === 0
                                           ? "No web apps yet. Add one below; the default set can be seeded from a terminal with aequalyn-webapp seed."
                                           : root.webShown.length === 0 ? "No web apps in this category." : ""
-                                    GridLayout {
+                                    Flow {
                                         Layout.fillWidth: true
-                                        columns: 4
-                                        columnSpacing: 6
-                                        rowSpacing: 6
+                                        spacing: 6
                                         Btn {
                                             text: "All"
                                             primary: root.webFilter === "all"
-                                            Layout.fillWidth: true
-                                            Layout.preferredWidth: 0
-                                            Layout.minimumWidth: 0
-                                            Layout.preferredHeight: 26
+                                            implicitHeight: 26
                                             onClicked: root.setWebFilter("all")
                                         }
                                         Repeater {
@@ -1761,10 +1756,7 @@ Scope {
                                                 required property var modelData
                                                 text: modelData.label
                                                 primary: root.webFilter === modelData.id
-                                                Layout.fillWidth: true
-                                                Layout.preferredWidth: 0
-                                                Layout.minimumWidth: 0
-                                                Layout.preferredHeight: 26
+                                                implicitHeight: 26
                                                 onClicked: root.setWebFilter(modelData.id)
                                             }
                                         }
@@ -1772,10 +1764,7 @@ Scope {
                                             visible: root.webHasUncategorised
                                             text: "Uncategorised"
                                             primary: root.webFilter === "none"
-                                            Layout.fillWidth: true
-                                            Layout.preferredWidth: 0
-                                            Layout.minimumWidth: 0
-                                            Layout.preferredHeight: 26
+                                            implicitHeight: 26
                                             onClicked: root.setWebFilter("none")
                                         }
                                     }
@@ -1960,33 +1949,64 @@ Scope {
                                             }
                                         }
                                     }
-                                    Repeater {
-                                        model: root.section === "web" ? root.webCategories : []
-                                        delegate: RowLayout {
-                                            required property var modelData
-                                            Layout.fillWidth: true
-                                            spacing: 8
-                                            Text {
-                                                text: modelData.label
-                                                color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13
-                                                elide: Text.ElideRight; Layout.fillWidth: true
-                                            }
-                                            Pill { text: (modelData.count || 0) + " apps"; tone: root.theme.textMuted }
-                                            Btn {
-                                                text: "Rename"
-                                                enabled: !root.busy
-                                                onClicked: {
-                                                    root.renamingCategory = modelData.id;
-                                                    renameWebCategoryField.text = modelData.label;
-                                                    renameWebCategoryField.forceInput();
+                                    GridLayout {
+                                        Layout.fillWidth: true
+                                        columns: 4
+                                        columnSpacing: 8
+                                        rowSpacing: 8
+                                        Repeater {
+                                            model: root.section === "web" ? root.webCategories : []
+                                            delegate: Rectangle {
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                Layout.preferredWidth: 0
+                                                Layout.minimumWidth: 0
+                                                Layout.preferredHeight: 88
+                                                radius: 10
+                                                color: root.theme.bgBase
+                                                border.width: 1
+                                                border.color: root.theme.bgBorder
+                                                ColumnLayout {
+                                                    anchors.fill: parent
+                                                    anchors.margins: 10
+                                                    spacing: 6
+                                                    RowLayout {
+                                                        Layout.fillWidth: true
+                                                        spacing: 6
+                                                        Text {
+                                                            text: modelData.label
+                                                            color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold
+                                                            elide: Text.ElideRight; Layout.fillWidth: true
+                                                        }
+                                                        Pill { text: (modelData.count || 0) + " apps"; tone: root.theme.textMuted }
+                                                    }
+                                                    RowLayout {
+                                                        Layout.fillWidth: true
+                                                        spacing: 6
+                                                        Btn {
+                                                            text: "Rename"
+                                                            Layout.fillWidth: true
+                                                            Layout.preferredWidth: 0
+                                                            Layout.minimumWidth: 0
+                                                            enabled: !root.busy
+                                                            onClicked: {
+                                                                root.renamingCategory = modelData.id;
+                                                                renameWebCategoryField.text = modelData.label;
+                                                                renameWebCategoryField.forceInput();
+                                                            }
+                                                        }
+                                                        Btn {
+                                                            text: "Remove"
+                                                            danger: true
+                                                            Layout.fillWidth: true
+                                                            Layout.preferredWidth: 0
+                                                            Layout.minimumWidth: 0
+                                                            enabled: !root.busy
+                                                            onClicked: root.runCmd("Removing category " + modelData.label,
+                                                                                   ["aequalyn-webapp", "category-remove", modelData.id])
+                                                        }
+                                                    }
                                                 }
-                                            }
-                                            Btn {
-                                                text: "Remove"
-                                                danger: true
-                                                enabled: !root.busy
-                                                onClicked: root.runCmd("Removing category " + modelData.label,
-                                                                       ["aequalyn-webapp", "category-remove", modelData.id])
                                             }
                                         }
                                     }
