@@ -55,7 +55,7 @@ Item {
     const slots = new Array(needed);
     for (let i = 0; i < needed; i++) {
       const id = i + 1;
-      slots[i] = { id: id, active: false, focused: false, urgent: false, toplevels: { values: [] },
+      slots[i] = { id: id, wsId: 0, active: false, focused: false, urgent: false, toplevels: { values: [] },
         activate: function() { Hyprland.dispatch('hl.dsp.focus({ workspace = "r~' + id + '" })'); } };
     }
     // Overlay real workspaces at their per-monitor position. Keep the slot's
@@ -66,6 +66,7 @@ Item {
       const slot = slots[i];
       slots[i] = {
         id: slot.id,
+        wsId: Number(w.id),
         active: !!w.active,
         focused: !!w.focused,
         urgent: !!w.urgent,
@@ -96,15 +97,16 @@ Item {
         required property var modelData
         required property int index
         property bool urgentBlink: false
-        width: !bar.vertical && (modelData.focused || modelData.active) ? 32 : 24
-        height: bar.vertical && (modelData.focused || modelData.active) ? 32 : 24
+        readonly property bool isCurrent: modelData.wsId && Hyprland.focusedWorkspace && Number(modelData.wsId) === Number(Hyprland.focusedWorkspace.id)
+        width: !bar.vertical && (modelData.focused || modelData.active || isCurrent) ? 32 : 24
+        height: bar.vertical && (modelData.focused || modelData.active || isCurrent) ? 32 : 24
         radius: 12
-        color: (modelData.focused || modelData.active) ? bar.inked(ink, bar.theme.accentPrimary) :
+        color: (modelData.focused || modelData.active || isCurrent) ? bar.inked(ink, bar.theme.accentPrimary) :
                modelData.urgent && urgentBlink ? bar.theme.accentRed : bar.chipColor
         Behavior on color { ColorAnimation { duration: 150 } }
         SequentialAnimation {
           loops: Animation.Infinite
-          running: wsPill.modelData.urgent && !(wsPill.modelData.focused || wsPill.modelData.active)
+          running: wsPill.modelData.urgent && !(wsPill.modelData.focused || wsPill.modelData.active || wsPill.isCurrent)
           PropertyAction { target: wsPill; property: "urgentBlink"; value: true }
           PauseAnimation { duration: 500 }
           PropertyAction { target: wsPill; property: "urgentBlink"; value: false }
@@ -114,10 +116,10 @@ Item {
         Text {
           anchors.centerIn: parent
           text: labelFor(Number(modelData.id))
-          color: (wsPill.modelData.focused || wsPill.modelData.active) ? bar.theme.bgBase : bar.theme.textPrimary
+          color: (wsPill.modelData.focused || wsPill.modelData.active || wsPill.isCurrent) ? bar.theme.bgBase : bar.theme.textPrimary
           font.pixelSize: 11
           font.family: bar.font
-          font.bold: wsPill.modelData.focused || wsPill.modelData.active
+          font.bold: wsPill.modelData.focused || wsPill.modelData.active || wsPill.isCurrent
         }
         MouseArea {
           anchors.fill: parent
