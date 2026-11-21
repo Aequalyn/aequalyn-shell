@@ -85,6 +85,8 @@ var info = {
                       about: "A message when a disk is nearly full." },
     watchdogTest:   { icon: "\u{F0318}", group: "background", keys: "",                    page: "", pack: true,
                       about: "A demo of the sandbox: turned on, it crashes, leaks and crashes again on purpose -- three failures -- while the shell stays up, until the watchdog turns it off. Turn it on again to watch once more." },
+    rootTest:       { icon: "\u{F033E}", group: "background", keys: "",                    page: "", pack: true,
+                      about: "A demo of the root gate: turned on, it asks for its one declared action right away -- the approval window names the plugin and the exact command, and the password goes to sudo on a pipe. Allow it and id -u answers 0; deny it or wait, and the command never runs. Turn it on again to watch once more." },
 };
 
 var groups = [

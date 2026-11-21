@@ -253,6 +253,14 @@ Two ways to watch the protection work:
   narrated in a notification, ending turned off by the watchdog. The demo
   runs only inside its sandbox: it refuses to do anything in-process, so it
   can never hurt the shell it is demonstrating the protection of.
+* **Root gate self-test** (Settings → Plugins): the gate's own demo, a
+  built-in whose one root action is pinned on its `Plugins.js` line. Turned
+  on, it asks through the gate immediately -- the approval window names the
+  plugin and the exact command, the password goes to sudo on a pipe, and a
+  notification narrates the outcome: allowed and `/usr/bin/id -u` answers 0,
+  denied (a click, Escape, or the two-minute timeout) and nothing ran.
+  Both self-tests ask again at every enable, which for a demo is exactly
+  the point.
 * `aequalyn-watchdog test <id> <mode>` restarts any sandboxed plugin with a
   built-in fault, so single policies can be watched from `status`:
 

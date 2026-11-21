@@ -39,6 +39,11 @@ var list = [
     { id: "breaks",        label: "Break reminder",    source: "plugins/breaks/Breaks.qml", sandbox: true },
     { id: "diskWatch",     label: "Disk watch",        source: "plugins/diskWatch/DiskWatch.qml", sandbox: true },
     { id: "watchdogTest",  label: "Watchdog self-test", source: "plugins/watchdogTest/WatchdogTest.qml", sandbox: true },
+    // the root gate's own demo: its command is pinned HERE (needsRoot), it
+    // asks through the gate the moment it is on, and the window decides.
+    { id: "rootTest",      label: "Root gate self-test", source: "plugins/rootTest/RootTest.qml", sandbox: true,
+      needsRoot: [{ "id": "who-am-i", "label": "Show the user id it runs as", "about": "Runs /usr/bin/id -u as root; the answer should be 0.",
+                    "command": ["/usr/bin/id", "-u"] }] },
     { id: "store",          label: "Store",          source: "plugins/store/Store.qml" },
     { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
 ];
