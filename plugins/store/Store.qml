@@ -69,13 +69,6 @@ Scope {
     // what can update from git: an AppImage is one file with no source to fetch,
     // so the Updates page leaves it to its own page
     readonly property var updatable: root.installed.filter(i => i.kind !== "appimage")
-    // the number a section's label can carry, -1 when it never has one; the
-    // Plugins page counts its built-ins too, not only the ones from the Store
-    function sectionCount(key) {
-        if (key === "appimage") return root.itemsOf("appimage").length;
-        if (key === "plugin") return root.builtInPlugins.length + root.itemsOf("plugin").length;
-        return root.kindWords[key] ? root.itemsOf(key).length : -1;
-    }
     // the plugin grids hold fifteen tiles per page, in rows of five
     function pluginAt(count, page) {
         return Math.min(page, Math.max(0, Math.ceil(count / 15) - 1)) * 15;
@@ -1256,7 +1249,6 @@ Scope {
                                 id: railItem
                                 required property var modelData
                                 readonly property bool on: root.section === modelData.key
-                                readonly property int tally: root.sectionCount(modelData.key)
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 56
                                 Accessible.role: Accessible.PageTab
@@ -1282,7 +1274,7 @@ Scope {
                                     anchors.top: railBox.bottom
                                     anchors.topMargin: 3
                                     width: parent.width - 4
-                                    text: railItem.modelData.label + (railItem.tally > 0 ? "  " + railItem.tally : "")
+                                    text: railItem.modelData.label
                                     elide: Text.ElideRight
                                     horizontalAlignment: Text.AlignHCenter
                                     color: railItem.on ? root.theme.textPrimary : root.theme.textMuted
@@ -1333,8 +1325,7 @@ Scope {
                                             model: root.sections.filter(s => s.key !== "home")
                                             delegate: Btn {
                                                 required property var modelData
-                                                readonly property int tally: root.sectionCount(modelData.key)
-                                                text: modelData.label + (tally >= 0 ? "  " + tally : "")
+                                                text: modelData.label
                                                 onClicked: root.section = modelData.key
                                             }
                                         }
