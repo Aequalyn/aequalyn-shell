@@ -1741,13 +1741,18 @@ Scope {
                                     hint: root.webapps.length === 0
                                           ? "No web apps yet. Add one below; the default set can be seeded from a terminal with aequalyn-webapp seed."
                                           : root.webShown.length === 0 ? "No web apps in this category." : ""
-                                    Flow {
+                                    GridLayout {
                                         Layout.fillWidth: true
-                                        spacing: 6
+                                        columns: 4
+                                        columnSpacing: 6
+                                        rowSpacing: 6
                                         Btn {
                                             text: "All"
                                             primary: root.webFilter === "all"
-                                            implicitHeight: 26
+                                            Layout.fillWidth: true
+                                            Layout.preferredWidth: 0
+                                            Layout.minimumWidth: 0
+                                            Layout.preferredHeight: 26
                                             onClicked: root.setWebFilter("all")
                                         }
                                         Repeater {
@@ -1756,7 +1761,10 @@ Scope {
                                                 required property var modelData
                                                 text: modelData.label
                                                 primary: root.webFilter === modelData.id
-                                                implicitHeight: 26
+                                                Layout.fillWidth: true
+                                                Layout.preferredWidth: 0
+                                                Layout.minimumWidth: 0
+                                                Layout.preferredHeight: 26
                                                 onClicked: root.setWebFilter(modelData.id)
                                             }
                                         }
@@ -1764,7 +1772,10 @@ Scope {
                                             visible: root.webHasUncategorised
                                             text: "Uncategorised"
                                             primary: root.webFilter === "none"
-                                            implicitHeight: 26
+                                            Layout.fillWidth: true
+                                            Layout.preferredWidth: 0
+                                            Layout.minimumWidth: 0
+                                            Layout.preferredHeight: 26
                                             onClicked: root.setWebFilter("none")
                                         }
                                     }
