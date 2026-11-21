@@ -211,6 +211,17 @@ Scope {
         function openSettings(): void { root.panelVisible = true }
         function closeSettings(): void { root.panelVisible = false }
         function page(name: string): void { root.open(name) }
+        // the live ISO's "Install Aequalyn" launcher calls this: the gate's
+        // window opens (the password feeds sudo on a pipe), and the installer
+        // GUI starts as root on this session's Wayland. Reached through the
+        // shell on purpose -- a launcher spawned from the menu is outside the
+        // supervised tree, but the shell that answers for it is not.
+        function install(): string {
+            installProc.wayland = Quickshell.env("WAYLAND_DISPLAY") || "wayland-0"
+            if (installProc.running) return "already asking"
+            installProc.running = true
+            return "asked"
+        }
         // the control center, already searching: `qs ipc call aequalyn search "dark"`
         function search(words: string): void { root.panelVisible = true; searchText.restart(); root.pendingSearch = words }
         // the page names older parts of the shell use
@@ -224,6 +235,31 @@ Scope {
         function dock(): void { root.open("dock") }
         function updates(): void { root.open("updates") }
         function power(): void { root.open("sleep") }
+    }
+
+    // the gate half of "Install Aequalyn" (see the install() IPC above): the
+    // socket this shell draws on is staged for the installer's root half,
+    // and the reply (exit code, denied or not) is said in the corner
+    property Process installProc: Process {
+        id: installProc
+        property string wayland: "wayland-0"
+        command: ["sh", "-c",
+            'mkdir -p "$HOME/.local/state/aequalyn/gate" '
+            + '&& printf \'{"wayland": "%s"}\' "$1" > "$HOME/.local/state/aequalyn/gate/install.json" '
+            + '&& aequalyn-watchdog exec-root --as settings install-aequalyn; r=$?; '
+            + 'rm -f "$HOME/.local/state/aequalyn/gate/install.json"; exit $r',
+            "sh", installProc.wayland]
+        stdout: StdioCollector { id: installOut }
+        stderr: StdioCollector { id: installErr }
+        onExited: (code) => {
+            const denied = (installOut.text || "").indexOf("denied") >= 0
+            if (code === 0) return          // the installer GUI is up
+            Quickshell.execDetached(["notify-send", "-a", "Aequalyn",
+                denied ? "Install Aequalyn denied" : "Install Aequalyn failed",
+                denied ? "The approval window was denied or timed out; nothing started."
+                    : (((installErr.text || "") + (installOut.text || "")).trim().slice(-300)
+                       || "the installer could not start")])
+        }
     }
 
     PanelWindow {
