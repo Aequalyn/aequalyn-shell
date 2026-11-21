@@ -164,7 +164,7 @@ rules matter most there:
 
 | fault | where it can happen | what happens |
 | --- | --- | --- |
-| load error (broken QML) | anywhere | the plugin is turned off at once, with a notification; the shell never even finishes loading it |
+| load error (broken QML) | anywhere | a ten-second grace first: an update swapping the config tree under the running shell fails loads only for a moment, and a load that comes good stops the clock. Still failing after it: the plugin is turned off, with a notification |
 | crash (segfault, `kill -9`) | sandboxed | process dies, supervisor restarts it (2s→30s backoff), turns it off after 3 failures in 10 min |
 | hang (event loop blocked) | sandboxed, or the whole shell | two unanswered heartbeats → the process is restarted |
 | RAM runaway | sandboxed, or the whole shell | over budget 3 samples, or one sample at 2× budget → stopped, counts as a failure |

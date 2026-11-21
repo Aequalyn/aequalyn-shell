@@ -67,6 +67,7 @@ Item {
             source: wanted ? modelData.source : ""
             property var openHandler: null       // Atelier's link to the theme switcher
             onLoaded: {
+                pm.loadSucceeded(modelData.id)                 // a good load ends any streak
                 const it = loader.item;
                 if (!it) return;
                 // Bind the shared theme to every plugin that exposes a `theme`
@@ -134,6 +135,7 @@ Item {
             active: wanted
             source: wanted ? modelData.source : ""
             onLoaded: {
+                pm.loadSucceeded(modelData.id)                 // a good load ends any streak
                 const it = userLoader.item;
                 if (!it) return;
                 try { it.theme = Qt.binding(() => pm.theme); } catch (e) {}
@@ -154,15 +156,72 @@ Item {
         }
     }
 
-    // One failed load is enough to turn the plugin off: a broken plugin must never
-    // take anything with it. The supervisor's own failures (crash, hang, memory)
-    // end up here too, through the watchdog IPC target.
+    // A failed load must never take anything with it -- but a failure is only
+    // real if it persists. An update swaps the config tree under the running
+    // shell, its file watcher reloads onto a half-copied tree, and loads fail
+    // in that moment only to succeed seconds later on the finished swap (a
+    // reload storm can fire the same loader's error several times, too). So:
+    // a failure starts a grace clock, a good load stops it, and only a plugin
+    // whose most recent event is still a failure when the clock runs out is
+    // turned off, with a notification. The supervisor's own decisions (crash,
+    // hang, memory) come through the watchdog IPC target, not here.
+    property var loadFailAt: ({})     // id -> last load failure
+    property var loadOkAt: ({})      // id -> last successful load
+    property var loadFailFirst: ({}) // id -> first failure of the current streak
+    property var forceTried: ({})    // id -> a grace-expiry reload was forced
+    property var disableQueue: []     // ids whose grace clock is running
     function loadFailed(id, why) {
         if (enabledIds.indexOf(id) < 0) return
+        const now = Date.now()
+        if (!pm.loadFailFirst[id]) {
+            if (pm.forceTried[id]) {
+                // it already had its second chance, forced: this one is real
+                delete pm.forceTried[id]
+                pm.turnOffFailed(id)
+                return
+            }
+            pm.loadFailFirst[id] = now
+            pm.disableQueue = pm.disableQueue.concat(id)   // assigned, not pushed: the clock's running binding must see it
+            console.warn("Plugin failed to load:", id, "- it has a moment to recover before it is turned off.", why || "")
+        }
+        pm.loadFailAt[id] = now
+    }
+    function loadSucceeded(id) {
+        pm.loadOkAt[id] = Date.now()
+        delete pm.forceTried[id]
+        delete pm.loadFailFirst[id]
+        if (pm.disableQueue.indexOf(id) >= 0)
+            pm.disableQueue = pm.disableQueue.filter(x => x !== id)   // assigned: stops the clock when empty
+    }
+    function turnOffFailed(id) {
         try { AequalynSettings.togglePlugin(id, false) } catch (e) { console.warn("could not turn off", id, e) }
         Quickshell.execDetached(["notify-send", "-a", "Aequalyn", "Plugin turned off",
-            labelOf(id) + " failed to load and was turned off; the rest of the shell is unaffected."
-            + "\nFix it and turn it back on in Settings \u2192 Plugins." + (why ? "\n(" + why + ")" : "")])
+            labelOf(id) + " kept failing to load and was turned off; the rest of the shell is unaffected."
+            + "\nFix it and turn it back on in Settings \u2192 Plugins."])
+    }
+    // one clock for every struggling plugin: acts only on ids past their grace
+    Timer {
+        running: pm.disableQueue.length > 0
+        repeat: true
+        interval: 1000
+        onTriggered: {
+            const grace = 10000, now = Date.now()
+            const due = pm.disableQueue.filter(id => now - (pm.loadFailFirst[id] || now) >= grace)
+            if (!due.length) return
+            pm.disableQueue = pm.disableQueue.filter(id => due.indexOf(id) < 0)
+            for (const id of due) {
+                delete pm.loadFailFirst[id]
+                // the newest event decides: a load that came good leaves it alone
+                if ((pm.loadFailAt[id] || 0) > (pm.loadOkAt[id] || 0)) {
+                    // one forced, fresh attempt: a file repaired in the meantime
+                    // loads now and clears everything; a plugin that fails this
+                    // too is turned off on that error
+                    pm.forceTried[id] = true
+                    pm.reloading = id
+                    reloadTimer.restart()
+                }
+            }
+        }
     }
 
     Timer { id: reloadTimer; interval: 150; onTriggered: pm.reloading = "" }
@@ -196,6 +255,13 @@ Item {
         }
     }
 }
+
+
+
+
+
+
+
 
 
 
