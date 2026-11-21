@@ -14,6 +14,14 @@ Item {
     property string workspace: LayoutService.focusedWorkspace
     property int currentIndex: 0
 
+    // the Store's 5x3 pages: fifteen layouts at a time, five across and three down
+    property int page: 0
+    readonly property int perPage: 15
+    readonly property int columns: 5
+    readonly property int count: pane.items.length
+    readonly property int at: Math.max(0, Math.min(page,
+        Math.max(0, Math.ceil(count / perPage) - 1))) * perPage
+
     readonly property string activeId: LayoutService.layoutOf(workspace)
     readonly property var items: {
         const q = searchText.toLowerCase();
@@ -22,17 +30,40 @@ Item {
             && (q === "" || (l.name + " " + l.group + " " + l.hint).toLowerCase().indexOf(q) >= 0));
     }
     readonly property var current: items[currentIndex] || null
-    readonly property int columns: grid.columns
 
-    onItemsChanged: if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1)
+    // exactly fifteen cells, with explicit ghosts so a short page keeps its shape
+    readonly property var pageItems: {
+        const out = items.slice(at, at + perPage).map(it => ({ item: it, ghost: false }));
+        while (out.length < perPage) out.push({ item: null, ghost: true });
+        return out;
+    }
 
+    onItemsChanged: {
+        if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1);
+        const last = Math.max(0, Math.ceil(items.length / perPage) - 1);
+        if (page > last) page = last;
+        if (page < 0) page = 0;
+        show(currentIndex);
+    }
+    // paging keeps the same column selected, so the hint and keyboard stay on track
+    onPageChanged: if (count > 0) show(Math.min(at + currentIndex % perPage, count - 1))
+    onSearchTextChanged: { pane.page = 0; pane.currentIndex = 0; }
+    onGroupChanged: { pane.page = 0; pane.currentIndex = 0; }
+
+    // moving the selection also turns the page that holds it
+    function show(i) {
+        if (i < 0 || i >= items.length) return;
+        currentIndex = i;
+        const wanted = Math.floor(i / perPage);
+        if (wanted !== Math.floor(at / perPage)) page = wanted;
+    }
     function selectActive() {
-        for (let i = 0; i < items.length; i++) if (items[i].id === activeId) { currentIndex = i; return; }
+        for (let i = 0; i < items.length; i++) if (items[i].id === activeId) { show(i); return; }
     }
     function apply(i) {
         const it = items[i];
         if (!it) return;
-        currentIndex = i;
+        show(i);
         LayoutService.set(it.id, workspace);
     }
 
@@ -41,22 +72,51 @@ Item {
         const n = items.length;
         if (n === 0) return false;
         const k = event.key;
-        if (k === Qt.Key_Left) currentIndex = Math.max(0, currentIndex - 1);
-        else if (k === Qt.Key_Right) currentIndex = Math.min(n - 1, currentIndex + 1);
-        else if (k === Qt.Key_Up) currentIndex = Math.max(0, currentIndex - columns);
-        else if (k === Qt.Key_Down) currentIndex = Math.min(n - 1, currentIndex + columns);
+        if (k === Qt.Key_Left) show(currentIndex - 1);
+        else if (k === Qt.Key_Right) show(currentIndex + 1);
+        else if (k === Qt.Key_Up) show(currentIndex - columns);
+        else if (k === Qt.Key_Down) show(currentIndex + columns);
         else if (k === Qt.Key_Return || k === Qt.Key_Enter) apply(currentIndex);
         else if (k === Qt.Key_Space && (event.modifiers & Qt.ControlModifier)) LayoutService.toggleCycle(items[currentIndex].id);
         else return false;
         return true;
     }
 
+    component PagerBtn: Rectangle {
+        id: btn
+        property string glyph: ""
+        signal clicked()
+        Layout.preferredWidth: 26
+        Layout.preferredHeight: 26
+        radius: 7
+        color: area.containsMouse ? pane.theme.bgHover : pane.theme.bgSurface
+        border.width: 1
+        border.color: pane.theme.bgBorder
+        Accessible.role: Accessible.Button
+        Text {
+            anchors.centerIn: parent
+            text: btn.glyph
+            color: pane.theme.textSecondary
+            font.family: pane.font
+            font.pixelSize: 14
+        }
+        MouseArea {
+            id: area
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: btn.clicked()
+        }
+    }
+
     ColumnLayout {
+        id: col
         anchors.fill: parent
         spacing: 10
 
         // Workspace picker
         RowLayout {
+            id: wsRow
             Layout.fillWidth: true
             spacing: 6
             Text {
@@ -129,6 +189,7 @@ Item {
 
         // Groups
         Flow {
+            id: groupRow
             Layout.fillWidth: true
             spacing: 6
             Repeater {
@@ -143,31 +204,54 @@ Item {
             }
         }
 
-        // Tiles
+        // Tiles: one page of fifteen, always five across and three down
         GridView {
             id: grid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            readonly property int columns: Math.max(3, Math.floor(width / 196))
-            cellWidth: Math.floor(width / columns)
-            cellHeight: Math.floor(cellWidth * 0.56) + 46
-            model: pane.items
+            cellWidth: Math.floor(width / pane.columns)
+            // the body of CcPage is clipped, so three rows have to fit what is left
+            // after the two chip rows, the hint, the key row and the pager
+            readonly property int overhead: wsRow.height + groupRow.height + 44 + 62
+                + col.spacing * (pane.count > pane.perPage ? 5 : 4)
+                + (pane.count > pane.perPage ? 32 : 0)
+            cellHeight: Math.max(84, Math.min(Math.floor(cellWidth * 0.56) + 46,
+                Math.floor((pane.height - overhead) / 3)))
+            model: pane.pageItems
+            // GridView takes its column count from cellWidth; width / 5 gives five across
             clip: true
+            interactive: false
             boundsBehavior: Flickable.StopAtBounds
-            currentIndex: pane.currentIndex
-            onCurrentIndexChanged: positionViewAtIndex(currentIndex, GridView.Contain)
+            currentIndex: pane.count > 0 && pane.currentIndex >= pane.at && pane.currentIndex < pane.at + pane.perPage
+                ? pane.currentIndex - pane.at : -1
 
             delegate: Item {
                 id: cell
                 required property var modelData
                 required property int index
-                readonly property bool active: modelData.id === pane.activeId
-                readonly property bool selected: index === pane.currentIndex
-                readonly property bool cycled: LayoutService.inCycle(modelData.id)
+                readonly property bool ghost: cell.modelData.ghost === true
+                readonly property var entry: cell.modelData.item
+                readonly property int itemIndex: pane.at + index
+                readonly property bool active: !cell.ghost && cell.entry.id === pane.activeId
+                readonly property bool selected: !cell.ghost && cell.itemIndex === pane.currentIndex
+                readonly property bool cycled: !cell.ghost && LayoutService.inCycle(cell.entry.id)
                 width: grid.cellWidth
                 height: grid.cellHeight
 
+                // empty slots still hold the fifth column and third row open
                 Rectangle {
+                    visible: cell.ghost
+                    anchors.fill: parent
+                    anchors.margins: 5
+                    radius: 12
+                    color: pane.theme.bgSurface
+                    opacity: 0.35
+                    border.width: 1
+                    border.color: pane.theme.bgBorder
+                }
+
+                Rectangle {
+                    visible: !cell.ghost
                     anchors.fill: parent
                     anchors.margins: 5
                     radius: 12
@@ -182,9 +266,9 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.margins: 10
-                        height: width * 0.5625
+                        height: Math.min(width * 0.5625, Math.max(24, cell.height - 52))
                         theme: pane.theme
-                        boxes: cell.modelData.art
+                        boxes: cell.ghost ? [] : cell.entry.art
                         on: cell.active || cell.selected
                     }
                     Column {
@@ -197,7 +281,7 @@ Item {
                         spacing: 1
                         Text {
                             width: parent.width
-                            text: cell.modelData.name
+                            text: cell.ghost ? "" : cell.entry.name
                             color: pane.theme.textPrimary
                             font.family: "sans-serif"
                             font.pixelSize: 13
@@ -206,7 +290,7 @@ Item {
                         }
                         Text {
                             width: parent.width
-                            text: cell.modelData.group
+                            text: cell.ghost ? "" : cell.entry.group
                             color: pane.theme.textMuted
                             font.family: "sans-serif"
                             font.pixelSize: 11
@@ -226,7 +310,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: -6
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: LayoutService.toggleCycle(cell.modelData.id)
+                            onClicked: if (!cell.ghost) LayoutService.toggleCycle(cell.entry.id)
                         }
                     }
                     Rectangle {
@@ -250,10 +334,40 @@ Item {
                         anchors.bottomMargin: 26
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onEntered: pane.currentIndex = cell.index
-                        onClicked: pane.apply(cell.index)
+                        onEntered: if (!cell.ghost) pane.show(cell.itemIndex)
+                        onClicked: if (!cell.ghost) pane.apply(cell.itemIndex)
                     }
                 }
+            }
+        }
+
+        // fifteen at a time: ‹ › walk the pages, with the same range label as the Store
+        RowLayout {
+            visible: pane.count > pane.perPage
+            Layout.fillWidth: true
+            spacing: 6
+            Item { Layout.fillWidth: true }
+            Text {
+                text: pane.count + " layouts"
+                color: pane.theme.textMuted
+                font.family: pane.font
+                font.pixelSize: 11
+            }
+            PagerBtn {
+                glyph: "‹"
+                enabled: pane.at > 0
+                onClicked: pane.page = Math.max(0, Math.floor(pane.at / pane.perPage) - 1)
+            }
+            Text {
+                text: (pane.at + 1) + "–" + Math.min(pane.at + pane.perPage, pane.count) + " of " + pane.count
+                color: pane.theme.textMuted
+                font.family: pane.font
+                font.pixelSize: 11
+            }
+            PagerBtn {
+                glyph: "›"
+                enabled: pane.at + pane.perPage < pane.count
+                onClicked: pane.page = Math.floor(pane.at / pane.perPage) + 1
             }
         }
 
