@@ -76,6 +76,23 @@ Scope {
         if (key === "plugin") return root.builtInPlugins.length + root.itemsOf("plugin").length;
         return root.kindWords[key] ? root.itemsOf(key).length : -1;
     }
+    // the plugin grids hold fifteen tiles per page, in rows of five
+    function pluginAt(count, page) {
+        return Math.min(page, Math.max(0, Math.ceil(count / 15) - 1)) * 15;
+    }
+    function pluginRows(items, page) {
+        const at = root.pluginAt(items.length, page);
+        const shown = items.slice(at, at + 15);
+        const rows = [];
+        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
+        while (rows.length < 3) rows.push([]);
+        return rows;
+    }
+    function pluginInfoOf(item, builtIn) {
+        if (builtIn) return root.builtInInfo(item.id);
+        const user = UserPlugins.byId(item.id);
+        return user && user.info ? user.info : { icon: "\u{F0431}", keys: "", page: "", about: item.source || "" };
+    }
     function refresh() { if (!listProc.running) listProc.running = true; }
     Process {
         id: listProc
@@ -924,75 +941,176 @@ Scope {
         }
     }
 
-    // a plugin that ships with the shell: nothing to download, check or remove,
-    // but it can be switched and opened in the control center like the others
-    component BuiltInRow: ColumnLayout {
-        id: row
+    // one plugin tile, used for both the built-in and the community grids
+    component PluginCard: Rectangle {
+        id: card
         required property var modelData
-        required property int index
-        readonly property var info: root.builtInInfo(modelData.id)
-        readonly property bool on: (AequalynSettings.enabledPlugins || []).indexOf(modelData.id) >= 0
+        required property bool builtIn
+        readonly property var info: root.pluginInfoOf(card.modelData, card.builtIn)
+        readonly property bool on: (AequalynSettings.enabledPlugins || []).indexOf(card.modelData.id) >= 0
         Layout.fillWidth: true
-        spacing: 0
-        Rectangle { visible: row.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.rightMargin: 12
-            Layout.topMargin: 9
-            Layout.bottomMargin: 9
-            spacing: 10
-            Rectangle {
-                Layout.preferredWidth: 30
-                Layout.preferredHeight: 30
-                radius: 8
-                color: root.theme.bgBase
-                Text {
-                    anchors.centerIn: parent
-                    text: row.info.icon
-                    color: root.theme.accentPrimary
-                    font.family: root.mono
-                    font.pixelSize: 16
-                }
-            }
-            ColumnLayout {
+        Layout.preferredWidth: 0
+        Layout.minimumWidth: 0
+        Layout.preferredHeight: 112
+        radius: 12
+        color: root.theme.bgBase
+        border.width: 1
+        border.color: card.on ? root.theme.accentPrimary : root.theme.bgBorder
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 9
+            spacing: 4
+            RowLayout {
                 Layout.fillWidth: true
-                spacing: 3
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
+                spacing: 7
+                Rectangle {
+                    Layout.preferredWidth: 26
+                    Layout.preferredHeight: 26
+                    radius: 7
+                    color: root.theme.bgSurface
                     Text {
-                        text: row.modelData.label
-                        color: root.theme.textPrimary
-                        font.family: root.sans
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
+                        anchors.centerIn: parent
+                        text: card.info.icon || "\u{F0431}"
+                        color: root.theme.accentPrimary
+                        font.family: root.mono
+                        font.pixelSize: 14
                     }
-                    Pill { text: "Built-in"; tone: root.theme.accentPrimary }
-                    Pill { text: row.on ? "Active" : "Inactive"; tone: row.on ? root.theme.accentGreen : root.theme.textMuted }
-                    Pill { visible: row.info.keys !== ""; text: row.info.keys; tone: root.theme.accentOrange }
-                    Item { Layout.fillWidth: true }
                 }
                 Text {
-                    text: row.info.about !== "" ? row.info.about : row.modelData.source
-                    color: root.theme.textMuted
-                    font.family: root.sans
-                    font.pixelSize: 11
-                    wrapMode: Text.WordWrap
-                    maximumLineCount: 2
-                    elide: Text.ElideRight
                     Layout.fillWidth: true
+                    text: card.modelData.label || card.modelData.id
+                    color: root.theme.textPrimary
+                    font.family: root.sans
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+                Rectangle {
+                    Layout.preferredWidth: 6
+                    Layout.preferredHeight: 6
+                    radius: 3
+                    color: card.on ? root.theme.accentGreen : root.theme.textMuted
                 }
             }
-            Btn {
-                text: row.on ? "Deactivate" : "Activate"
-                onClicked: AequalynSettings.togglePlugin(row.modelData.id, !row.on)
+            Text {
+                Layout.fillWidth: true
+                text: card.info.about || card.modelData.source || ""
+                color: root.theme.textMuted
+                font.family: root.sans
+                font.pixelSize: 10
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
             }
-            Btn {
-                text: "Details"
-                primary: true
-                onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "pluginPage", row.modelData.id])
+            Item { Layout.fillHeight: true }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 5
+                Btn {
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    text: card.on ? "Turn off" : "Turn on"
+                    onClicked: AequalynSettings.togglePlugin(card.modelData.id, !card.on)
+                }
+                Btn {
+                    visible: card.builtIn
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    text: "Details"
+                    primary: true
+                    onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "pluginPage", card.modelData.id])
+                }
+                Btn {
+                    visible: !card.builtIn
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    text: "Update"
+                    enabled: !root.busy
+                    onClicked: root.runJob("Updating " + card.modelData.id, ["update", "plugin", card.modelData.id])
+                }
+                Btn {
+                    visible: !card.builtIn
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    text: "Remove"
+                    danger: true
+                    enabled: !root.busy
+                    onClicked: root.runJob("Removing " + card.modelData.id, ["remove", "plugin", card.modelData.id])
+                }
+            }
+        }
+    }
+
+    // a paged 5x3 grid, the same for the shell's plugins and the Store's ones
+    component PluginGrid: Box {
+        id: grid
+        property string entriesTitle: ""
+        property string entriesHint: ""
+        property var entries: []
+        property bool builtIn: true
+        property int page: 0
+        readonly property int count: grid.entries.length
+        readonly property int at: root.pluginAt(grid.count, grid.page)
+        title: grid.entriesTitle
+        hint: grid.entriesHint
+        visible: root.section === "plugin"
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Text {
+                visible: grid.count === 0
+                text: "Nothing here yet."
+                color: root.theme.textMuted
+                font.family: root.sans
+                font.pixelSize: 11
+            }
+            Repeater {
+                model: grid.count > 0 ? root.pluginRows(grid.entries, grid.page) : []
+                delegate: RowLayout {
+                    id: pluginRow
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 112
+                    spacing: 8
+                    Repeater {
+                        model: pluginRow.modelData
+                        delegate: PluginCard {
+                            required property var modelData
+                            builtIn: grid.builtIn
+                        }
+                    }
+                    Repeater {
+                        model: 5 - pluginRow.modelData.length
+                        delegate: Item {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 0
+                            Layout.preferredHeight: 112
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                visible: grid.count > 15
+                spacing: 6
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: grid.count + " plugins"
+                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                }
+                StepBtn {
+                    glyph: "‹"
+                    enabled: grid.at > 0
+                    onClicked: grid.page = grid.at / 15 - 1
+                }
+                Text {
+                    text: (grid.at + 1) + "–" + Math.min(grid.at + 15, grid.count) + " of " + grid.count
+                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                }
+                StepBtn {
+                    glyph: "›"
+                    enabled: grid.at + 15 < grid.count
+                    onClicked: grid.page = grid.at / 15 + 1
+                }
             }
         }
     }
@@ -1226,32 +1344,36 @@ Scope {
                                     }
                                 }
 
-                                // the shell's own plugins, listed as in the control center,
-                                // but marked built-in: there is nothing to fetch or remove
+                                // the other kinds keep their installed list above the form
                                 Box {
-                                    visible: root.section === "plugin"
-                                    title: "Built-in"
-                                    hint: "These ship with Aequalyn. Switch them here or open their control center page; the ones from the Store follow below."
-                                    Repeater {
-                                        model: root.builtInPlugins
-                                        delegate: BuiltInRow {}
-                                    }
-                                }
-
-                                // a kind's page: what came from the Store, then the form
-                                Box {
-                                    visible: !!root.kindWords[root.section]
-                                    title: root.section === "plugin" ? "Community" : "Installed"
+                                    visible: !!root.kindWords[root.section] && root.section !== "plugin"
+                                    title: "Installed"
                                     hint: root.kindWords[root.section] && root.itemsOf(root.section).length === 0
-                                          ? (root.section === "plugin"
-                                             ? "No community plugins from the Store yet; the built-in ones above are ready to use."
-                                             : "No " + root.kindWords[root.section].one + " from the Store yet.") : ""
+                                          ? "No " + root.kindWords[root.section].one + " from the Store yet." : ""
                                     Repeater {
-                                        model: root.kindWords[root.section] ? root.itemsOf(root.section) : []
+                                        model: root.kindWords[root.section] && root.section !== "plugin" ? root.itemsOf(root.section) : []
                                         delegate: ItemRow {}
                                     }
                                 }
                                 InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
+
+                                // the plugin grids follow the install form: fifteen tiles
+                                // per page, five across and three rows tall
+                                PluginGrid {
+                                    entriesTitle: "Built-in"
+                                    entriesHint: "These ship with Aequalyn. Turn them on or open their page here; nothing to download."
+                                    entries: root.builtInPlugins
+                                    builtIn: true
+                                }
+
+                                PluginGrid {
+                                    entriesTitle: "Community"
+                                    entriesHint: root.itemsOf("plugin").length === 0
+                                        ? "No community plugins from the Store yet. Add one with the form above."
+                                        : "Plugins installed from git, with update and remove on each tile."
+                                    entries: root.itemsOf("plugin")
+                                    builtIn: false
+                                }
 
                                 // Apps: the four backends, then the popular apps, each from
                                 // any backend that has it; installed packages are in All apps
