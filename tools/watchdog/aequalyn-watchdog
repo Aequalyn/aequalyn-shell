@@ -553,7 +553,13 @@ class Supervisor:
                 if unit.test_mode:
                     env["AEQUALYN_SANDBOX_TEST"] = unit.test_mode
             env["QS_NO_RELOAD_POPUP"] = "1"
-            unit.popen = subprocess.Popen(args, stdout=logf, stderr=subprocess.STDOUT, env=env)
+            # children always start from $HOME, whatever directory the daemon
+            # itself was started from: an update replaces the config folder
+            # (rm -rf + mv), and a child spawned with a cwd inside it is born
+            # with a deleted working directory -- half-broken, in ways a
+            # heartbeat cannot see
+            unit.popen = subprocess.Popen(args, stdout=logf, stderr=subprocess.STDOUT, env=env,
+                                          cwd=str(Path.home()))
             unit.pid = 0
             unit.started_at = time.time()
             unit.ever_started = True
@@ -899,6 +905,12 @@ class Supervisor:
     # ------------------------------------------------------------ main ----
 
     def run(self, adopt: bool) -> None:
+        # never sit in a directory an update might delete (the config folder);
+        # children inherit this, so it has to be somewhere permanent
+        try:
+            os.chdir(str(Path.home()))
+        except OSError:
+            pass
         STATE_DIR.mkdir(parents=True, exist_ok=True)
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         HOSTS_DIR.mkdir(parents=True, exist_ok=True)
