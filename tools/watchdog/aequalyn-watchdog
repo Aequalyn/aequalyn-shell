@@ -895,6 +895,23 @@ class Supervisor:
                 unit.stopping = False
                 log(f"{unit.name} stopped as asked (exit {code})")
                 continue
+            if unit.kind == "shell" and code == 0:
+                # a qs -n that refuses a duplicate exits 0 the moment another
+                # shell holds the config: if one is really out there, the
+                # desktop is being served by a shell started outside us
+                # (a fallback that won the boot race) -- adopt it instead of
+                # crash-looping against it, so the desktop is supervised
+                # again and the root gate works.
+                outside = find_shell_pid()
+                if outside:
+                    unit.pid, unit.popen = outside, None
+                    unit.started_at = time.time()
+                    unit.stopping = False
+                    unit.ever_started = True
+                    unit.hb_misses = unit.ram_over = 0
+                    log(f"adopted the running shell, pid {outside} "
+                        f"(our own spawn had refused its duplicate)")
+                    continue
             detail = f"exit code {code}" if code is not None else "process gone"
             self.record_failure(unit, "crashed", detail)
             self.schedule_restart(unit)
@@ -1467,13 +1484,21 @@ class Supervisor:
                 STOP_MARKER.unlink()
         except OSError:
             pass
+        # The socket opens FIRST, before the shell is spawned and the strays
+        # are cleaned: `start` only reports success once the supervisor can
+        # actually be reached, and a slow machine (a live ISO on squashfs, a
+        # cold VM) must not make the caller give up waiting while the daemon
+        # is still on its way -- that is how an unsupervised fallback shell
+        # once raced the supervisor to the desktop and the gate refused
+        # everything (the crash loop looked like `qs -n` refusing a
+        # duplicate, exit code 0, forever).
         self.units["shell"] = Unit(name="shell", kind="shell")
+        self.open_socket()
         self.spawn(self.units["shell"], adopt=adopt)
         self.kill_stray_hosts()
         self.settings_mtime = -1.0   # force the first sync
         self.store_mtime = -1.0
         self.sync_no_sandbox()
-        self.open_socket()
 
         def on_term(_sig, _frm):
             self.shutting_down = True
@@ -1551,8 +1576,10 @@ def cmd_start(args) -> int:
     # detach: double fork, own session, output to the log
     if os.fork() > 0:
         # the parent waits for the socket so "start" never reports success
-        # before the supervisor can actually be reached
-        for _ in range(20):
+        # before the supervisor can actually be reached -- a slow machine
+        # (a live ISO on squashfs, a cold VM) gets a long wait, not a
+        # premature failure and a racing unsupervised fallback shell
+        for _ in range(60):
             if daemon_alive():
                 return 0
             time.sleep(0.25)
