@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import "root:/plugins/appLauncher"
-import "root:/settings/center"
 import "root:/style/backdrop"
 
 Scope {
