@@ -93,6 +93,9 @@ Scope {
     // pacman always; yay (the AUR), flatpak (Flathub) and snap when they are installed.
     // Installs run in a terminal, where sudo asks for the password.
     property var apps: []
+    // the popular grid, fifteen to a page like the cards everywhere else
+    property int popPage: 0
+    readonly property int popAt: Math.min(root.popPage, Math.max(0, Math.ceil(root.apps.length / 15) - 1)) * 15
     property var backends: ({ yay: false, flatpak: false, snap: false })
     property var installedPkgs: ({ pacman: [], flatpak: [], snap: [] })
     FileView {
@@ -219,6 +222,17 @@ Scope {
     property var webapps: []
     property var webBrowsers: []
     property string webBrowser: ""
+    // the web apps page: cards like the AppImages ones, five to a row, three rows
+    // to a page; a plain list while they are few
+    property int webPage: 0
+    readonly property int webAt: Math.min(root.webPage, Math.max(0, Math.ceil(root.webapps.length / 15) - 1)) * 15
+    function webRows() {
+        const shown = root.webapps.slice(root.webAt, root.webAt + 15);
+        const rows = [];
+        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
+        while (rows.length < 3) rows.push([]);
+        return rows;
+    }
     function loadWebapps() { if (!webProc.running) webProc.running = true; }
     Process {
         id: webProc
@@ -580,7 +594,9 @@ Scope {
         MouseArea { id: sbMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sb.clicked() }
     }
 
-    // one imported AppImage as a card: its icon, its name, Open and Remove beneath
+    // one card: an imported AppImage or a web app -- its icon, its name, and what
+    // its page does with it (Open and Remove come back as signals, the card never
+    // runs anything itself)
     component AppCard: Rectangle {
         id: card
         required property var modelData
@@ -588,6 +604,12 @@ Scope {
         // treat a lone card as the whole row); every slot of the row carries the
         // same preferred width, so all fifths come out equal
         height: 150
+        readonly property bool isWeb: modelData.slug !== undefined
+        readonly property string iconPath: card.isWeb ? (modelData.iconFile || "") : (modelData.icon || "")
+        readonly property string label: modelData.label || modelData.name || modelData.id
+        readonly property bool canOpen: card.isWeb ? !!modelData.slug : !!modelData.path
+        signal openRequested()
+        signal removeRequested()
         radius: 12
         color: root.theme.bgBase
         border.width: 1
@@ -603,23 +625,23 @@ Scope {
                     id: cardIcon
                     anchors.centerIn: parent
                     width: 56; height: 56
-                    source: card.modelData.icon ? "file://" + card.modelData.icon : ""
+                    source: card.iconPath ? "file://" + card.iconPath : ""
                     sourceSize.width: 112; sourceSize.height: 112
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true
-                    visible: !!card.modelData.icon && status === Image.Ready
+                    visible: card.iconPath !== "" && status === Image.Ready
                 }
                 Text {
                     anchors.centerIn: parent
                     visible: !cardIcon.visible
-                    text: "\u{F01D4}"
+                    text: card.isWeb ? "\u{F0595}" : "\u{F01D4}"
                     color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 26
                 }
             }
             Text {
                 Layout.fillWidth: true
-                text: card.modelData.label || card.modelData.id
+                text: card.label
                 color: root.theme.textPrimary
                 font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold
                 horizontalAlignment: Text.AlignHCenter
@@ -634,8 +656,8 @@ Scope {
                     implicitHeight: 30
                     text: "Open"
                     primary: true
-                    enabled: !!card.modelData.path
-                    onClicked: Quickshell.execDetached([card.modelData.path])
+                    enabled: card.canOpen
+                    onClicked: card.openRequested()
                 }
                 Btn {
                     Layout.fillWidth: true
@@ -643,7 +665,7 @@ Scope {
                     text: "Remove"
                     danger: true
                     enabled: !root.busy
-                    onClicked: root.runJob("Removing " + card.modelData.id, ["remove", "appimage", card.modelData.id])
+                    onClicked: card.removeRequested()
                 }
             }
         }
@@ -1053,7 +1075,7 @@ Scope {
                                         Layout.fillWidth: true
                                         spacing: 10
                                         Repeater {
-                                            model: root.section === "apps" ? root.apps : []
+                                            model: root.section === "apps" ? root.apps.slice(root.popAt, root.popAt + 15) : []
                                             delegate: Rectangle {
                                                 id: appCard
                                                 required property var modelData
@@ -1109,6 +1131,32 @@ Scope {
                                                     }
                                                 }
                                             }
+                                        }
+                                    }
+
+                                    // the pages of the popular grid, ‹ and › to walk them
+                                    RowLayout {
+                                        visible: root.apps.length > 15
+                                        spacing: 6
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            text: root.apps.length + " apps"
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "‹"
+                                            enabled: root.popAt > 0
+                                            onClicked: root.popPage = root.popAt / 15 - 1
+                                        }
+                                        Text {
+                                            text: (root.popAt + 1) + "–" + Math.min(root.popAt + 15, root.apps.length)
+                                                  + " of " + root.apps.length
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "›"
+                                            enabled: root.popAt + 15 < root.apps.length
+                                            onClicked: root.popPage = root.popAt / 15 + 1
                                         }
                                     }
                                 }
@@ -1249,8 +1297,10 @@ Scope {
                                     title: "Your web apps"
                                     hint: root.webapps.length === 0
                                           ? "No web apps yet. Add one below; the default set can be seeded from a terminal with aequalyn-webapp seed." : ""
+                                    // a few: the plain list; more: cards, fifteen to a page
                                     Repeater {
-                                        model: root.section === "web" ? root.webapps : []
+                                        visible: root.webapps.length <= 5
+                                        model: root.section === "web" && root.webapps.length <= 5 ? root.webapps : []
                                         delegate: ColumnLayout {
                                             id: wrow
                                             required property var modelData
@@ -1314,6 +1364,58 @@ Scope {
                                                     onClicked: root.runCmd("Removing " + wrow.modelData.name, ["aequalyn-webapp", "remove", "--slug", wrow.modelData.slug])
                                                 }
                                             }
+                                        }
+                                    }
+                                    // cards like the AppImages ones: five to a row, the
+                                    // page holding its three rows, ‹ › to walk the pages
+                                    Repeater {
+                                        visible: root.webapps.length > 5
+                                        model: root.section === "web" && root.webapps.length > 5 ? root.webRows() : []
+                                        delegate: RowLayout {
+                                            id: webRow
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            // an all-ghost row keeps the card height, so the page
+                                            // holds its shape even when nothing is in it
+                                            Layout.preferredHeight: 150
+                                            spacing: 10
+                                            Repeater {
+                                                model: webRow.modelData
+                                                delegate: AppCard {
+                                                    Layout.fillWidth: true
+                                                    Layout.preferredWidth: 203
+                                                    onOpenRequested: Quickshell.execDetached(["aequalyn-webapp", "launch", modelData.slug])
+                                                    onRemoveRequested: root.runCmd("Removing " + modelData.name, ["aequalyn-webapp", "remove", "--slug", modelData.slug])
+                                                }
+                                            }
+                                            Repeater {
+                                                model: 5 - webRow.modelData.length
+                                                delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
+                                            }
+                                        }
+                                    }
+                                    RowLayout {
+                                        visible: root.webapps.length > 15
+                                        spacing: 6
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            text: root.webapps.length + (root.webapps.length === 1 ? " app" : " apps")
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "‹"
+                                            enabled: root.webAt > 0
+                                            onClicked: root.webPage = root.webAt / 15 - 1
+                                        }
+                                        Text {
+                                            text: (root.webAt + 1) + "–" + Math.min(root.webAt + 15, root.webapps.length)
+                                                  + " of " + root.webapps.length
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "›"
+                                            enabled: root.webAt + 15 < root.webapps.length
+                                            onClicked: root.webPage = root.webAt / 15 + 1
                                         }
                                     }
                                 }
@@ -1458,7 +1560,12 @@ Scope {
                                             spacing: 10
                                             Repeater {
                                                 model: cardRow.modelData
-                                                delegate: AppCard { Layout.fillWidth: true; Layout.preferredWidth: 203 }
+                                                delegate: AppCard {
+                                                    Layout.fillWidth: true
+                                                    Layout.preferredWidth: 203
+                                                    onOpenRequested: Quickshell.execDetached([modelData.path])
+                                                    onRemoveRequested: root.runJob("Removing " + modelData.id, ["remove", "appimage", modelData.id])
+                                                }
                                             }
                                             // the row keeps all five of its slots, each the same
                                             // preferred width so the fifths come out equal: what the
