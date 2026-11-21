@@ -153,6 +153,17 @@ that genuinely need a person at a keyboard (yay's build, snap's
 confinement questions, the Aequalyn update itself) open a detached
 terminal instead -- the user's own console, outside the supervised tree.
 
+The boundary the gate keeps is between the desktop's code and the person:
+everything the shell or a plugin starts is supervised -- unit trees are
+walked, and the gate is the only door to root -- while everything a person
+types into their own terminal is theirs. The tripwire never looks at
+processes outside the supervised tree, exec-root refuses them outright
+("a terminal already has sudo"), and the manual root paths stay manual
+(`sudo aequalyn-sddm apply x` works; `gate-pkg` and friends answer "the
+gate runs it, never a person"). A terminal the desktop opens for you to
+read and type into is detached from the shell's tree on purpose: it is
+your console from the first keystroke.
+
 Honest limits, so nobody thinks this is more than it is: the tripwire is a
 3-second sample over `/proc`, so a run that starts and exits between
 samples is missed; a plugin can build its `sudo` call from concatenated
