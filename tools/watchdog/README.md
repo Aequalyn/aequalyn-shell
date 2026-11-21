@@ -267,7 +267,8 @@ Two ways to watch the protection work:
   notification narrates the outcome: allowed and `/usr/bin/id -u` answers 0,
   denied (a click, Escape, or the two-minute timeout) and nothing ran.
   Both self-tests ask again at every enable, which for a demo is exactly
-  the point.
+  the point -- but a planned restart (an update's restart-all) starts them
+  quietly (AEQUALYN_PLUGIN_PLANNED), so an update never interrupts you.
 * `aequalyn-watchdog test <id> <mode>` restarts any sandboxed plugin with a
   built-in fault, so single policies can be watched from `status`:
 

@@ -109,7 +109,9 @@ In `plugin.json` (a Store plugin):
   own demo, the worked example. Turned on, it asks for its one action at
   once -- the window names it, you answer, and a notification narrates what
   became of the request: allowed and it really ran as root, denied or timed
-  out and the command never ran. Either answer is the demo.
+  out and the command never ran. Either answer is the demo. An update's
+  restart-all starts it quietly instead (AEQUALYN_PLUGIN_PLANNED): it asks
+  only when a person turns it on.
 
 Calling it (sandboxed or not, from a `Process`):
 

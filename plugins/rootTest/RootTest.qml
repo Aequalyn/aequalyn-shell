@@ -77,7 +77,16 @@ Item {
         }
     }
 
-    // the demo is the activation: enabling the plugin is asking for root,
-    // and a restart by the watchdog asks again, which for a demo is right
-    Component.onCompleted: root.ask()
+    // the demo is the activation: enabling the plugin is asking for root. A
+    // planned restart (an update's restart-all) is NOT an activation -- it
+    // sets AEQUALYN_PLUGIN_PLANNED, and then this stays quiet until the
+    // person turns it on (or calls ask) on purpose.
+    Component.onCompleted: {
+        if (Quickshell.env("AEQUALYN_PLUGIN_PLANNED") === "1") {
+            console.info("rootTest: started by a planned restart; not asking. "
+                + "Turn it on (or call ask) to watch the gate.")
+            return
+        }
+        root.ask()
+    }
 }
