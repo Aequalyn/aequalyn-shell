@@ -69,6 +69,8 @@ Item {
     function apply(i) {
         const it = items[i];
         if (!it) return;
+        // always name the workspace, even before Hyprland reports a focused one
+        if (!workspace) workspace = LayoutService.focusedWorkspace || "1";
         show(i);
         LayoutService.set(it.id, workspace);
     }
@@ -339,8 +341,10 @@ Item {
                     }
                     MouseArea {
                         id: tileArea
+                        // the whole card applies the layout; the cycle dot sits
+                        // above it so its own click still toggles membership
+                        z: -1
                         anchors.fill: parent
-                        anchors.bottomMargin: 26
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onEntered: if (!cell.ghost) pane.show(cell.itemIndex)
