@@ -1426,7 +1426,7 @@ Scope {
                                             Layout.fillWidth: true
                                             // an all-ghost row keeps the card height, so the page
                                             // holds its 5x3 shape even when nothing is in it
-                                            Layout.preferredHeight: 150
+                                            Layout.preferredHeight: 164
                                             spacing: 10
                                             Repeater {
                                                 model: popRow.modelData
@@ -1436,7 +1436,7 @@ Scope {
                                                     readonly property string via: root.installedVia(modelData)
                                                     Layout.fillWidth: true
                                                     Layout.preferredWidth: 203
-                                                    height: 150
+                                                    height: 164
                                                     radius: 12
                                                     color: root.theme.bgBase
                                                     border.width: 1
@@ -1464,9 +1464,13 @@ Scope {
                                                     }
                                                     Text { text: appCard.modelData.about; color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                                     Item { Layout.fillHeight: true }
-                                                    Flow {
+                                                    GridLayout {
                                                         Layout.fillWidth: true
-                                                        spacing: 4
+                                                        columns: 2
+                                                        rows: 2
+                                                        flow: GridLayout.LeftToRight
+                                                        columnSpacing: 4
+                                                        rowSpacing: 4
                                                         Repeater {
                                                             model: [
                                                                 { via: "Arch", has: !!appCard.modelData.pacman, ready: true },
@@ -1477,7 +1481,10 @@ Scope {
                                                             delegate: Btn {
                                                                 required property var modelData
                                                                 text: modelData.via
-                                                                implicitHeight: 24
+                                                                Layout.fillWidth: true
+                                                                Layout.preferredWidth: 0
+                                                                Layout.minimumWidth: 0
+                                                                Layout.preferredHeight: 24
                                                                 primary: modelData.has && modelData.ready && appCard.via === ""
                                                                 enabled: modelData.has && modelData.ready && !terminal.running
                                                                 onClicked: root.installApp(appCard.modelData, modelData.via)
