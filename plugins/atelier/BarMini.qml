@@ -10,6 +10,8 @@ Item {
     property var look
     property int barSize: 20
     property bool widgets: true
+    property bool edgeAtStart: true
+    property bool vertical: false
 
     // left: 3 widgets, center: 1, right: 4 (as a share of the width)
     readonly property var plan: [
@@ -45,6 +47,8 @@ Item {
             look: mini.look
             barSize: mini.barSize
             fakeSlots: mini.slots
+            edgeAtStart: mini.edgeAtStart
+            vertical: mini.vertical
         }
         // the widgets themselves, as little bars of text
         Repeater {

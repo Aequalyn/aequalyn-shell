@@ -35,24 +35,30 @@ CcPage {
         property string hover: ""
 
         Stage {
+            id: miniStage
             anchors.fill: parent
             theme: Cc.theme
             font: Cc.mono
             wallpaper: Cc.wallpaper
             barLook: page.look
-            barSize: 24
+            barSize: Math.max(14, Math.round(AequalynSettings.barHeight * 0.75))
             docks: page.stageDocks
             dockSize: 24
         }
 
         // the parts you can click; the wallpaper is everything the others leave
         Hot { name: "wallpaper"; label: "Wallpaper"; anchors.fill: parent; inset: 0; tipLow: true }
-        Hot { name: "bar"; label: "The bar"; x: 4; y: 2; width: parent.width - 8; height: 38 }
+        Hot {
+            name: "bar"; label: "The bar"
+            x: miniStage.barArea.x; y: miniStage.barArea.y
+            width: miniStage.barArea.width; height: miniStage.barArea.height
+        }
         Hot { name: "arrange"; label: "Your windows"; x: parent.width * 0.04; y: parent.height * 0.25; width: parent.width * 0.92; height: parent.height * 0.54 }
         Hot {
-            visible: page.stageDocks.length > 0
+            visible: page.stageDocks.length > 0 && miniStage.dockArea.width > 0
             name: "dock"; label: "The dock"
-            x: parent.width * 0.2; y: parent.height - 52; width: parent.width * 0.6; height: 50
+            x: miniStage.dockArea.x; y: miniStage.dockArea.y
+            width: miniStage.dockArea.width; height: miniStage.dockArea.height
         }
     }
 
