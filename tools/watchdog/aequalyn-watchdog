@@ -1273,6 +1273,16 @@ class Supervisor:
             kill_tree(proc.pid)
             proc.wait()
             return {"code": 124, "out": "", "err": "the root command timed out"}
+        if proc.returncode == 1 and "usual lecture" in (err or ""):
+            # the account's very first sudo: the lecture ("We trust you...")
+            # breaks sudo's piped-password read with no tty, and the command
+            # never ran. Say so, instead of dumping the banner at whoever
+            # reads the reply.
+            return {"code": 1, "out": "", "err":
+                    "this is the account's first sudo, and its lecture "
+                    "breaks the password pipe -- run any command with sudo "
+                    "once in a terminal (it shows the lecture), then ask "
+                    "again. On the live ISO the lecture is off by design."}
         return {"code": proc.returncode,
                 "out": (out or "")[:4096], "err": (err or "")[:4096]}
 
