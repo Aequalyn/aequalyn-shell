@@ -93,12 +93,19 @@ Scope {
     // pacman always; yay (the AUR), flatpak (Flathub) and snap when they are installed.
     // Installs run in a terminal, where sudo asks for the password.
     property var apps: []
-    // the popular grid, fifteen to a page like the cards everywhere else
+    // the popular grid, fifteen to a page like the cards everywhere else; the
+    // four buttons narrow it to one backend (click the active one for all again)
     property int popPage: 0
-    readonly property int popAt: Math.min(root.popPage, Math.max(0, Math.ceil(root.apps.length / 15) - 1)) * 15
+    property string popSource: "All"
+    readonly property var popShown: root.apps.filter(a =>
+        root.popSource === "All" ||
+        (root.popSource === "Arch" ? !!a.pacman :
+         root.popSource === "AUR" ? !!a.aur :
+         root.popSource === "Flathub" ? !!a.flatpak : !!a.snap))
+    readonly property int popAt: Math.min(root.popPage, Math.max(0, Math.ceil(root.popShown.length / 15) - 1)) * 15
     // the page's apps, as rows of five, the page always holding its three rows
     function popRows() {
-        const shown = root.apps.slice(root.popAt, root.popAt + 15);
+        const shown = root.popShown.slice(root.popAt, root.popAt + 15);
         const rows = [];
         for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
         while (rows.length < 3) rows.push([]);
@@ -106,6 +113,11 @@ Scope {
     }
     property var backends: ({ yay: false, flatpak: false, snap: false })
     property var installedPkgs: ({ pacman: [], flatpak: [], snap: [] })
+    // what is already here, one row per explicitly installed app, for Your apps
+    property var yourApps: []
+    property int yourPage: 0
+    readonly property int yourAt: Math.min(root.yourPage, Math.max(0, Math.ceil(root.yourApps.length / 15) - 1)) * 15
+    readonly property var yourShown: root.yourApps.slice(root.yourAt, root.yourAt + 15)
     FileView {
         path: Qt.resolvedUrl("apps.json").toString().replace("file://", "")
         onLoaded: { try { root.apps = JSON.parse(text()); } catch (e) { root.apps = []; } }
@@ -113,21 +125,39 @@ Scope {
     function detectApps() { if (!detect.running) detect.running = true; }
     Process {
         id: detect
-        command: ["sh", "-c", 'for b in yay flatpak snap; do command -v "$b" >/dev/null 2>&1 && echo "has $b"; done; '
-            + 'echo "#pacman"; pacman -Qq 2>/dev/null; echo "#flatpak"; flatpak list --app --columns=application 2>/dev/null; '
-            + 'echo "#snap"; snap list 2>/dev/null | tail -n +2 | cut -d" " -f1']
+        // the same sweep fills the badges on popular apps and the Your apps list:
+        // pacman's foreign packages are the AUR ones, and the source/name/version
+        // records let a row run the right update or remove command
+        command: ["sh", "-c",
+            "for b in yay flatpak snap; do command -v \"$b\" >/dev/null 2>&1 && echo \"has $b\"; done; "
+            + "echo \"#pacman\"; pacman -Qq 2>/dev/null; "
+            + "echo \"#flatpak\"; flatpak list --app --columns=application 2>/dev/null; "
+            + "echo \"#snap\"; snap list 2>/dev/null | tail -n +2 | cut -d\" \" -f1; "
+            + "echo \"#your\"; "
+            + "f=$(mktemp); pacman -Qqm 2>/dev/null > \"$f\"; "
+            + "pacman -Qe 2>/dev/null | awk -v f=\"$f\" 'NR==FNR { foreign[$1]=1; next } !($1 in foreign) { printf \"Arch\\t%s\\t%s\\t%s\\n\", $1, $1, $2 }' \"$f\" -; "
+            + "rm -f \"$f\"; "
+            + "pacman -Qem 2>/dev/null | awk '{ printf \"AUR\\t%s\\t%s\\t%s\\n\", $1, $1, $2 }'; "
+            + "flatpak list --app --columns=application,version,name 2>/dev/null | awk -F'\\t' '{ printf \"Flatpak\\t%s\\t%s\\t%s\\n\", $1, $3, $2 }'; "
+            + "snap list --color=never 2>/dev/null | tail -n +2 | awk '{ printf \"Snap\\t%s\\t%s\\t%s\\n\", $1, $2, $2 }'"]
         stdout: StdioCollector {
             onStreamFinished: {
                 const b = { yay: false, flatpak: false, snap: false };
                 const got = { pacman: [], flatpak: [], snap: [] };
+                const yours = [];
                 let part = "";
                 for (const line of text.split("\n")) {
                     if (line.startsWith("has ")) b[line.slice(4)] = true;
                     else if (line.startsWith("#")) part = line.slice(1);
                     else if (line !== "" && got[part]) got[part].push(line.trim());
+                    else if (line !== "" && part === "your") {
+                        const f = line.split("\t");
+                        if (f.length >= 3) yours.push({ source: f[0], id: f[1], name: f[2], version: f[3] || "" });
+                    }
                 }
                 root.backends = b;
                 root.installedPkgs = got;
+                root.yourApps = yours;
             }
         }
     }
@@ -219,6 +249,20 @@ Scope {
         else if (via === "Flatpak") root.inTerminal(root.flathub + " && flatpak install --user -y flathub " + a.flatpak);
         else if (via === "Snap") root.inTerminal("sudo snap install " + a.snap + (a.snapClassic ? " --classic" : ""));
     }
+    // Your apps: the matching update or remove command in a terminal, where sudo
+    // can ask. Only the plain id from the package manager reaches the shell.
+    function appAction(r, action) {
+        const id = r.id;
+        if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(id)) return;
+        if (r.source === "Arch")
+            root.inTerminal(action === "update" ? "sudo pacman -S --needed " + id : "sudo pacman -Rns " + id);
+        else if (r.source === "AUR")
+            root.inTerminal(action === "update" ? "yay -S --needed " + id : "yay -Rns " + id);
+        else if (r.source === "Flatpak")
+            root.inTerminal(action === "update" ? "flatpak update -y " + id : "flatpak uninstall -y " + id);
+        else if (r.source === "Snap")
+            root.inTerminal(action === "update" ? "sudo snap refresh " + id : "sudo snap remove " + id);
+    }
     function installBackend(name) {
         if (name === "yay") root.inTerminal("sudo pacman -S --needed git base-devel && d=$(mktemp -d) && git clone https://aur.archlinux.org/yay-bin.git \"$d\" && cd \"$d\" && makepkg -si");
         else if (name === "flatpak") root.inTerminal("sudo pacman -S --needed flatpak && " + root.flathub);
@@ -237,7 +281,24 @@ Scope {
     // runs it, the same way the rest of the Store runs aequalyn-store.
     property var webapps: []
     property var webBrowsers: []
+    property var webCategories: []
     property string webBrowser: ""
+    // the web app whose category is being changed, and the category being renamed
+    property var categoryTarget: null
+    property string renamingCategory: ""
+    function setWebCategory(cat) {
+        const app = root.categoryTarget;
+        if (!app) return;
+        root.categoryTarget = null;
+        root.runCmd("Changing " + app.name,
+                    ["aequalyn-webapp", "set-category", app.slug, cat || "none"]);
+    }
+    function renameWebCategory(id, label) {
+        label = (label || "").trim();
+        root.renamingCategory = "";
+        if (id !== "" && label !== "")
+            root.runCmd("Renaming category", ["aequalyn-webapp", "category-rename", id, label]);
+    }
     // the web apps page: cards like the AppImages ones, five to a row, three rows
     // to a page; a plain list while they are few
     property int webPage: 0
@@ -249,7 +310,10 @@ Scope {
         while (rows.length < 3) rows.push([]);
         return rows;
     }
-    function loadWebapps() { if (!webProc.running) webProc.running = true; }
+    function loadWebapps() {
+        if (!webProc.running) webProc.running = true;
+        if (!catProc.running) catProc.running = true;
+    }
     Process {
         id: webProc
         command: ["aequalyn-webapp", "list", "--json"]
@@ -261,6 +325,18 @@ Scope {
                     root.webBrowsers = j.browsers || [];
                     root.webBrowser = j.browser || "auto";
                 } catch (e) { root.webapps = []; }
+            }
+        }
+    }
+    // the user's own categories come from the same command the old settings page
+    // used; the Store keeps them beside the apps so a category can be picked here
+    Process {
+        id: catProc
+        command: ["aequalyn-webapp", "categories", "--json"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.webCategories = JSON.parse(text.trim()) || []; }
+                catch (e) { root.webCategories = []; }
             }
         }
     }
@@ -382,6 +458,7 @@ Scope {
         }
     }
     onSectionChanged: {
+        if (section !== "web") { root.categoryTarget = null; root.renamingCategory = ""; }
         if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
         if (section === "apps") { detectApps(); if (root.foundPage === 0) searchApps("", false); }
         if (section === "web") loadWebapps();
@@ -626,6 +703,7 @@ Scope {
         readonly property bool canOpen: card.isWeb ? !!modelData.slug : !!modelData.path
         signal openRequested()
         signal removeRequested()
+        signal categoryRequested()
         radius: 12
         color: root.theme.bgBase
         border.width: 1
@@ -682,6 +760,14 @@ Scope {
                     danger: true
                     enabled: !root.busy
                     onClicked: card.removeRequested()
+                }
+                Btn {
+                    visible: card.isWeb
+                    Layout.fillWidth: true
+                    implicitHeight: 30
+                    text: "Cat"
+                    enabled: !root.busy
+                    onClicked: card.categoryRequested()
                 }
             }
         }
@@ -1049,7 +1135,77 @@ Scope {
                                 }
                                 InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
 
-                                // Apps: the four backends, then the popular apps, each from any backend that has it
+                                // Apps: what you already have, where it came from, then the
+                                // four backends and the popular apps from any of them
+                                Box {
+                                    visible: root.section === "apps"
+                                    title: "Your apps"
+                                    hint: root.yourApps.length === 0
+                                          ? "No explicitly installed apps found in Arch, the AUR, Flathub or Snap yet."
+                                          : "Installed from all four backends. Update and remove open in a terminal, where sudo can ask; dependencies are left alone unless the package tool decides otherwise."
+                                    Repeater {
+                                        model: root.section === "apps" ? root.yourShown : []
+                                        delegate: ColumnLayout {
+                                            id: yourRow
+                                            required property var modelData
+                                            required property int index
+                                            Layout.fillWidth: true
+                                            spacing: 0
+                                            Rectangle { visible: yourRow.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 12
+                                                Layout.rightMargin: 12
+                                                Layout.topMargin: 9
+                                                Layout.bottomMargin: 9
+                                                spacing: 10
+                                                ColumnLayout {
+                                                    spacing: 2
+                                                    Layout.fillWidth: true
+                                                    Text { text: yourRow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
+                                                    Text { text: yourRow.modelData.id + (yourRow.modelData.version !== "" ? "  ·  " + yourRow.modelData.version : ""); color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                                }
+                                                Pill { text: yourRow.modelData.source; tone: root.theme.accentPrimary }
+                                                Btn {
+                                                    text: "Update"
+                                                    primary: true
+                                                    enabled: !terminal.running
+                                                    onClicked: root.appAction(yourRow.modelData, "update")
+                                                }
+                                                Btn {
+                                                    text: "Remove"
+                                                    danger: true
+                                                    enabled: !terminal.running
+                                                    onClicked: root.appAction(yourRow.modelData, "remove")
+                                                }
+                                            }
+                                        }
+                                    }
+                                    RowLayout {
+                                        visible: root.yourApps.length > 15
+                                        spacing: 6
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            text: root.yourApps.length + " apps"
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "‹"
+                                            enabled: root.yourAt > 0
+                                            onClicked: root.yourPage = root.yourAt / 15 - 1
+                                        }
+                                        Text {
+                                            text: (root.yourAt + 1) + "–" + Math.min(root.yourAt + 15, root.yourApps.length)
+                                                  + " of " + root.yourApps.length
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "›"
+                                            enabled: root.yourAt + 15 < root.yourApps.length
+                                            onClicked: root.yourPage = root.yourAt / 15 + 1
+                                        }
+                                    }
+                                }
                                 Box {
                                     visible: root.section === "apps"
                                     title: "Backends"
@@ -1086,7 +1242,27 @@ Scope {
                                 Box {
                                     visible: root.section === "apps"
                                     title: "Popular apps"
-                                    hint: "Each from any backend that carries it. The install opens in a terminal, where sudo asks for your password."
+                                    hint: "Each from any backend that carries it. Pick one of the four to see only that backend; click it again to see them all. Installs open in a terminal, where sudo asks for your password."
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Repeater {
+                                            model: ["Arch", "AUR", "Flathub", "Snap"]
+                                            delegate: Btn {
+                                                required property string modelData
+                                                readonly property int count: root.apps.filter(a =>
+                                                    modelData === "Arch" ? !!a.pacman : modelData === "AUR" ? !!a.aur
+                                                    : modelData === "Flathub" ? !!a.flatpak : !!a.snap).length
+                                                text: modelData + "  " + count
+                                                primary: root.popSource === modelData
+                                                implicitHeight: 26
+                                                onClicked: {
+                                                    root.popSource = root.popSource === modelData ? "All" : modelData;
+                                                    root.popPage = 0;
+                                                }
+                                            }
+                                        }
+                                    }
                                     // five to a row (a RowLayout shares its width out), three
                                     // rows to a page, ghost slots keeping every page's shape
                                     Repeater {
@@ -1167,11 +1343,11 @@ Scope {
 
                                     // the pages of the popular grid, ‹ and › to walk them
                                     RowLayout {
-                                        visible: root.apps.length > 15
+                                        visible: root.popShown.length > 15
                                         spacing: 6
                                         Item { Layout.fillWidth: true }
                                         Text {
-                                            text: root.apps.length + " apps"
+                                            text: root.popShown.length + " apps"
                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
                                         }
                                         StepBtn {
@@ -1180,13 +1356,13 @@ Scope {
                                             onClicked: root.popPage = root.popAt / 15 - 1
                                         }
                                         Text {
-                                            text: (root.popAt + 1) + "–" + Math.min(root.popAt + 15, root.apps.length)
-                                                  + " of " + root.apps.length
+                                            text: (root.popAt + 1) + "–" + Math.min(root.popAt + 15, root.popShown.length)
+                                                  + " of " + root.popShown.length
                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
                                         }
                                         StepBtn {
                                             glyph: "›"
-                                            enabled: root.popAt + 15 < root.apps.length
+                                            enabled: root.popAt + 15 < root.popShown.length
                                             onClicked: root.popPage = root.popAt / 15 + 1
                                         }
                                     }
@@ -1417,6 +1593,11 @@ Scope {
                                                     }
                                                 }
                                                 Btn {
+                                                    text: wrow.modelData.categoryLabel || "Category"
+                                                    enabled: !root.busy
+                                                    onClicked: root.categoryTarget = wrow.modelData
+                                                }
+                                                Btn {
                                                     text: "Open"
                                                     primary: true
                                                     onClicked: Quickshell.execDetached(["aequalyn-webapp", "launch", wrow.modelData.slug])
@@ -1450,6 +1631,7 @@ Scope {
                                                     Layout.preferredWidth: 203
                                                     onOpenRequested: Quickshell.execDetached(["aequalyn-webapp", "launch", modelData.slug])
                                                     onRemoveRequested: root.runCmd("Removing " + modelData.name, ["aequalyn-webapp", "remove", "--slug", modelData.slug])
+                                                    onCategoryRequested: root.categoryTarget = modelData
                                                 }
                                             }
                                             Repeater {
@@ -1484,9 +1666,109 @@ Scope {
                                     }
                                 }
                                 Box {
+                                    visible: root.section === "web" && root.categoryTarget !== null
+                                    title: "Category for " + (root.categoryTarget ? root.categoryTarget.name : "")
+                                    hint: "Pick one of your categories, or None to leave it uncategorised. The launcher's keywords follow the name."
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Btn {
+                                            text: "None"
+                                            primary: root.categoryTarget && !root.categoryTarget.category
+                                            enabled: !root.busy
+                                            onClicked: root.setWebCategory("")
+                                        }
+                                        Repeater {
+                                            model: root.webCategories
+                                            delegate: Btn {
+                                                required property var modelData
+                                                text: modelData.label
+                                                primary: root.categoryTarget && root.categoryTarget.category === modelData.id
+                                                enabled: !root.busy
+                                                onClicked: root.setWebCategory(modelData.id)
+                                            }
+                                        }
+                                    }
+                                    Btn { text: "Close"; onClicked: root.categoryTarget = null }
+                                }
+                                Box {
+                                    visible: root.section === "web"
+                                    title: "Categories"
+                                    hint: "Yours to change: add one (it can stay empty until you put a web app in it), rename it, or remove it. A removed category leaves its web apps uncategorised."
+                                    RowLayout {
+                                        spacing: 8
+                                        Field {
+                                            id: newWebCategory
+                                            placeholder: "New category, like Research"
+                                            onAccepted: {
+                                                const label = text.trim();
+                                                if (label === "" || root.busy) return;
+                                                text = "";
+                                                root.runCmd("Adding category " + label, ["aequalyn-webapp", "category-add", label]);
+                                            }
+                                        }
+                                        Btn {
+                                            text: "Add"
+                                            primary: true
+                                            enabled: !root.busy && newWebCategory.text.trim() !== ""
+                                            onClicked: {
+                                                const label = newWebCategory.text.trim();
+                                                newWebCategory.text = "";
+                                                root.runCmd("Adding category " + label, ["aequalyn-webapp", "category-add", label]);
+                                            }
+                                        }
+                                    }
+                                    Repeater {
+                                        model: root.section === "web" ? root.webCategories : []
+                                        delegate: RowLayout {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            Text {
+                                                text: modelData.label
+                                                color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13
+                                                elide: Text.ElideRight; Layout.fillWidth: true
+                                            }
+                                            Pill { text: (modelData.count || 0) + " apps"; tone: root.theme.textMuted }
+                                            Btn {
+                                                text: "Rename"
+                                                enabled: !root.busy
+                                                onClicked: {
+                                                    root.renamingCategory = modelData.id;
+                                                    renameWebCategoryField.text = modelData.label;
+                                                    renameWebCategoryField.forceInput();
+                                                }
+                                            }
+                                            Btn {
+                                                text: "Remove"
+                                                danger: true
+                                                enabled: !root.busy
+                                                onClicked: root.runCmd("Removing category " + modelData.label,
+                                                                       ["aequalyn-webapp", "category-remove", modelData.id])
+                                            }
+                                        }
+                                    }
+                                    RowLayout {
+                                        visible: root.renamingCategory !== ""
+                                        spacing: 8
+                                        Field {
+                                            id: renameWebCategoryField
+                                            placeholder: "New name"
+                                            onAccepted: root.renameWebCategory(root.renamingCategory, renameWebCategoryField.text)
+                                        }
+                                        Btn {
+                                            text: "Save"
+                                            primary: true
+                                            enabled: !root.busy && renameWebCategoryField.text.trim() !== ""
+                                            onClicked: root.renameWebCategory(root.renamingCategory, renameWebCategoryField.text)
+                                        }
+                                        Btn { text: "Cancel"; onClicked: root.renamingCategory = "" }
+                                    }
+                                }
+                                Box {
                                     visible: root.section === "web"
                                     title: "Add a web app"
-                                    hint: "Name it as it should appear in the launcher, then the address, and a category if you like. The icon comes from the site when it can."
+                                    hint: "Name it as it should appear in the launcher, then the address, and a category if you like. Use one of the names in Categories below, or leave it empty. The icon comes from the site when it can."
                                     RowLayout {
                                         spacing: 8
                                         Field { id: webName; placeholder: "Reddit" }
