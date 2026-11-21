@@ -96,6 +96,14 @@ Scope {
     // the popular grid, fifteen to a page like the cards everywhere else
     property int popPage: 0
     readonly property int popAt: Math.min(root.popPage, Math.max(0, Math.ceil(root.apps.length / 15) - 1)) * 15
+    // the page's apps, as rows of five, the page always holding its three rows
+    function popRows() {
+        const shown = root.apps.slice(root.popAt, root.popAt + 15);
+        const rows = [];
+        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
+        while (rows.length < 3) rows.push([]);
+        return rows;
+    }
     property var backends: ({ yay: false, flatpak: false, snap: false })
     property var installedPkgs: ({ pacman: [], flatpak: [], snap: [] })
     FileView {
@@ -1071,21 +1079,31 @@ Scope {
                                     visible: root.section === "apps"
                                     title: "Popular apps"
                                     hint: "Each from any backend that carries it. The install opens in a terminal, where sudo asks for your password."
-                                    Flow {
-                                        Layout.fillWidth: true
-                                        spacing: 10
-                                        Repeater {
-                                            model: root.section === "apps" ? root.apps.slice(root.popAt, root.popAt + 15) : []
-                                            delegate: Rectangle {
-                                                id: appCard
-                                                required property var modelData
-                                                readonly property string via: root.installedVia(modelData)
-                                                width: 236
-                                                height: 150
-                                                radius: 12
-                                                color: root.theme.bgBase
-                                                border.width: 1
-                                                border.color: root.theme.bgBorder
+                                    // five to a row (a RowLayout shares its width out), three
+                                    // rows to a page, ghost slots keeping every page's shape
+                                    Repeater {
+                                        model: root.section === "apps" ? root.popRows() : []
+                                        delegate: RowLayout {
+                                            id: popRow
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            // an all-ghost row keeps the card height, so the page
+                                            // holds its 5x3 shape even when nothing is in it
+                                            Layout.preferredHeight: 150
+                                            spacing: 10
+                                            Repeater {
+                                                model: popRow.modelData
+                                                delegate: Rectangle {
+                                                    id: appCard
+                                                    required property var modelData
+                                                    readonly property string via: root.installedVia(modelData)
+                                                    Layout.fillWidth: true
+                                                    Layout.preferredWidth: 203
+                                                    height: 150
+                                                    radius: 12
+                                                    color: root.theme.bgBase
+                                                    border.width: 1
+                                                    border.color: root.theme.bgBorder
                                                 ColumnLayout {
                                                     anchors.fill: parent
                                                     anchors.margins: 12
@@ -1132,6 +1150,11 @@ Scope {
                                                 }
                                             }
                                         }
+                                        Repeater {
+                                            model: 5 - popRow.modelData.length
+                                            delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
+                                        }
+                                    }
                                     }
 
                                     // the pages of the popular grid, ‹ and › to walk them
