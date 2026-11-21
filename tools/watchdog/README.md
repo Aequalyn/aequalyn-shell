@@ -142,12 +142,16 @@ line, and counted as a failure like any other fault (three in ten minutes
 turns the plugin off). The gate's own sudo is a child of the supervisor,
 never of a unit, so it is never mistaken for a bypass. There are no
 excused callers: the first-party flows (the browser colour policy, the
-SDDM lock screen, the theme pack's install) ride the same gate -- their
-actions are declared on the `settings` built-in's line in `Plugins.js`,
-their commands pinned to the root-owned copies in `/usr/local/bin`, and
-their scripts stage what varies (the colour, the theme name) into
-`~/.local/state/aequalyn/gate/`, where the root halves re-find it through
-`SUDO_USER` and trust nothing beyond strict validation.
+SDDM lock screen, the theme pack's install, the Store's Arch packages)
+ride the same gate -- their actions are declared on their built-in's line
+in `Plugins.js` (`settings`, `store`), their commands pinned to the
+root-owned copies in `/usr/local/bin`, and their scripts stage what
+varies (the colour, the theme name, the package ids) into
+`~/.local/state/aequalyn/gate/`, where the root halves re-find it
+through `SUDO_USER` and trust nothing beyond strict validation. Flows
+that genuinely need a person at a keyboard (yay's build, snap's
+confinement questions, the Aequalyn update itself) open a detached
+terminal instead -- the user's own console, outside the supervised tree.
 
 Honest limits, so nobody thinks this is more than it is: the tripwire is a
 3-second sample over `/proc`, so a run that starts and exits between
