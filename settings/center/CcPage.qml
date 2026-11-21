@@ -219,79 +219,54 @@ Item {
                 color: Cc.alpha(Cc.theme.textPrimary, 0.10)
             }
 
-            Flickable {
-                id: tabsFlick
+            RowLayout {
+                id: tabsRow
                 anchors.fill: parent
-                contentWidth: Math.max(width, tabsRow.implicitWidth)
-                contentHeight: height
-                flickableDirection: Flickable.HorizontalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                clip: true
+                spacing: 0
+                // every tab gets the same share of the row, so the count sets its width
+                readonly property real tabW: page.tabs.length > 0 ? width / page.tabs.length : 0
 
-                // keep the open tab in view when the tab row is wider than the page
-                function reveal(item) {
-                    if (!item || contentWidth <= width) return;
-                    const pad = 24;
-                    if (item.x - pad < contentX) contentX = Math.max(0, item.x - pad);
-                    else if (item.x + item.width + pad > contentX + width)
-                        contentX = Math.min(contentWidth - width, item.x + item.width + pad - width);
-                }
+                Repeater {
+                    model: page.tabs
+                    delegate: Item {
+                        required property string modelData
+                        required property int index
+                        readonly property bool on: page.tab === index
+                        Layout.preferredWidth: tabsRow.tabW
+                        Layout.minimumWidth: tabsRow.tabW
+                        Layout.maximumWidth: tabsRow.tabW
+                        Layout.fillHeight: true
+                        Accessible.role: Accessible.PageTab
+                        Accessible.name: modelData
 
-                RowLayout {
-                    id: tabsRow
-                    TextMetrics {
-                        id: widest
-                        font.family: Cc.sans
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        text: page.tabs.reduce((a, b) => b.length > a.length ? b : a, "")
-                    }
-                    readonly property real tabW: Math.ceil(widest.width) + 24
-                    implicitWidth: tabsRow.tabW * page.tabs.length
-                    width: tabsFlick.contentWidth
-                    height: tabsFlick.height
-                    spacing: 0
-
-                    Repeater {
-                        model: page.tabs
-                        delegate: Item {
-                            required property string modelData
-                            required property int index
-                            readonly property bool on: page.tab === index
-                            Layout.preferredWidth: tabsRow.tabW
-                            Layout.minimumWidth: tabsRow.tabW
-                            Layout.fillHeight: true
-                            Accessible.role: Accessible.PageTab
-                            Accessible.name: modelData
-                            onOnChanged: if (on) Qt.callLater(tabsFlick.reveal, this)
-                            onXChanged: if (on) Qt.callLater(tabsFlick.reveal, this)
-
-                            Text {
-                                anchors.centerIn: parent
-                                anchors.verticalCenterOffset: -1
-                                text: modelData
-                                color: Cc.theme.textPrimary
-                                opacity: parent.on ? 1 : (tabArea.containsMouse ? 0.8 : 0.5)
-                                font.family: Cc.sans
-                                font.pixelSize: 12
-                                font.weight: parent.on ? Font.DemiBold : Font.Normal
-                            }
-                            Rectangle {
-                                visible: parent.on
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 2
-                                radius: 1
-                                color: Cc.theme.accentPrimary
-                            }
-                            MouseArea {
-                                id: tabArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: { page.tab = index; }
-                            }
+                        Text {
+                            anchors.centerIn: parent
+                            anchors.verticalCenterOffset: -1
+                            width: Math.max(0, parent.width - 8)
+                            text: modelData
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
+                            color: Cc.theme.textPrimary
+                            opacity: parent.on ? 1 : (tabArea.containsMouse ? 0.8 : 0.5)
+                            font.family: Cc.sans
+                            font.pixelSize: 12
+                            font.weight: parent.on ? Font.DemiBold : Font.Normal
+                        }
+                        Rectangle {
+                            visible: parent.on
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 2
+                            radius: 1
+                            color: Cc.theme.accentPrimary
+                        }
+                        MouseArea {
+                            id: tabArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: { page.tab = index; }
                         }
                     }
                 }
