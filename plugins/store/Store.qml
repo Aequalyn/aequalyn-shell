@@ -19,6 +19,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "root:/settings"
 import "root:/style/backdrop"
+import "../../Plugins.js" as PluginRegistry
+import "../../PluginInfo.js" as PluginInfo
 
 Scope {
     id: root
@@ -45,6 +47,13 @@ Scope {
         { key: "market",    label: "Market",     glyph: "\u{F0110}" },
         { key: "updates",   label: "Updates",    glyph: "\u{F06B0}" }
     ]
+    // the shell's own plugins, as the control center lists them; the control center
+    // itself is left out because turning it off would lock you out
+    readonly property var builtInPlugins: PluginRegistry.list.filter(p => p.id !== "settings")
+    function builtInInfo(id) {
+        // the registry's clipscape id and PluginInfo's clipboard key are one plugin
+        return PluginInfo.of(id === "clipscape" ? "clipboard" : id);
+    }
     readonly property var kindWords: ({
         plugin: { one: "plugin", hint: "A git repo with a plugin.json: it is checked (its files, qmllint, what it may run), then installed into ~/.local/share/aequalyn/plugins and switched on at once." },
         theme: { one: "theme", hint: "A git repo with a theme.json (or colors.toml) and a backgrounds/ folder. It is checked, then lands in ~/.config/aequalyn/themes and shows in Super + T." },
@@ -60,9 +69,11 @@ Scope {
     // what can update from git: an AppImage is one file with no source to fetch,
     // so the Updates page leaves it to its own page
     readonly property var updatable: root.installed.filter(i => i.kind !== "appimage")
-    // the number a section's label can carry, -1 when it never has one
+    // the number a section's label can carry, -1 when it never has one; the
+    // Plugins page counts its built-ins too, not only the ones from the Store
     function sectionCount(key) {
         if (key === "appimage") return root.itemsOf("appimage").length;
+        if (key === "plugin") return root.builtInPlugins.length + root.itemsOf("plugin").length;
         return root.kindWords[key] ? root.itemsOf(key).length : -1;
     }
     function refresh() { if (!listProc.running) listProc.running = true; }
@@ -913,6 +924,79 @@ Scope {
         }
     }
 
+    // a plugin that ships with the shell: nothing to download, check or remove,
+    // but it can be switched and opened in the control center like the others
+    component BuiltInRow: ColumnLayout {
+        id: row
+        required property var modelData
+        required property int index
+        readonly property var info: root.builtInInfo(modelData.id)
+        readonly property bool on: (AequalynSettings.enabledPlugins || []).indexOf(modelData.id) >= 0
+        Layout.fillWidth: true
+        spacing: 0
+        Rectangle { visible: row.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            Layout.topMargin: 9
+            Layout.bottomMargin: 9
+            spacing: 10
+            Rectangle {
+                Layout.preferredWidth: 30
+                Layout.preferredHeight: 30
+                radius: 8
+                color: root.theme.bgBase
+                Text {
+                    anchors.centerIn: parent
+                    text: row.info.icon
+                    color: root.theme.accentPrimary
+                    font.family: root.mono
+                    font.pixelSize: 16
+                }
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 3
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Text {
+                        text: row.modelData.label
+                        color: root.theme.textPrimary
+                        font.family: root.sans
+                        font.pixelSize: 13
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+                    Pill { text: "Built-in"; tone: root.theme.accentPrimary }
+                    Pill { text: row.on ? "Active" : "Inactive"; tone: row.on ? root.theme.accentGreen : root.theme.textMuted }
+                    Pill { visible: row.info.keys !== ""; text: row.info.keys; tone: root.theme.accentOrange }
+                    Item { Layout.fillWidth: true }
+                }
+                Text {
+                    text: row.info.about !== "" ? row.info.about : row.modelData.source
+                    color: root.theme.textMuted
+                    font.family: root.sans
+                    font.pixelSize: 11
+                    wrapMode: Text.WordWrap
+                    maximumLineCount: 2
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+            Btn {
+                text: row.on ? "Deactivate" : "Activate"
+                onClicked: AequalynSettings.togglePlugin(row.modelData.id, !row.on)
+            }
+            Btn {
+                text: "Details"
+                primary: true
+                onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "pluginPage", row.modelData.id])
+            }
+        }
+    }
+
     // the form that installs one kind from a git URL, with Check beside Install
     component InstallBox: Box {
         id: ib
@@ -1142,12 +1226,26 @@ Scope {
                                     }
                                 }
 
-                                // a kind's page: what is installed, then the form
+                                // the shell's own plugins, listed as in the control center,
+                                // but marked built-in: there is nothing to fetch or remove
+                                Box {
+                                    visible: root.section === "plugin"
+                                    title: "Built-in"
+                                    hint: "These ship with Aequalyn. Switch them here or open their control center page; the ones from the Store follow below."
+                                    Repeater {
+                                        model: root.builtInPlugins
+                                        delegate: BuiltInRow {}
+                                    }
+                                }
+
+                                // a kind's page: what came from the Store, then the form
                                 Box {
                                     visible: !!root.kindWords[root.section]
-                                    title: "Installed"
+                                    title: root.section === "plugin" ? "Community" : "Installed"
                                     hint: root.kindWords[root.section] && root.itemsOf(root.section).length === 0
-                                          ? "No " + root.kindWords[root.section].one + " from the Store yet." : ""
+                                          ? (root.section === "plugin"
+                                             ? "No community plugins from the Store yet; the built-in ones above are ready to use."
+                                             : "No " + root.kindWords[root.section].one + " from the Store yet.") : ""
                                     Repeater {
                                         model: root.kindWords[root.section] ? root.itemsOf(root.section) : []
                                         delegate: ItemRow {}
