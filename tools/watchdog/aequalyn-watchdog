@@ -77,6 +77,9 @@ QS_BIN = os.environ.get("AEQUALYN_QS_BIN") or shutil.which("qs") or shutil.which
 
 # folders from the config root that a plugin may import with root:/
 HOST_LINKS = ["plugins", "settings", "style", "assets", "theme-switcher", "default"]
+# root-level JS modules reach into the linked folders with relative imports
+# (settings/UserPlugins.qml imports ../Plugins.js), so the hosts need them too
+HOST_ROOT_FILES = sorted(p.name for p in (CONFIG_DIR).glob("*.js"))
 
 DEFAULTS = {
     "shellRamMb": 900,          # the shell as a whole (it was ~600 MB in use)
@@ -232,6 +235,16 @@ def ensure_host_dir(plugin_id: str) -> Path:
             continue
         if link.is_symlink() or link.exists():
             link.unlink() if link.is_symlink() else shutil.rmtree(link, ignore_errors=True)
+        link.symlink_to(target)
+    for name in HOST_ROOT_FILES:
+        link = d / name
+        target = CONFIG_DIR / name
+        if not target.exists():
+            continue
+        if link.is_symlink() and os.readlink(link) == str(target):
+            continue
+        if link.is_symlink() or link.exists():
+            link.unlink()
         link.symlink_to(target)
     qml = d / "shell.qml"
     host_qml = CONFIG_DIR / "tools" / "watchdog" / "host" / "shell.qml"
