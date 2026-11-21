@@ -226,20 +226,54 @@ Scope {
         if (a.snap && root.installedPkgs.snap.indexOf(a.snap) >= 0) return "Snap";
         return "";
     }
-    // a command in a terminal, kept open at the end so its output can be read
-    Process {
-        id: terminal
-        onExited: {
+    // a command in a terminal, kept open at the end so its output can be read.
+    // Started detached on purpose: the terminal is the user's own console --
+    // it steps out of the shell's process tree (where the watchdog's
+    // tripwire watches for privilege launches), and its password prompt is
+    // typed by the person looking at it. Only flows that need a person at a
+    // keyboard use this (yay's build, snap's confinement questions);
+    // pacman goes through the root gate instead (gatePkg below).
+    property bool terminalBusy: false
+    Timer { id: busyClear; interval: 60000; onTriggered: root.terminalBusy = false }
+    function anyBusy() { return root.terminalBusy || gatePkgProc.running }
+    function inTerminal(cmd) {
+        if (root.terminalBusy) return;
+        const tail = cmd + '; echo; read -rp "Done. Press Enter to close " _';
+        root.terminalBusy = true;
+        busyClear.restart();
+        Quickshell.execDetached(["sh", "-c",
+            'if command -v kitty >/dev/null; then exec kitty sh -c "$1"; '
+            + 'elif command -v foot >/dev/null; then exec foot sh -c "$1"; else exec alacritty -e sh -c "$1"; fi', "sh", tail]);
+    }
+
+    // A package through the root gate: the approval window decides (the page
+    // names the command), pacman runs as root with the staged ids -- full
+    // argv, --noconfirm, no shell -- and what it printed comes back here.
+    // Only plain ids ever reach this (validated again on the root side).
+    property Process gatePkgProc: Process {
+        id: gatePkgProc
+        stdout: StdioCollector { id: gateOut }
+        stderr: StdioCollector { id: gateErr }
+        onExited: (code) => {
             root.detectApps();
             if (root.section === "ai") root.loadAi();
+            const denied = (gateOut.text || "").indexOf("denied") >= 0;
+            const tail = ((gateErr.text || "") + (gateOut.text || "")).trim().slice(-300);
+            Quickshell.execDetached(["notify-send", "-a", "Aequalyn",
+                code === 0 ? "Package ready" : denied ? "Package action denied" : "Package action failed",
+                code === 0 ? "pacman finished; the list on this page is refreshed."
+                    : denied ? "The approval window was denied or timed out; nothing was installed."
+                    : (tail || "pacman exited " + code)]);
         }
     }
-    function inTerminal(cmd) {
-        if (terminal.running) return;
-        const tail = cmd + '; echo; read -rp "Done. Press Enter to close " _';
-        terminal.command = ["sh", "-c", 'if command -v kitty >/dev/null; then exec kitty sh -c "$1"; '
-            + 'elif command -v foot >/dev/null; then exec foot sh -c "$1"; else exec alacritty -e sh -c "$1"; fi', "sh", tail];
-        terminal.running = true;
+    function gatePkg(op, id) {
+        if (gatePkgProc.running) return;
+        const req = JSON.stringify({ op: op, packages: [id] });
+        gatePkgProc.command = ["sh", "-c",
+            'mkdir -p "$HOME/.local/state/aequalyn/gate" && printf \'%s\' "$2" > "$HOME/.local/state/aequalyn/gate/pkg.json" '
+            + '&& aequalyn-watchdog exec-root --as store "$1"; r=$?; rm -f "$HOME/.local/state/aequalyn/gate/pkg.json"; exit $r',
+            "sh", op === "install" ? "pkg-install" : "pkg-remove", req];
+        gatePkgProc.running = true;
     }
     readonly property string flathub: "flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo"
     // every app from every backend: aequalyn-store search-apps (no words: Flathub's most
@@ -312,18 +346,22 @@ Scope {
                             + "[ \"$a\" = y ] && sudo snap install " + name + " --classic; }");
             return;
         }
-        if (via === "Arch") root.inTerminal("sudo pacman -S --needed " + a.pacman);
+        // Arch packages ride the root gate: the approval window opens, the
+        // password goes to sudo on a pipe, and pacman runs with the staged
+        // id -- no terminal, no polkit, no side doors.
+        if (via === "Arch") root.gatePkg("install", a.pacman);
         else if (via === "AUR") root.inTerminal("yay -S --needed " + a.aur);
         else if (via === "Flatpak") root.inTerminal(root.flathub + " && flatpak install --user -y flathub " + a.flatpak);
         else if (via === "Snap") root.inTerminal("sudo snap install " + a.snap + (a.snapClassic ? " --classic" : ""));
     }
-    // Installed filter: the matching update or remove command in a terminal, where
-    // sudo can ask. Only the plain id from the package manager reaches the shell.
+    // Installed filter: the matching update or remove -- Arch through the
+    // gate, the rest in the user's detached console. Only the plain id from
+    // the package manager reaches the shell.
     function appAction(r, action) {
         const id = r.id;
         if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(id)) return;
         if (r.source === "Arch")
-            root.inTerminal(action === "update" ? "sudo pacman -S --needed " + id : "sudo pacman -Rns " + id);
+            root.gatePkg(action === "update" ? "install" : "remove", id);
         else if (r.source === "AUR")
             root.inTerminal(action === "update" ? "yay -S --needed " + id : "yay -Rns " + id);
         else if (r.source === "Flatpak")
@@ -1666,7 +1704,7 @@ Scope {
                                             Btn {
                                                 visible: !parent.ready
                                                 text: "Install " + modelData.label
-                                                enabled: !terminal.running && (modelData.needs === "" || root.backends[modelData.needs] === true)
+                                                enabled: !root.anyBusy() && (modelData.needs === "" || root.backends[modelData.needs] === true)
                                                 onClicked: root.installBackend(modelData.key)
                                             }
                                         }
@@ -1751,7 +1789,7 @@ Scope {
                                                                 Layout.minimumWidth: 0
                                                                 Layout.preferredHeight: 24
                                                                 primary: modelData.has && modelData.ready && appCard.via === ""
-                                                                enabled: modelData.has && modelData.ready && !terminal.running
+                                                                enabled: modelData.has && modelData.ready && !root.anyBusy()
                                                                 onClicked: root.installApp(appCard.modelData, modelData.via)
                                                             }
                                                         }
@@ -1930,7 +1968,7 @@ Scope {
                                                                     implicitHeight: 26
                                                                     text: "Update"
                                                                     primary: true
-                                                                    enabled: !terminal.running
+                                                                    enabled: !root.anyBusy()
                                                                     onClicked: root.appAction(fcard.modelData, "update")
                                                                 }
                                                                 Btn {
@@ -1938,7 +1976,7 @@ Scope {
                                                                     implicitHeight: 26
                                                                     text: "Remove"
                                                                     danger: true
-                                                                    enabled: !terminal.running
+                                                                    enabled: !root.anyBusy()
                                                                     onClicked: root.appAction(fcard.modelData, "remove")
                                                                 }
                                                             }
@@ -1954,7 +1992,7 @@ Scope {
                                                                 implicitHeight: 26
                                                                 text: fcard.ready ? "Install" : "Needs " + (fcard.modelData.source === "AUR" ? "the AUR" : fcard.modelData.source === "Flatpak" ? "Flathub" : "Snap")
                                                                 primary: fcard.ready
-                                                                enabled: fcard.ready && !terminal.running
+                                                                enabled: fcard.ready && !root.anyBusy()
                                                                 onClicked: root.installFound(fcard.modelData)
                                                             }
                                                         }

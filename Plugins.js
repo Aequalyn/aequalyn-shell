@@ -44,7 +44,14 @@ var list = [
     { id: "rootTest",      label: "Root gate self-test", source: "plugins/rootTest/RootTest.qml", sandbox: true,
       needsRoot: [{ "id": "who-am-i", "label": "Show the user id it runs as", "about": "Runs /usr/bin/id -u as root; the answer should be 0.",
                     "command": ["/usr/bin/id", "-u"] }] },
-    { id: "store",          label: "Store",          source: "plugins/store/Store.qml" },
+    { id: "store",          label: "Store",          source: "plugins/store/Store.qml",
+      // the Store's package rides the same gate as any plugin's: the
+      // approval window names the command, pacman runs with the staged
+      // ids (validated, --noconfirm, full argv, no shell)
+      needsRoot: [
+        { "id": "pkg-install", "label": "Install Arch packages", "about": "Installs the staged package names with pacman (--needed --noconfirm).", "command": ["/usr/local/bin/aequalyn-store", "gate-pkg"] },
+        { "id": "pkg-remove", "label": "Remove Arch packages", "about": "Removes the staged package names with pacman (-Rns --noconfirm).", "command": ["/usr/local/bin/aequalyn-store", "gate-pkg"] }
+      ] },
     // the control center's own privileged actions: every one of them rides
     // the same gate as any plugin's (exec-root --as settings <action>), so
     // the approval window is the only password prompt the desktop ever
