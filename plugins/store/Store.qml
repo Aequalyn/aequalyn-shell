@@ -113,11 +113,16 @@ Scope {
     }
     property var backends: ({ yay: false, flatpak: false, snap: false })
     property var installedPkgs: ({ pacman: [], flatpak: [], snap: [] })
-    // what is already here, one row per explicitly installed app, for Your apps
-    property var yourApps: []
-    property int yourPage: 0
-    readonly property int yourAt: Math.min(root.yourPage, Math.max(0, Math.ceil(root.yourApps.length / 15) - 1)) * 15
-    readonly property var yourShown: root.yourApps.slice(root.yourAt, root.yourAt + 15)
+    // explicitly installed packages from every backend; many are CLI tools, so
+    // All apps' Installed filter shows them instead of a separate apps section
+    property var installedApps: []
+    property string installedQuery: ""
+    readonly property var installedResults: root.installedApps
+        .filter(a => root.installedQuery === "" ||
+                     (a.name + " " + a.id).toLowerCase().indexOf(root.installedQuery.toLowerCase()) >= 0)
+        .map(a => ({ source: a.source, id: a.id, name: a.name, version: a.version,
+                     about: a.version !== "" ? "Version " + a.version : "Installed",
+                     icon: "", installed: true }))
     FileView {
         path: Qt.resolvedUrl("apps.json").toString().replace("file://", "")
         onLoaded: { try { root.apps = JSON.parse(text()); } catch (e) { root.apps = []; } }
@@ -125,7 +130,7 @@ Scope {
     function detectApps() { if (!detect.running) detect.running = true; }
     Process {
         id: detect
-        // the same sweep fills the badges on popular apps and the Your apps list:
+        // the same sweep fills the popular-app badges and All apps' Installed filter:
         // pacman's foreign packages are the AUR ones, and the source/name/version
         // records let a row run the right update or remove command
         command: ["sh", "-c",
@@ -157,7 +162,7 @@ Scope {
                 }
                 root.backends = b;
                 root.installedPkgs = got;
-                root.yourApps = yours;
+                root.installedApps = yours;
             }
         }
     }
@@ -194,7 +199,9 @@ Scope {
     // the page of results shown at a time (foundAt: where it starts)
     property int foundAt: 0
     readonly property int foundStep: 15
-    readonly property var foundShown: root.found.filter(r => root.foundSource === "All" || r.source === root.foundSource)
+    readonly property var foundShown: root.foundSource === "Installed"
+        ? root.installedResults
+        : root.found.filter(r => root.foundSource === "All" || r.source === root.foundSource)
     // the page's found apps, as rows of five, the page always holding its three rows
     function foundRows() {
         const shown = root.foundShown.slice(root.foundAt, root.foundAt + root.foundStep);
@@ -204,6 +211,12 @@ Scope {
         return rows;
     }
     function searchApps(q, more) {
+        // Installed is a local view: filter what is already here, no network search
+        if (root.foundSource === "Installed") {
+            root.installedQuery = q;
+            root.foundAt = 0;
+            return;
+        }
         if (searchProc.running) return;
         root.foundPage = more ? root.foundPage + 1 : 1;
         if (!more) { root.found = []; root.foundQuery = q; root.foundAt = 0; }
@@ -249,8 +262,8 @@ Scope {
         else if (via === "Flatpak") root.inTerminal(root.flathub + " && flatpak install --user -y flathub " + a.flatpak);
         else if (via === "Snap") root.inTerminal("sudo snap install " + a.snap + (a.snapClassic ? " --classic" : ""));
     }
-    // Your apps: the matching update or remove command in a terminal, where sudo
-    // can ask. Only the plain id from the package manager reaches the shell.
+    // Installed filter: the matching update or remove command in a terminal, where
+    // sudo can ask. Only the plain id from the package manager reaches the shell.
     function appAction(r, action) {
         const id = r.id;
         if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(id)) return;
@@ -1135,77 +1148,8 @@ Scope {
                                 }
                                 InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
 
-                                // Apps: what you already have, where it came from, then the
-                                // four backends and the popular apps from any of them
-                                Box {
-                                    visible: root.section === "apps"
-                                    title: "Your apps"
-                                    hint: root.yourApps.length === 0
-                                          ? "No explicitly installed apps found in Arch, the AUR, Flathub or Snap yet."
-                                          : "Installed from all four backends. Update and remove open in a terminal, where sudo can ask; dependencies are left alone unless the package tool decides otherwise."
-                                    Repeater {
-                                        model: root.section === "apps" ? root.yourShown : []
-                                        delegate: ColumnLayout {
-                                            id: yourRow
-                                            required property var modelData
-                                            required property int index
-                                            Layout.fillWidth: true
-                                            spacing: 0
-                                            Rectangle { visible: yourRow.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
-                                            RowLayout {
-                                                Layout.fillWidth: true
-                                                Layout.leftMargin: 12
-                                                Layout.rightMargin: 12
-                                                Layout.topMargin: 9
-                                                Layout.bottomMargin: 9
-                                                spacing: 10
-                                                ColumnLayout {
-                                                    spacing: 2
-                                                    Layout.fillWidth: true
-                                                    Text { text: yourRow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
-                                                    Text { text: yourRow.modelData.id + (yourRow.modelData.version !== "" ? "  ·  " + yourRow.modelData.version : ""); color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11; elide: Text.ElideMiddle; Layout.fillWidth: true }
-                                                }
-                                                Pill { text: yourRow.modelData.source; tone: root.theme.accentPrimary }
-                                                Btn {
-                                                    text: "Update"
-                                                    primary: true
-                                                    enabled: !terminal.running
-                                                    onClicked: root.appAction(yourRow.modelData, "update")
-                                                }
-                                                Btn {
-                                                    text: "Remove"
-                                                    danger: true
-                                                    enabled: !terminal.running
-                                                    onClicked: root.appAction(yourRow.modelData, "remove")
-                                                }
-                                            }
-                                        }
-                                    }
-                                    RowLayout {
-                                        visible: root.yourApps.length > 15
-                                        spacing: 6
-                                        Item { Layout.fillWidth: true }
-                                        Text {
-                                            text: root.yourApps.length + " apps"
-                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                        }
-                                        StepBtn {
-                                            glyph: "‹"
-                                            enabled: root.yourAt > 0
-                                            onClicked: root.yourPage = root.yourAt / 15 - 1
-                                        }
-                                        Text {
-                                            text: (root.yourAt + 1) + "–" + Math.min(root.yourAt + 15, root.yourApps.length)
-                                                  + " of " + root.yourApps.length
-                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                        }
-                                        StepBtn {
-                                            glyph: "›"
-                                            enabled: root.yourAt + 15 < root.yourApps.length
-                                            onClicked: root.yourPage = root.yourAt / 15 + 1
-                                        }
-                                    }
-                                }
+                                // Apps: the four backends, then the popular apps, each from
+                                // any backend that has it; installed packages are in All apps
                                 Box {
                                     visible: root.section === "apps"
                                     title: "Backends"
@@ -1371,9 +1315,13 @@ Scope {
                                 Box {
                                     visible: root.section === "apps"
                                     title: "All apps"
-                                    hint: root.foundQuery === ""
-                                        ? "Flathub's most installed and Snap's featured apps. Search to look through Arch, the AUR, Flathub and Snap at once."
-                                        : "Everything that matches \"" + root.foundQuery + "\" in Arch, the AUR, Flathub and Snap."
+                                    hint: root.foundSource === "Installed"
+                                        ? (root.installedQuery === ""
+                                           ? "Everything installed from Arch, the AUR, Flathub and Snap, command-line tools included. Search to narrow this list."
+                                           : "Installed packages matching \"" + root.installedQuery + "\".")
+                                        : root.foundQuery === ""
+                                          ? "Flathub's most installed and Snap's featured apps. Search to look through Arch, the AUR, Flathub and Snap at once."
+                                          : "Everything that matches \"" + root.foundQuery + "\" in Arch, the AUR, Flathub and Snap."
                                     RowLayout {
                                         spacing: 8
                                         Field {
@@ -1387,19 +1335,25 @@ Scope {
                                         Layout.fillWidth: true
                                         spacing: 6
                                         Repeater {
-                                            model: ["All", "Arch", "AUR", "Flatpak", "Snap"]
+                                            model: ["All", "Installed", "Arch", "AUR", "Flatpak", "Snap"]
                                             delegate: Btn {
                                                 required property string modelData
-                                                readonly property int count: modelData === "All" ? root.found.length : root.found.filter(r => r.source === modelData).length
+                                                readonly property int count: modelData === "All" ? root.found.length
+                                                    : modelData === "Installed" ? root.installedApps.length
+                                                    : root.found.filter(r => r.source === modelData).length
                                                 text: modelData + "  " + count + (root.foundErrors[modelData] ? "  ⚠" : "")
                                                 primary: root.foundSource === modelData
                                                 implicitHeight: 26
-                                                onClicked: { root.foundSource = modelData; root.foundAt = 0; }
+                                                onClicked: {
+                                                    root.installedQuery = modelData === "Installed" ? appSearch.text.trim() : "";
+                                                    root.foundSource = modelData;
+                                                    root.foundAt = 0;
+                                                }
                                             }
                                         }
                                     }
                                     Text {
-                                        visible: Object.keys(root.foundErrors).length > 0
+                                        visible: root.foundSource !== "Installed" && Object.keys(root.foundErrors).length > 0
                                         text: "Could not reach: " + Object.keys(root.foundErrors).join(", ") + ". Search again in a moment."
                                         color: root.theme.accentOrange; font.family: root.sans; font.pixelSize: 11
                                     }
@@ -1421,6 +1375,7 @@ Scope {
                                                     id: fcard
                                                     required property var modelData
                                                     readonly property bool have: root.foundInstalled(modelData)
+                                                    readonly property bool installedHere: !!modelData.installed
                                                     readonly property bool ready: modelData.source === "Arch" || (modelData.source === "AUR" && root.backends.yay)
                                                         || (modelData.source === "Flatpak" && root.backends.flatpak) || (modelData.source === "Snap" && root.backends.snap)
                                                     Layout.fillWidth: true
@@ -1478,10 +1433,26 @@ Scope {
                                                         RowLayout {
                                                             Layout.fillWidth: true
                                                             spacing: 6
-                                                            Pill { visible: fcard.have; text: "Installed"; tone: root.theme.accentGreen }
+                                                            Pill { visible: fcard.have || fcard.installedHere; text: "Installed"; tone: root.theme.accentGreen }
                                                             Item { Layout.fillWidth: true }
                                                             Btn {
-                                                                visible: !fcard.have
+                                                                visible: fcard.installedHere
+                                                                implicitHeight: 26
+                                                                text: "Update"
+                                                                primary: true
+                                                                enabled: !terminal.running
+                                                                onClicked: root.appAction(fcard.modelData, "update")
+                                                            }
+                                                            Btn {
+                                                                visible: fcard.installedHere
+                                                                implicitHeight: 26
+                                                                text: "Remove"
+                                                                danger: true
+                                                                enabled: !terminal.running
+                                                                onClicked: root.appAction(fcard.modelData, "remove")
+                                                            }
+                                                            Btn {
+                                                                visible: !fcard.have && !fcard.installedHere
                                                                 implicitHeight: 26
                                                                 text: fcard.ready ? "Install" : "Needs " + (fcard.modelData.source === "AUR" ? "the AUR" : fcard.modelData.source === "Flatpak" ? "Flathub" : "Snap")
                                                                 primary: fcard.ready
