@@ -212,26 +212,28 @@ def store_root_actions(pid: str) -> list[dict]:
 
 
 def builtin_root_actions() -> dict[str, list[dict]]:
-    """{builtin id: actions} from needsRoot: [...] lines in Plugins.js.
-    No built-in declares any today; the door is here for when one does."""
+    """{builtin id: actions} from needsRoot: [...] in Plugins.js. The value
+    may span lines, so the brackets are walked to their close across the
+    whole text, and the plugin id is the nearest entry opener before the
+    marker (rootTest declares one; it is the worked example)."""
     try:
         text = PLUGINS_JS.read_text(encoding="utf-8")
     except OSError:
         return {}
     out: dict[str, list[dict]] = {}
-    for line in text.splitlines():
-        i = line.find("needsRoot:")
-        if i < 0:
+    for m in re.finditer(r"needsRoot\s*:", text):
+        opens = re.findall(r'\{\s*id:\s*"([^"]+)"', text[:m.start()])
+        if not opens:
             continue
-        m = re.search(r'id:\s*"([^"]+)"', line)
-        j = line.find("[", i)
-        if not m or j < 0:
+        pid = opens[-1]
+        j = text.find("[", m.end())
+        if j < 0:
             continue
         depth, end = 0, -1
-        for k in range(j, len(line)):
-            if line[k] == "[":
+        for k in range(j, len(text)):
+            if text[k] == "[":
                 depth += 1
-            elif line[k] == "]":
+            elif text[k] == "]":
                 depth -= 1
                 if depth == 0:
                     end = k
@@ -239,12 +241,12 @@ def builtin_root_actions() -> dict[str, list[dict]]:
         if end < 0:
             continue
         try:
-            raw = json.loads(line[j:end + 1])
+            raw = json.loads(text[j:end + 1])
         except ValueError:
             continue
         acts = clean_root_actions(raw, "Plugins.js")
         if acts:
-            out[m.group(1)] = acts
+            out[pid] = acts
     return out
 
 

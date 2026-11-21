@@ -96,8 +96,20 @@ In `plugin.json` (a Store plugin):
 - The Store says all of this out loud while it checks your plugin, before
   anything is installed; the Plugins page badges the card with
   `runs as root`.
-- A built-in declares the same shape on its line in `Plugins.js`:
-  `needsRoot: [{ id: "fix-service", label: "...", command: ["..."] }]`.
+- A built-in declares the same shape on its line in `Plugins.js`, as plain
+  JSON (quoted keys) so the supervisor can read it straight out of the file:
+
+  ```js
+  { id: "rootTest", label: "Root gate self-test", source: "plugins/rootTest/RootTest.qml",
+    sandbox: true, needsRoot: [{ "id": "who-am-i", "label": "Show the user id it runs as",
+    "command": ["/usr/bin/id", "-u"] }] }
+  ```
+
+  That one is real: **Root gate self-test** (Settings → Plugins) is the gate's
+  own demo, the worked example. Turned on, it asks for its one action at
+  once -- the window names it, you answer, and a notification narrates what
+  became of the request: allowed and it really ran as root, denied or timed
+  out and the command never ran. Either answer is the demo.
 
 Calling it (sandboxed or not, from a `Process`):
 
