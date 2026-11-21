@@ -18,6 +18,8 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import "root:/settings"
+import "../../settings/center"
+import "root:/settings/center/Pages.js" as Pages
 import "root:/style/backdrop"
 import "../../Plugins.js" as PluginRegistry
 import "../../PluginInfo.js" as PluginInfo
@@ -33,25 +35,108 @@ Scope {
     property bool open: false
     property string section: "home"
     property string category: ""
-    // the title-bar search, as the control center's: type and the results take
-    // the place of the page, with a chip for each source and keys to move
+    // the title-bar search, as the control center's: apps and settings share one
+    // results view, with a chip for each source, one page per app, and keys to move
     property string query: ""
     property string querySource: "All"
+    property string settingCat: ""
     property int pick: 0
     readonly property bool queryActive: root.query.trim() !== ""
-    readonly property var resultSources: ["All", "Arch", "AUR", "Flatpak", "Snap", "Installed"]
-    function resultCount(source) {
-        if (source === "All") return root.found.length;
-        if (source === "Installed") return root.installedResults.length;
-        return root.found.filter(r => r.source === source).length;
+    readonly property var resultSources: ["All", "Apps", "Arch", "AUR", "Flatpak", "Snap", "Installed", "Settings"]
+        .concat(Pages.categories.map(c => c.key))
+    function resultLabel(source) {
+        const c = Pages.categories.find(x => x.key === source);
+        return c ? c.title : source;
     }
-    readonly property var resultShown: root.querySource === "Installed" ? root.installedResults
-        : root.querySource === "All" ? root.found
-        : root.found.filter(r => r.source === root.querySource)
+    function isSettingSource(source) {
+        return source === "Settings" || Pages.categories.some(c => c.key === source);
+    }
+    function normKey(s) { return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+    // one app can arrive from several backends under different ids; the curated
+    // list knows them, else the name is the best identity we have
+    function curatedFor(r) {
+        const id = root.normKey(r.id), name = root.normKey(r.name || r.id);
+        const byId = root.apps.find(a => id !== "" && (
+            (r.source === "Arch" && root.normKey(a.pacman) === id) ||
+            (r.source === "AUR" && root.normKey(a.aur) === id) ||
+            (r.source === "Flatpak" && root.normKey(a.flatpak) === id) ||
+            (r.source === "Snap" && root.normKey(a.snap) === id)));
+        if (byId) return byId;
+        return root.apps.find(a => root.normKey(a.name) === name || root.normKey(a.id) === name) || null;
+    }
+    function appIcon(c, r) {
+        if (c && c.icon) return "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + c.icon + ".png";
+        return r.icon || "";
+    }
+    readonly property var appResults: {
+        const list = root.found.slice();
+        const q = root.query.trim().toLowerCase();
+        for (const a of root.installedApps) {
+            if (q !== "" && (a.name + " " + a.id).toLowerCase().indexOf(q) < 0) continue;
+            list.push({ source: a.source, id: a.id, name: a.name, version: a.version,
+                        about: a.version !== "" ? "Version " + a.version : "Installed",
+                        icon: root.installedIcon(a, root.apps), installed: true });
+        }
+        return list;
+    }
+    readonly property var appGroups: {
+        const groups = [], byKey = {};
+        for (const r of root.appResults) {
+            if (!r || !r.source || !r.id) continue;
+            const c = root.curatedFor(r);
+            const key = c ? "curated:" + c.id : "name:" + (root.normKey(r.name || r.id) || root.normKey(r.id));
+            let g = byKey[key];
+            if (!g) {
+                g = { key: key, name: (c && c.name) || r.name || r.id, about: (c && c.about) || r.about || "",
+                      icon: root.appIcon(c, r), curated: c, sources: [], installed: false, popularity: 0 };
+                byKey[key] = g;
+                groups.push(g);
+            }
+            const sig = r.source + "|" + r.id;
+            if (!g.sources.some(s => s.source + "|" + s.id === sig)) g.sources.push(r);
+            if (!g.about && r.about) g.about = r.about;
+            if (!g.icon && r.icon) g.icon = r.icon;
+            g.installed = g.installed || !!r.installed || root.foundInstalled(r);
+            g.popularity = Math.max(g.popularity, Number(r.popularity) || 0);
+        }
+        groups.sort((a, b) => (b.installed ? 1 : 0) - (a.installed ? 1 : 0)
+            || b.popularity - a.popularity || a.name.localeCompare(b.name));
+        return groups;
+    }
+    readonly property var allSettingResults: root.queryActive ? Pages.search(root.query.trim(), "") : []
+    function resultCount(source) {
+        if (source === "All") return root.appGroups.length + root.allSettingResults.length;
+        if (source === "Apps") return root.appGroups.length;
+        if (source === "Settings") return root.allSettingResults.length;
+        if (root.isSettingSource(source)) return root.allSettingResults.filter(r => r.cat === source).length;
+        if (source === "Installed") return root.appGroups.filter(g => g.installed).length;
+        return root.appGroups.filter(g => g.sources.some(s => s.source === source)).length;
+    }
+    function rowsFor(source) {
+        let apps = [], sets = [];
+        if (root.isSettingSource(source)) {
+            sets = source === "Settings" ? root.allSettingResults
+                : root.allSettingResults.filter(r => r.cat === source);
+        } else {
+            apps = source === "Installed" ? root.appGroups.filter(g => g.installed)
+                : source === "All" || source === "Apps" ? root.appGroups
+                : root.appGroups.filter(g => g.sources.some(s => s.source === source));
+            if (source === "All") sets = root.allSettingResults;
+        }
+        return apps.map(g => ({ kind: "app", group: g }))
+            .concat(sets.map(r => ({ kind: "setting", result: r })));
+    }
+    readonly property var resultShown: root.rowsFor(root.querySource)
+    function setQuerySource(source) {
+        root.querySource = source;
+        root.settingCat = root.isSettingSource(source) && source !== "Settings" ? source : "";
+        root.pick = 0;
+    }
     function searchFromTitle() {
         if (!root.queryActive) return;
         root.open = true;
-        root.foundSource = root.querySource;
+        root.foundSource = ["Arch", "AUR", "Flatpak", "Snap", "Installed"].indexOf(root.querySource) >= 0
+            ? root.querySource : "All";
         root.foundAt = 0;
         root.detectApps();
         root.searchApps(root.query.trim(), false);
@@ -59,13 +144,184 @@ Scope {
     onQueryChanged: {
         root.pick = 0;
         root.foundAt = 0;
-        if (root.queryActive) titleSearchTimer.restart();
-        else { titleSearchTimer.stop(); root.found = []; root.foundErrors = {}; }
+        if (root.queryActive) {
+            root.appPage = null;
+            root.appDetail = null;
+            titleSearchTimer.restart();
+        } else {
+            titleSearchTimer.stop();
+            root.found = [];
+            root.foundErrors = {};
+            root.appPage = null;
+            root.appDetail = null;
+            root.appReturn = null;
+        }
     }
     Timer {
         id: titleSearchTimer
         interval: 350
         onTriggered: root.searchFromTitle()
+    }
+
+    // ---- one app, one page --------------------------------------------------------------
+    // the search lists an app once, however many managers can install it; its page
+    // gathers the details from all of them. The state of the page we came from is
+    // kept so Back really goes back there, search results included.
+    property var appPage: null
+    property var appReturn: null
+    property var appDetail: null
+    property bool appDetailBusy: false
+    property var appDetailErrors: ({})
+    function appIds(g) {
+        const ids = { "Arch": "", "AUR": "", "Flatpak": "", "Snap": "" };
+        for (const s of g.sources) if (ids[s.source] !== undefined && !ids[s.source]) ids[s.source] = s.id;
+        return ids;
+    }
+    function openApp(g) {
+        if (!g) return;
+        if (appInfoProc.running) appInfoProc.running = false;
+        if (!root.appPage) root.appReturn = { query: root.query, querySource: root.querySource,
+            settingCat: root.settingCat, section: root.section, category: root.category,
+            pick: root.pick, foundAt: root.foundAt, foundSource: root.foundSource };
+        root.appPage = g;
+        root.appDetail = null;
+        root.appDetailBusy = true;
+        root.appDetailErrors = {};
+        const ids = root.appIds(g);
+        appInfoProc.command = ["aequalyn-store", "app-info", g.name]
+            .concat(ids.Arch ? ["--arch", ids.Arch] : [])
+            .concat(ids.AUR ? ["--aur", ids.AUR] : [])
+            .concat(ids.Flatpak ? ["--flatpak", ids.Flatpak] : [])
+            .concat(ids.Snap ? ["--snap", ids.Snap] : []);
+        appInfoProc.running = true;
+    }
+    function backFromApp() {
+        const r = root.appReturn || {};
+        root.appPage = null;
+        root.appDetail = null;
+        root.appDetailBusy = false;
+        root.appDetailErrors = {};
+        if (r.query !== undefined) {
+            root.query = r.query || "";
+            root.querySource = r.querySource || "All";
+            root.settingCat = r.settingCat || "";
+            root.section = r.section || root.section;
+            root.category = r.category || "";
+            root.pick = r.pick || 0;
+            root.foundAt = r.foundAt || 0;
+            root.foundSource = r.foundSource || "All";
+        }
+        root.appReturn = null;
+        titleSearch.forceActiveFocus();
+    }
+    function detailSources() {
+        if (!root.appPage) return [];
+        const fetched = root.appDetail ? root.appDetail.sources : [];
+        if (fetched.length === 0) return root.appPage.sources;
+        return fetched.map(s => {
+            const searchHit = root.appPage.sources.find(x => x.source === s.source) || {};
+            return Object.assign({}, s, {
+                icon: s.icon || searchHit.icon || root.appPage.icon || "",
+                installed: !!s.installed || root.foundInstalled(Object.assign({}, s, { id: s.id })),
+                about: s.about || searchHit.about || "",
+                version: s.version || searchHit.version || "",
+                url: s.url || "",
+                details: s.details || []
+            });
+        });
+    }
+    // a short, quiet set of facts for the app's own page: the useful fields from
+    // whichever source published them, never a wall of package-manager output
+    function appFacts() {
+        if (!root.appPage) return [];
+        const sources = root.detailSources();
+        const primary = sources.find(s => (s.details || []).length > 0) || sources[0] || {};
+        const wanted = ["Version", "License", "Size", "Installed Size", "Download Size",
+                        "Developer", "Publisher", "Maintainer", "Repository", "Architecture",
+                        "Votes", "Popularity", "Last updated", "Latest release", "Latest version", "Categories"];
+        const out = [];
+        function add(label, value) {
+            value = String(value === undefined || value === null ? "" : value).trim();
+            if (value !== "" && value.length <= 90 && !out.some(f => f.label === label))
+                out.push({ label: label, value: value });
+        }
+        add("Version", primary.version);
+        add("License", primary.license);
+        add("Size", primary.size);
+        for (const d of (primary.details || [])) if (wanted.indexOf(d.label) >= 0) add(d.label, d.value);
+        return out.slice(0, 8);
+    }
+    // every useful line a manager published, in a compact list that fills its card
+    function sourceDetails(s) {
+        if (!s) return [];
+        const out = [];
+        function add(label, value) {
+            value = String(value === undefined || value === null ? "" : value).trim();
+            if (value !== "" && !out.some(x => x.label === label)) out.push({ label: label, value: value });
+        }
+        add("Package", s.id);
+        if (s.installedVersion) add("Installed", s.installedVersion);
+        add("License", s.license);
+        add("Size", s.size);
+        for (const d of (s.details || [])) add(d.label, d.value);
+        add("Project", s.url);
+        return out.filter(x => x.value.length <= 60).slice(0, 10);
+    }
+    Process {
+        id: appInfoProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.appDetailBusy = false;
+                try {
+                    const d = JSON.parse(text);
+                    root.appDetail = d.apps && d.apps[0] ? d.apps[0] : null;
+                    root.appDetailErrors = d.errors || {};
+                } catch (e) { root.appDetailErrors = { all: "the details could not be read" }; }
+            }
+        }
+    }
+
+    // ---- settings, found from the Store too ------------------------------------------------
+    function settingValue(e) {
+        if (!e || !e.setting) return "";
+        const v = AequalynSettings[e.setting];
+        if (e.kind === "toggle") return v ? "On" : "Off";
+        if (e.kind === "slider") return (Number(v) % 1 === 0 ? String(v) : Number(v).toFixed(1)) + (e.unit || "");
+        if (e.kind === "choice") { const o = (e.options || []).find(x => x.key === v); return o ? o.label : String(v); }
+        return "";
+    }
+    function adjustSetting(e, dir) {
+        if (!e || !e.setting) return;
+        const v = AequalynSettings[e.setting];
+        if (e.kind === "toggle") { AequalynSettings.apply(e.setting, !v); return; }
+        if (e.kind === "slider") {
+            const step = e.step || 1, lo = e.from !== undefined ? e.from : 0, hi = e.to !== undefined ? e.to : 100;
+            const next = Math.max(lo, Math.min(hi, Number((Number(v) + dir * step).toFixed(4))));
+            if (next !== Number(v)) AequalynSettings.apply(e.setting, next);
+            return;
+        }
+        if (e.kind === "choice" && (e.options || []).length > 0) {
+            const keys = e.options.map(o => o.key);
+            const i = keys.indexOf(v);
+            AequalynSettings.apply(e.setting, keys[((i < 0 ? 0 : i) + dir + keys.length) % keys.length]);
+        }
+    }
+    function activateSetting(r) {
+        if (!r) return;
+        if (r.entry && r.entry.setting && r.entry.kind === "toggle") { root.adjustSetting(r.entry, 1); return; }
+        const target = Pages.resolve(r.page + (r.tab ? ":" + r.tab : ""));
+        Quickshell.execDetached(["qs", "ipc", "call", "aequalyn", "reveal", target.page, r.label]);
+        root.open = false;
+    }
+    function activateResult(row) {
+        if (!row) return;
+        if (row.kind === "app") root.openApp(row.group);
+        else root.activateSetting(row.result);
+    }
+    function preferredSource(g) {
+        const order = ["Arch", "AUR", "Flatpak", "Snap"];
+        const choices = g.sources.slice().sort((a, b) => order.indexOf(a.source) - order.indexOf(b.source));
+        return choices.find(s => !root.foundInstalled(s)) || choices[0] || null;
     }
 
     readonly property var sections: [
@@ -707,9 +963,9 @@ Scope {
             if (!root.sections.some(s => s.key === section)) return "no section " + section;
             root.openSection(section); root.open = true; root.refresh(); return "ok";
         }
-        // look for apps in Arch, the AUR, Flathub and Snap
+        // look through apps and settings, as the title bar does
         function search(words: string): void {
-            root.openSection("apps"); root.open = true; root.detectApps(); root.searchApps(words, false);
+            root.openSection("apps"); root.open = true; root.setQuerySource("All"); root.query = words;
         }
         // an .AppImage opened in a file manager (the handler's menu entry runs
         // aequalyn-store open-appimage): this page, its import form filled in and
@@ -1448,8 +1704,10 @@ Scope {
                 }
             }
             Keys.onEscapePressed: {
-                // the picker over the page closes first, then the window
+                // the picker over the page closes first, then an app page goes
+                // back to where it was opened from, then the window
                 if (root.pickOpen) { root.pickOpen = false; return; }
+                if (root.appPage) { root.backFromApp(); return; }
                 root.open = false;
             }
             MouseArea { anchors.fill: parent }   // clicks inside never close it
@@ -1543,14 +1801,13 @@ Scope {
                                 } else if (event.key === Qt.Key_Up) {
                                     root.pick = Math.max(0, root.pick - 1); event.accepted = true;
                                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    const r = root.resultShown[root.pick];
-                                    if (r && !r.installed && !root.foundInstalled(r)) root.installFound(r);
+                                    root.activateResult(root.resultShown[root.pick]);
                                     event.accepted = true;
                                 } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
                                     const srcs = root.resultSources.filter(s => s === "All" || root.resultCount(s) > 0);
                                     const i = srcs.indexOf(root.querySource);
-                                    root.querySource = srcs[(i + (event.key === Qt.Key_Tab ? 1 : srcs.length - 1)) % srcs.length];
-                                    root.pick = 0; event.accepted = true;
+                                    root.setQuerySource(srcs[(i + (event.key === Qt.Key_Tab ? 1 : srcs.length - 1)) % srcs.length]);
+                                    event.accepted = true;
                                 }
                             }
                             Text {
@@ -2855,8 +3112,8 @@ Scope {
                         anchors.leftMargin: 20
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.queryActive
-                            ? "↑ ↓  move     ⏎  install     tab  source     esc  clear"
-                            : "super alt s  open     esc  close"
+                            ? "↑ ↓  move     ⏎  open or change     tab  filter     esc  clear"
+                            : root.appPage ? "esc  back to the previous page" : "super alt s  open     esc  close"
                         color: root.theme.textMuted
                         font.family: root.mono
                         font.pixelSize: 10
@@ -2917,7 +3174,7 @@ Scope {
                                 Text {
                                     id: chipText
                                     anchors.centerIn: parent
-                                    text: chip.modelData + "  " + chip.n
+                                    text: root.resultLabel(chip.modelData) + "  " + chip.n
                                     color: chip.on ? root.theme.accentPrimary : root.theme.textSecondary
                                     font.family: root.mono
                                     font.pixelSize: 11
@@ -2927,14 +3184,14 @@ Scope {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: { root.querySource = chip.modelData; root.pick = 0; titleSearch.forceActiveFocus(); }
+                                    onClicked: { root.setQuerySource(chip.modelData); titleSearch.forceActiveFocus(); }
                                 }
                             }
                         }
                     }
                     Text {
                         text: root.searching ? "Searching…"
-                            : root.resultShown.length + (root.resultShown.length === 1 ? " app" : " apps")
+                            : root.resultShown.length + (root.resultShown.length === 1 ? " result" : " results")
                         color: root.theme.textMuted
                         font.family: root.mono
                         font.pixelSize: 11
@@ -2942,7 +3199,7 @@ Scope {
                     Text {
                         visible: !root.searching && root.resultShown.length === 0
                         Layout.fillWidth: true
-                        text: "Nothing matches “" + root.query.trim() + "”. Try another app name."
+                        text: "Nothing matches “" + root.query.trim() + "”. Try another app name or a setting, like “dark”."
                         color: root.theme.textMuted
                         font.family: root.sans
                         font.pixelSize: 13
@@ -2974,16 +3231,23 @@ Scope {
                             id: res
                             required property var modelData
                             required property int index
+                            readonly property bool isApp: res.modelData.kind === "app"
+                            readonly property var g: res.isApp ? res.modelData.group : null
+                            readonly property var sr: res.isApp ? null : res.modelData.result
+                            readonly property var e: res.sr ? res.sr.entry : null
+                            readonly property bool editable: !!res.e && !!res.e.setting
+                            readonly property bool have: res.isApp && !!res.g.installed
+                            readonly property var via: res.isApp ? root.preferredSource(res.g) : null
                             readonly property bool on: root.pick === res.index
-                            readonly property bool have: !!res.modelData.installed || root.foundInstalled(res.modelData)
                             width: resultList.width
-                            height: 52
+                            height: 54
                             MouseArea {
                                 anchors.fill: parent
+                                z: 1
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onPositionChanged: root.pick = res.index
-                                onClicked: { root.pick = res.index; if (!res.have) root.installFound(res.modelData); }
+                                onClicked: { root.pick = res.index; root.activateResult(res.modelData); }
                             }
                             RowLayout {
                                 anchors.fill: parent
@@ -2991,26 +3255,39 @@ Scope {
                                 anchors.rightMargin: 12
                                 spacing: 12
                                 Image {
+                                    visible: res.isApp
                                     Layout.preferredWidth: 28; Layout.preferredHeight: 28
-                                    source: res.modelData.icon || ""
+                                    source: res.g ? res.g.icon : ""
                                     sourceSize.width: 56; sourceSize.height: 56
                                     fillMode: Image.PreserveAspectFit
                                     asynchronous: true
+                                }
+                                Text {
+                                    visible: !res.isApp
+                                    Layout.preferredWidth: 28
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: res.sr ? res.sr.icon : ""
+                                    color: root.theme.accentPrimary
+                                    font.family: root.mono
+                                    font.pixelSize: 16
                                 }
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 1
                                     Text {
-                                        text: res.modelData.name
+                                        text: res.isApp ? (res.g ? res.g.name : "") : (res.sr ? res.sr.label : "")
                                         color: res.on ? root.theme.textPrimary : root.theme.textSecondary
                                         font.family: root.sans
                                         font.pixelSize: 13
+                                        font.weight: res.on ? Font.DemiBold : Font.Normal
                                         elide: Text.ElideRight
                                         Layout.fillWidth: true
                                     }
                                     Text {
-                                        text: (res.modelData.source === "Flatpak" ? "Flathub" : res.modelData.source)
-                                            + (res.modelData.about ? "  ·  " + res.modelData.about : "")
+                                        text: res.isApp
+                                            ? (res.g ? res.g.sources.map(s => s.source === "Flatpak" ? "Flathub" : s.source).join(", ") : "")
+                                                + (res.g && res.g.about ? "  ·  " + res.g.about : "")
+                                            : (res.sr ? res.sr.where : "")
                                         color: root.theme.textMuted
                                         font.family: root.mono
                                         font.pixelSize: 10
@@ -3020,15 +3297,406 @@ Scope {
                                 }
                                 Pill {
                                     visible: res.have
+                                    z: 2
                                     text: "Installed"
                                     tone: root.theme.accentGreen
                                 }
                                 Btn {
-                                    visible: !res.have
+                                    visible: res.isApp && !res.have && !!res.via
+                                    z: 2
                                     text: "Install"
                                     primary: true
-                                    onClicked: root.installFound(res.modelData)
+                                    onClicked: root.installFound(res.via)
                                 }
+                                CcSwitch {
+                                    visible: res.editable && res.e && res.e.kind === "toggle"
+                                    z: 2
+                                    checked: res.e ? !!AequalynSettings[res.e.setting] : false
+                                    onToggled: v => { if (res.e) AequalynSettings.apply(res.e.setting, v); }
+                                }
+                                RowLayout {
+                                    visible: res.editable && res.e && res.e.kind !== "toggle"
+                                    z: 2
+                                    spacing: 6
+                                    StepBtn { glyph: "‹"; onClicked: { if (res.e) root.adjustSetting(res.e, -1); } }
+                                    Text {
+                                        Layout.preferredWidth: 120
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: root.settingValue(res.e)
+                                        color: root.theme.accentPrimary
+                                        font.family: root.mono
+                                        font.pixelSize: 11
+                                        elide: Text.ElideRight
+                                    }
+                                    StepBtn { glyph: "›"; onClicked: { if (res.e) root.adjustSetting(res.e, 1); } }
+                                }
+                                Text {
+                                    visible: !res.isApp && !res.editable
+                                    text: "Open  ›"
+                                    color: res.on ? root.theme.accentPrimary : root.theme.textMuted
+                                    font.family: root.mono
+                                    font.pixelSize: 11
+                                }
+                                Text {
+                                    visible: res.have
+                                    text: "Open  ›"
+                                    color: res.on ? root.theme.accentPrimary : root.theme.textMuted
+                                    font.family: root.mono
+                                    font.pixelSize: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // ---- one app, one whole page ---------------------------------------------------
+            // Back returns to the exact page or search results this came from. Everything
+            // fits at once: information on the left, every way to install on the right.
+            Rectangle {
+                id: appView
+                visible: root.appPage !== null
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.topMargin: 69
+                anchors.bottom: parent.bottom
+                color: root.theme.bgBase
+                z: 30
+                MouseArea { anchors.fill: parent }
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 28
+                    anchors.rightMargin: 28
+                    anchors.topMargin: 18
+                    anchors.bottomMargin: 18
+                    spacing: 14
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 66
+                        spacing: 14
+                        Btn { text: "‹ Back"; onClicked: root.backFromApp() }
+                        Image {
+                            Layout.preferredWidth: 50; Layout.preferredHeight: 50
+                            source: root.appPage ? (root.appPage.icon || "") : ""
+                            sourceSize.width: 100; sourceSize.height: 100
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.appPage ? root.appPage.name : ""
+                                color: root.theme.textPrimary
+                                font.family: root.sans
+                                font.pixelSize: 20
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: (root.appDetail && root.appDetail.about) || (root.appPage ? root.appPage.about : "")
+                                color: root.theme.textMuted
+                                font.family: root.sans
+                                font.pixelSize: 12
+                                elide: Text.ElideRight
+                            }
+                        }
+                        Pill {
+                            visible: !!root.appPage && !!root.appPage.installed
+                            text: "Installed"
+                            tone: root.theme.accentGreen
+                        }
+                        Text {
+                            text: root.appDetailBusy ? "Fetching details…"
+                                : root.detailSources().length + (root.detailSources().length === 1 ? " source" : " sources")
+                            color: root.appDetailBusy ? root.theme.accentCyan : root.theme.textMuted
+                            font.family: root.mono
+                            font.pixelSize: 11
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        spacing: 20
+
+                        // the left side: what the app is, in one calm block
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            spacing: 10
+                            Text {
+                                text: "About this app"
+                                color: root.theme.textPrimary
+                                font.family: root.sans
+                                font.pixelSize: 14
+                                font.weight: Font.DemiBold
+                            }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 172
+                                radius: 12
+                                color: root.theme.bgSurface
+                                border.width: 1
+                                border.color: root.theme.bgBorder
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 14
+                                    spacing: 8
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        text: (root.appDetail && root.appDetail.description) || (root.appPage ? root.appPage.about : "")
+                                        color: root.theme.textSecondary
+                                        font.family: root.sans
+                                        font.pixelSize: 12
+                                        wrapMode: Text.WordWrap
+                                        elide: Text.ElideRight
+                                    }
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 88
+                                        Layout.maximumHeight: 88
+                                        visible: !!(root.appDetail && root.appDetail.screenshots && root.appDetail.screenshots.length > 0)
+                                        spacing: 8
+                                        clip: true
+                                        Repeater {
+                                            model: root.appDetail && root.appDetail.screenshots ? root.appDetail.screenshots.slice(0, 3) : []
+                                            delegate: Rectangle {
+                                                required property var modelData
+                                                width: 148; height: 88
+                                                radius: 8
+                                                color: root.theme.bgBase
+                                                clip: true
+                                                Image {
+                                                    anchors.fill: parent
+                                                    source: modelData
+                                                    sourceSize.width: 296; sourceSize.height: 176
+                                                    fillMode: Image.PreserveAspectCrop
+                                                    asynchronous: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Text {
+                                text: "At a glance"
+                                color: root.theme.textPrimary
+                                font.family: root.sans
+                                font.pixelSize: 14
+                                font.weight: Font.DemiBold
+                                Layout.topMargin: 4
+                            }
+                            GridLayout {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                columns: 2
+                                rowSpacing: 4
+                                columnSpacing: 18
+                                Repeater {
+                                    model: root.appFacts()
+                                    delegate: RowLayout {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 26
+                                        spacing: 8
+                                        Text {
+                                            Layout.preferredWidth: 88
+                                            text: modelData.label || ""
+                                            color: root.theme.textMuted
+                                            font.family: root.mono
+                                            font.pixelSize: 10
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modelData.value || ""
+                                            color: root.theme.textSecondary
+                                            font.family: root.mono
+                                            font.pixelSize: 10
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // the right side: one card per manager that can install it
+                        ColumnLayout {
+                            Layout.preferredWidth: 430
+                            Layout.fillHeight: true
+                            spacing: 10
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Ways to install"
+                                    color: root.theme.textPrimary
+                                    font.family: root.sans
+                                    font.pixelSize: 14
+                                    font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    text: root.detailSources().length + " available"
+                                    color: root.theme.textMuted
+                                    font.family: root.mono
+                                    font.pixelSize: 10
+                                }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                spacing: 8
+                                Repeater {
+                                    model: root.detailSources()
+                                    delegate: Rectangle {
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        Layout.minimumHeight: 150
+                                        radius: 12
+                                        color: root.theme.bgSurface
+                                        border.width: 1
+                                        border.color: root.theme.bgBorder
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 14
+                                            spacing: 16
+
+                                            ColumnLayout {
+                                                Layout.preferredWidth: 190
+                                                Layout.fillHeight: true
+                                                spacing: 5
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: modelData.source === "Flatpak" ? "Flathub" : (modelData.source || "")
+                                                    color: root.theme.accentPrimary
+                                                    font.family: root.mono
+                                                    font.pixelSize: 14
+                                                    font.weight: Font.DemiBold
+                                                    elide: Text.ElideRight
+                                                }
+                                                Rectangle {
+                                                    Layout.preferredWidth: 44
+                                                    Layout.preferredHeight: 3
+                                                    radius: 2
+                                                    color: root.theme.accentPrimary
+                                                }
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: "version " + (modelData.version || "unknown")
+                                                    color: root.theme.textSecondary
+                                                    font.family: root.mono
+                                                    font.pixelSize: 11
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                                Pill {
+                                                    visible: !!modelData.installed
+                                                    text: "Installed"
+                                                    tone: root.theme.accentGreen
+                                                }
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    Layout.topMargin: 2
+                                                    text: modelData.about || ""
+                                                    color: root.theme.textMuted
+                                                    font.family: root.sans
+                                                    font.pixelSize: 10
+                                                    wrapMode: Text.WordWrap
+                                                    maximumLineCount: 4
+                                                    elide: Text.ElideRight
+                                                }
+                                                Item { Layout.fillHeight: true }
+                                            }
+
+                                            Rectangle {
+                                                Layout.preferredWidth: 1
+                                                Layout.fillHeight: true
+                                                color: root.theme.bgBorder
+                                            }
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                Layout.fillHeight: true
+                                                spacing: 6
+                                                GridLayout {
+                                                    Layout.fillWidth: true
+                                                    columns: 2
+                                                    rowSpacing: 4
+                                                    columnSpacing: 16
+                                                    Repeater {
+                                                        model: root.sourceDetails(modelData)
+                                                        delegate: RowLayout {
+                                                            required property var modelData
+                                                            Layout.fillWidth: true
+                                                            Layout.preferredHeight: 18
+                                                            spacing: 6
+                                                            Text {
+                                                                Layout.preferredWidth: 78
+                                                                text: modelData.label || ""
+                                                                color: root.theme.textMuted
+                                                                font.family: root.mono
+                                                                font.pixelSize: 9
+                                                                elide: Text.ElideRight
+                                                            }
+                                                            Text {
+                                                                Layout.fillWidth: true
+                                                                text: modelData.value || ""
+                                                                color: root.theme.textSecondary
+                                                                font.family: root.mono
+                                                                font.pixelSize: 10
+                                                                elide: Text.ElideRight
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                Item { Layout.fillHeight: true; Layout.minimumHeight: 0 }
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: 8
+                                                    Btn {
+                                                        visible: !modelData.installed
+                                                        Layout.fillWidth: true
+                                                        implicitHeight: 30
+                                                        text: "Install"
+                                                        primary: true
+                                                        onClicked: root.installFound(modelData)
+                                                    }
+                                                    Btn {
+                                                        visible: !!modelData.installed
+                                                        Layout.fillWidth: true
+                                                        implicitHeight: 30
+                                                        text: "Update"
+                                                        onClicked: root.appAction(modelData, "update")
+                                                    }
+                                                    Btn {
+                                                        visible: !!modelData.installed
+                                                        Layout.fillWidth: true
+                                                        implicitHeight: 30
+                                                        text: "Remove"
+                                                        danger: true
+                                                        onClicked: root.appAction(modelData, "remove")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: Object.keys(root.appDetailErrors).length > 0
+                                text: "Not reached: " + Object.keys(root.appDetailErrors).join(", ")
+                                color: root.theme.accentOrange
+                                font.family: root.mono
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
                             }
                         }
                     }
