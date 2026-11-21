@@ -1,5 +1,5 @@
-// One of a few answers, as chips (the Applications menu's categories): the chosen one
-// lifted, its edge and words in the accent. `options` are strings or
+// One of a few answers, as small chips: the chosen one on a faint
+// accent fill, its edge and words in the accent. `options` are strings or
 // { key, label } objects; `setting` binds the choice to an AequalynSettings key,
 // otherwise use `current` and `chosen`.
 import QtQuick
@@ -34,13 +34,14 @@ Flow {
             readonly property string label: typeof modelData === "object" ? modelData.label : String(modelData)
             readonly property bool on: key === c.value
 
-            implicitWidth: lbl.implicitWidth + 24
-            implicitHeight: 32
-            radius: 8
-            color: on ? Cc.theme.bgSelected : (area.containsMouse ? Cc.theme.bgHover : (c.grouped ? Cc.theme.bgBase : Cc.theme.bgSurface))
+            implicitWidth: lbl.implicitWidth + 16
+            implicitHeight: 24
+            radius: 6
+            color: on ? Cc.alpha(Cc.theme.accentPrimary, 0.12)
+                      : Cc.alpha(Cc.theme.textPrimary, area.containsMouse ? 0.12 : (c.grouped ? 0.06 : 0.04))
             border.width: 1
-            border.color: on ? Cc.theme.accentPrimary : Cc.theme.bgBorder
-            Behavior on color { ColorAnimation { duration: 120 } }
+            border.color: on ? Cc.theme.accentPrimary : Cc.alpha(Cc.theme.textPrimary, 0.10)
+            Behavior on color { ColorAnimation { duration: 90 } }
             Accessible.role: Accessible.RadioButton
             Accessible.name: label
             Accessible.checked: on
@@ -49,9 +50,10 @@ Flow {
                 id: lbl
                 anchors.centerIn: parent
                 text: opt.label
-                color: opt.on ? Cc.theme.accentPrimary : Cc.theme.textSecondary
+                color: opt.on ? Cc.theme.accentPrimary : Cc.theme.textPrimary
+                opacity: opt.on ? 1 : 0.8
                 font.family: Cc.sans
-                font.pixelSize: 12
+                font.pixelSize: 11
                 font.weight: opt.on ? Font.DemiBold : Font.Normal
             }
             MouseArea {

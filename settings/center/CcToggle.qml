@@ -1,5 +1,5 @@
-// A setting you turn on or off, in plain words. `setting` binds it to an
-// AequalynSettings key; otherwise use `checked` and `toggled`.
+// A setting you turn on or off, in plain words, with a small switch.
+// `setting` binds it to an AequalynSettings key; otherwise use `checked` and `toggled`.
 import QtQuick
 import QtQuick.Layouts
 import "root:/settings"
@@ -19,12 +19,13 @@ Rectangle {
     }
 
     Layout.fillWidth: true
-    implicitHeight: Math.max(54, col.implicitHeight + 24)
-    radius: grouped ? 8 : 12
-    color: area.containsMouse && enabled ? Cc.theme.bgHover : (grouped ? "transparent" : Cc.theme.bgSurface)
+    implicitHeight: Math.max(40, col.implicitHeight + 16)
+    radius: 6
+    color: area.containsMouse && enabled ? Cc.alpha(Cc.theme.textPrimary, 0.06)
+         : (grouped ? "transparent" : Cc.alpha(Cc.theme.textPrimary, 0.03))
     border.width: grouped ? 0 : 1
-    border.color: Cc.theme.bgBorder
-    opacity: enabled ? 1 : 0.5
+    border.color: Cc.alpha(Cc.theme.textPrimary, 0.08)
+    opacity: enabled ? 1 : 0.4
     // the pattern (Cc.qml): a row of its section's group, or a group of its own
     property var section: null
     readonly property bool grouped: !!section
@@ -36,10 +37,10 @@ Rectangle {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.leftMargin: 12
-        anchors.rightMargin: 12
+        anchors.leftMargin: 10
+        anchors.rightMargin: 10
         height: 1
-        color: Cc.theme.bgBorder
+        color: Cc.alpha(Cc.theme.textPrimary, 0.07)
     }
 
     MouseArea {
@@ -54,15 +55,16 @@ Rectangle {
         id: col
         anchors.left: parent.left
         anchors.right: sw.left
-        anchors.leftMargin: 16
-        anchors.rightMargin: 12
+        anchors.leftMargin: 12
+        anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
+        spacing: 1
         Text {
             text: t.title
             color: Cc.theme.textPrimary
             font.family: Cc.sans
-            font.pixelSize: 13
+            font.pixelSize: 11
+            font.weight: Font.DemiBold
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -71,7 +73,8 @@ Rectangle {
             text: t.sub
             color: Cc.theme.textMuted
             font.family: Cc.sans
-            font.pixelSize: 11
+            font.pixelSize: 9
+            opacity: 0.55
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
         }
@@ -79,7 +82,7 @@ Rectangle {
     CcSwitch {
         id: sw
         anchors.right: parent.right
-        anchors.rightMargin: 14
+        anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         enabled: t.enabled
         checked: t.on
