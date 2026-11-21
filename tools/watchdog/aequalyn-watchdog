@@ -822,6 +822,21 @@ class Supervisor:
                 return {"ok": True, "restarted": who}
             return {"ok": False, "error": f"{who} is not supervised "
                                            "(enabled? sandboxed?)"}
+        if cmd == "restart-all":
+            # a planned restart, the way an update uses it: shell and every
+            # sandboxed plugin stop and start fresh, none of it counted as
+            # failure, and the failure windows start over
+            for name in list(self.units):
+                self.failures.pop(name, None)
+                self.next_start.pop(name, None)
+                unit = self.units[name]
+                unit.test_mode = ""
+                self.stop_unit(unit, "planned restart")
+                unit.stopping = False
+            for unit in self.units.values():
+                self.spawn(unit)
+            log("planned restart of everything (restart-all)")
+            return {"ok": True, "restarted": sorted(self.units)}
         if cmd == "enable":
             pid = str(args[0]) if args else ""
             if not pid:
@@ -1056,6 +1071,18 @@ def cmd_restart(args) -> int:
     return 1
 
 
+def cmd_restart_all(_args) -> int:
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running", file=sys.stderr)
+        return 1
+    out = send_to_daemon({"cmd": "restart-all"})
+    if out.get("ok"):
+        print("planned restart: " + ", ".join(out.get("restarted", [])))
+        return 0
+    print(out.get("error", "failed"), file=sys.stderr)
+    return 1
+
+
 def cmd_toggle(args) -> int:
     if not daemon_alive():
         print("aequalyn-watchdog is not running", file=sys.stderr)
@@ -1146,6 +1173,10 @@ def main() -> int:
     p = sub.add_parser("restart", help="restart the shell or one plugin")
     p.add_argument("id", nargs="?", default="shell", help="a plugin id, or 'shell'")
     p.set_defaults(fn=cmd_restart)
+
+    p = sub.add_parser("restart-all",
+                       help="planned restart of the shell and every sandboxed plugin (what an update calls)")
+    p.set_defaults(fn=cmd_restart_all)
 
     p = sub.add_parser("enable", help="turn a plugin on (through the shell)")
     p.add_argument("id")
