@@ -1,0 +1,1180 @@
+#!/usr/bin/env python3
+"""aequalyn-watchdog -- the Aequalyn shell supervisor and plugin sandbox.
+
+QuickShell runs every plugin of the Aequalyn desktop in one process, which
+means one broken plugin (a segfault, a hang, a leak) can take the whole
+shell down with it. This program is the missing watchdog:
+
+  * it runs the main shell and restarts it if it crashes, hangs (an
+    unanswered `qs ipc call watchdog ping`) or outgrows its memory budget;
+  * it runs marked plugins OUT OF PROCESS, each as its own QuickShell
+    instance (see tools/watchdog/host/shell.qml), so a failing plugin
+    loses only its own process. A plugin that keeps failing is turned off
+    in Settings (a message in the corner says why) instead of being
+    restarted forever;
+  * it enforces a RAM budget per process, sampling /proc, children
+    included.
+
+Which plugins are sandboxed:
+  * built-ins marked `sandbox: true` in Plugins.js;
+  * Store (third-party) plugins whose manifest group is "background";
+  * anything listed in "forceSandbox" in ~/.config/aequalyn/watchdog.json;
+  * minus anything in "noSandbox" there (also pushed into the shell, so
+    the in-process loader picks those plugins back up).
+
+The daemon talks to its CLI over a unix socket, and to the shell over the
+shell's own IPC (`qs ipc call watchdog ...`): plugin toggles made anywhere
+(Settings page, CLI, an automatic turn-off) all end up in the same place,
+the `plugins` list in ~/.config/aequalyn/settings.json.
+
+Stdlib only. See tools/watchdog/README.md for the full contract.
+"""
+
+from __future__ import annotations
+
+import argparse
+import errno
+import json
+import os
+import re
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import time
+from collections import deque
+from dataclasses import dataclass, field
+from pathlib import Path
+
+# ---------------------------------------------------------------- paths ----
+
+CONFIG_DIR = Path(os.environ.get("AEQUALYN_QS_CONFIG")
+                  or os.path.join(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")),
+                                  "quickshell"))
+SETTINGS_FILE = Path(os.environ.get("AEQUALYN_SETTINGS")
+                     or os.path.join(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")),
+                                     "aequalyn", "settings.json"))
+WATCHDOG_CONF = Path(os.environ.get("AEQUALYN_WATCHDOG_CONF")
+                     or os.path.join(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")),
+                                     "aequalyn", "watchdog.json"))
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state"))) / "aequalyn" / "watchdog"
+HOSTS_DIR = STATE_DIR / "hosts"
+LOGS_DIR = STATE_DIR / "logs"
+DAEMON_LOG = STATE_DIR / "watchdog.log"
+RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+SOCK_PATH = RUNTIME / "aequalyn-watchdog.sock"
+PID_FILE = RUNTIME / "aequalyn-watchdog.pid"
+# written by `stop`: a deliberate stop must stick (the shell's Watchdog.qml
+# would otherwise restart the supervisor two minutes later)
+STOP_MARKER = RUNTIME / "aequalyn-watchdog.stopped"
+PLUGINS_JS = CONFIG_DIR / "Plugins.js"
+AEQUALYN_SETTINGS_QML = CONFIG_DIR / "settings" / "AequalynSettings.qml"
+STORE_DIR = Path(os.environ.get("AEQUALYN_STORE_DIR")
+                 or os.path.join(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share")),
+                                 "aequalyn", "plugins"))
+QS_BIN = os.environ.get("AEQUALYN_QS_BIN") or shutil.which("qs") or shutil.which("quickshell") or "qs"
+
+# folders from the config root that a plugin may import with root:/
+HOST_LINKS = ["plugins", "settings", "style", "assets", "theme-switcher", "default"]
+
+DEFAULTS = {
+    "shellRamMb": 900,          # the shell as a whole (it was ~600 MB in use)
+    "pluginRamMb": 256,         # per sandboxed plugin process: a bare host
+                                # instance idles at ~150 MiB RSS (resident
+                                # shared Qt pages count per process), so the
+                                # budget must sit well above that
+    "pluginRamMbById": {},      # {"<id>": MB, ...}
+    "heartbeatSeconds": 20,     # ping every plugin/shell this often
+    "heartbeatGraceSeconds": 20, # a fresh process may be slow to answer
+    "heartbeatTimeoutSeconds": 6,
+    "ramCheckSeconds": 3,       # sample /proc this often (a runaway leak can
+                                # grow far inside one sampling period, so
+                                # keep this short)
+    "ramBreachSamples": 3,      # consecutive over-budget samples = breach
+    "crashWindowMinutes": 10,   # failures older than this stop counting
+    "maxFailures": 3,           # this many failures in the window -> turn off
+    "backoffMaxSeconds": 30,    # cap for the 2s, 4s, 8s... restart delay
+    "forceSandbox": [],         # ids to sandbox even when not marked
+    "noSandbox": [],            # ids to never sandbox (wins over everything)
+}
+
+
+def log(msg: str) -> None:
+    line = time.strftime("[%Y-%m-%d %H:%M:%S] ") + msg
+    try:
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(DAEMON_LOG, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
+
+
+def notify(title: str, body: str) -> None:
+    try:
+        subprocess.run(["notify-send", "-a", "Aequalyn", title, body],
+                       timeout=5, check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def read_json(path: Path, fallback):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return fallback
+
+
+# ------------------------------------------------------- the sandbox set ----
+
+def sandbox_builtins() -> set[str]:
+    """Ids marked `sandbox: true` in Plugins.js (one plugin per line)."""
+    ids: set[str] = set()
+    try:
+        for line in PLUGINS_JS.read_text(encoding="utf-8").splitlines():
+            if "sandbox: true" in line:
+                m = re.search(r'id:\s*"([^"]+)"', line)
+                if m:
+                    ids.add(m.group(1))
+    except OSError:
+        pass
+    return ids
+
+
+def sandbox_store() -> dict[str, str]:
+    """Store plugins whose manifest group is background: {id: entry source}.
+    A manifest that sits on a built-in's id is ignored (UserPlugins refuses
+    it too; this is the second lock)."""
+    builtin = set(builtin_sources())
+    out: dict[str, str] = {}
+    for mf in sorted(STORE_DIR.glob("*/plugin.json")):
+        d = read_json(mf, None)
+        if not isinstance(d, dict):
+            continue
+        pid, entry = d.get("id", ""), d.get("entry", "")
+        if not pid or pid in builtin or "/" in entry or not (mf.parent / entry).is_file():
+            continue
+        group = d.get("group")
+        if group in ("screen", "key"):
+            continue  # has UI the shell must embed; keep it in-process
+        out[pid] = str((mf.parent / entry).resolve())
+    return out
+
+
+def builtin_sources() -> dict[str, str]:
+    """{id: absolute entry qml} for built-ins, from Plugins.js."""
+    out: dict[str, str] = {}
+    try:
+        for line in PLUGINS_JS.read_text(encoding="utf-8").splitlines():
+            m = re.search(r'\{\s*id:\s*"([^"]+)",\s*label:\s*"[^"]*",\s*source:\s*"([^"]+)"', line)
+            if m:
+                out[m.group(1)] = str((CONFIG_DIR / m.group(2)).resolve())
+    except OSError:
+        pass
+    return out
+
+
+def default_enabled() -> list[str]:
+    """The enabledPlugins default from AequalynSettings.qml, parsed so the
+    settings-file fallback (used only while the shell is down) matches it."""
+    try:
+        text = AEQUALYN_SETTINGS_QML.read_text(encoding="utf-8")
+        m = re.search(r"property var enabledPlugins:\s*\[(.*?)\]", text, re.S)
+        if m:
+            return re.findall(r'"([^"]+)"', m.group(1))
+    except OSError:
+        pass
+    return []
+
+
+# --------------------------------------------------------------- settings ----
+
+_last_enabled: list[str] | None = None
+
+
+def enabled_from_settings() -> list[str]:
+    """The enabledPlugins list, as the shell sees it. A missing `plugins` key
+    means the default set (a fresh install); a file that cannot be read or
+    parsed keeps what we last knew, so a corrupted or transiently unreadable
+    settings file never looks like 'every plugin was turned off'."""
+    global _last_enabled
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return _last_enabled if _last_enabled is not None else default_enabled()
+    if isinstance(d, dict):
+        v = d.get("plugins")
+        if isinstance(v, list):
+            _last_enabled = [str(x) for x in v]
+            return _last_enabled
+        if "plugins" not in d:          # valid file, key never written yet
+            return default_enabled()
+    return _last_enabled if _last_enabled is not None else default_enabled()
+
+
+# ------------------------------------------------------------ host dirs ----
+
+def ensure_host_dir(plugin_id: str) -> Path:
+    """One QuickShell config per sandboxed plugin: shell.qml plus symlinks to
+    the real config folders, so root:/ imports resolve as in the main shell.
+    Rebuilt on every start; a moved config repairs itself."""
+    d = HOSTS_DIR / plugin_id
+    d.mkdir(parents=True, exist_ok=True)
+    for name in HOST_LINKS:
+        link = d / name
+        target = CONFIG_DIR / name
+        if not target.exists():
+            continue
+        if link.is_symlink() and os.readlink(link) == str(target):
+            continue
+        if link.is_symlink() or link.exists():
+            link.unlink() if link.is_symlink() else shutil.rmtree(link, ignore_errors=True)
+        link.symlink_to(target)
+    qml = d / "shell.qml"
+    host_qml = CONFIG_DIR / "tools" / "watchdog" / "host" / "shell.qml"
+    if not qml.is_symlink() or os.readlink(qml) != str(host_qml):
+        if qml.is_symlink() or qml.exists():
+            qml.unlink() if qml.is_symlink() else qml.unlink()
+        qml.symlink_to(host_qml)
+    # the host must not live-reload when the main config's files change;
+    # only the main shell reloads (autoReload off also keeps a config edit
+    # from bouncing every sandboxed process at once)
+    qset = d / "quickshell.json"
+    try:
+        cur = read_json(qset, {})
+        if cur.get("autoReload") is not False:
+            with open(qset, "w", encoding="utf-8") as f:
+                json.dump({"autoReload": False}, f)
+    except OSError:
+        pass
+    return d
+
+
+# ----------------------------------------------------------------- ram -----
+
+def tree_rss_kb(pid: int) -> int:
+    """RSS of a process and all its descendants, in KB (a plugin's `sh -c`
+    helpers count against it). Reads /proc only; nothing is spawned."""
+    total, seen, stack = 0, set(), [pid]
+    while stack:
+        p = stack.pop()
+        if p in seen:
+            continue
+        seen.add(p)
+        try:
+            with open(f"/proc/{p}/status", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        total += int(line.split()[1])
+                        break
+            with open(f"/proc/{p}/task/{p}/children", encoding="utf-8") as f:
+                stack.extend(int(x) for x in f.read().split())
+        except (OSError, ValueError):
+            continue
+    return total
+
+
+def proc_alive(pid: int) -> bool:
+    try:
+        with open(f"/proc/{pid}/stat", encoding="utf-8") as f:
+            return f.read().split(") ", 1)[1].split()[0] != "Z"
+    except (OSError, IndexError):
+        return False
+
+
+def qs_processes() -> list[tuple[int, list[str]]]:
+    """Every quickshell running, with its arguments."""
+    out = []
+    me = os.getpid()
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if pid == me:
+            continue
+        try:
+            with open(entry / "cmdline", "rb") as f:
+                args = f.read().decode("utf-8", "replace").split("\0")
+        except OSError:
+            continue
+        if args and os.path.basename(args[0]) in ("qs", "quickshell"):
+            out.append((pid, args))
+    return out
+
+
+def find_shell_pid() -> int | None:
+    """A quickshell already running the main config (to adopt, never kill)."""
+    for pid, args in qs_processes():
+        # it must point at the main config dir, not at a sandbox host
+        if any(str(CONFIG_DIR) in a for a in args) and not any("watchdog/hosts" in a for a in args):
+            return pid
+    return None
+
+
+# ---------------------------------------------------------------- units ----
+
+@dataclass
+class Unit:
+    name: str                       # "shell" or a plugin id
+    kind: str                       # "shell" | "plugin"
+    source: str = ""                # entry qml for plugins
+    popen: subprocess.Popen | None = None
+    pid: int = 0                    # for adopted units
+    started_at: float = 0.0
+    test_mode: str = ""             # "" | "leak" | "crash" (self-tests)
+    ever_started: bool = False      # False until the first successful spawn
+    hb_misses: int = 0
+    ram_over: int = 0
+    ram_kb: int = 0
+    last_error: str = ""
+    stopping: bool = False          # a stop we asked for: not a failure
+    disabled_reason: str = ""
+
+    @property
+    def alive(self) -> bool:
+        if self.popen is not None:
+            return self.popen.poll() is None
+        return self.pid > 0 and proc_alive(self.pid)
+
+    @property
+    def current_pid(self) -> int:
+        if self.popen is not None and self.popen.poll() is None:
+            return self.popen.pid
+        return self.pid if (self.popen is None and self.pid) else 0
+
+
+class Supervisor:
+    def __init__(self, conf: dict):
+        self.conf = conf
+        self.units: dict[str, Unit] = {}
+        self.failures: dict[str, deque[float]] = {}
+        self.next_start: dict[str, float] = {}
+        self.disabled: dict[str, str] = {}     # id -> reason, until re-enabled
+        self.settings_mtime = 0.0
+        self.last_tick = time.monotonic()
+        self.ram_at = 0.0
+        self.store_mtime = -1.0
+        self.hb_at = 0.0
+        self.shutting_down = False
+        self.listen: socket.socket | None = None
+
+    # ------------------------------------------------------------- utils --
+
+    def budget_mb(self, unit: Unit) -> int:
+        if unit.kind == "shell":
+            return int(self.conf["shellRamMb"])
+        by_id = self.conf.get("pluginRamMbById", {})
+        return int(by_id.get(unit.name, self.conf["pluginRamMb"]))
+
+    def failures_in_window(self, name: str) -> int:
+        dq = self.failures.setdefault(name, deque())
+        cutoff = time.time() - int(self.conf["crashWindowMinutes"]) * 60
+        while dq and dq[0] < cutoff:
+            dq.popleft()
+        return len(dq)
+
+    def record_failure(self, unit: Unit, kind: str, detail: str) -> None:
+        self.failures.setdefault(unit.name, deque()).append(time.time())
+        unit.last_error = f"{kind}: {detail}"
+        log(f"failure {unit.name}: {unit.last_error}")
+        n = self.failures_in_window(unit.name)
+        if unit.kind == "shell":
+            # the shell is the desktop: never turned off, just kept alive
+            if n == int(self.conf["maxFailures"]):
+                notify("Shell keeps failing",
+                       f"The shell has failed {n} times in the last "
+                       f"{self.conf['crashWindowMinutes']} minutes and is being restarted each time.\n"
+                       + unit.last_error)
+            return
+        if n >= int(self.conf["maxFailures"]):
+            self.disable_plugin(unit.name, f"it {kind} too many times "
+                                           f"({n} in {self.conf['crashWindowMinutes']} min)")
+
+    def backoff_seconds(self, name: str) -> float:
+        n = max(self.failures_in_window(name), 1)
+        return min(2.0 * (2 ** (n - 1)), float(self.conf["backoffMaxSeconds"]))
+
+    # -------------------------------------------------------- settings ----
+
+    def sync_no_sandbox(self) -> None:
+        """Push watchdog.json's noSandbox list into the shell, so its in-process
+        loader picks those plugins back up instead of waiting for the sandbox."""
+        ids = json.dumps(list(self.conf.get("noSandbox", [])))
+        if self.shell_ipc(["setNoSandbox", ids]):
+            log(f"no-sandbox list pushed to the shell: {ids}")
+
+    def sandbox_ids(self) -> set[str]:
+        forced = set(self.conf.get("forceSandbox", []))
+        no = set(self.conf.get("noSandbox", []))
+        ids = (sandbox_builtins() | set(sandbox_store()) | forced) - no
+        # a plugin the user turned off in settings is not supervised at all
+        return {i for i in ids if i in set(enabled_from_settings())}
+
+    def plugin_source(self, pid: str) -> str:
+        stores = sandbox_store()
+        if pid in stores:
+            return stores[pid]
+        return builtin_sources().get(pid, "")
+
+    # ------------------------------------------------------- shell ipc ----
+
+    def shell_ipc(self, args: list[str], timeout: float | None = 8) -> str | None:
+        """Call the running shell's watchdog IPC target; None if it did not
+        answer (down, starting, or hung)."""
+        try:
+            r = subprocess.run([QS_BIN, "ipc", "call", "watchdog", *args],
+                               capture_output=True, text=True, timeout=timeout)
+            if r.returncode == 0:
+                return (r.stdout or "").strip() or ""
+            return None
+        except (OSError, subprocess.SubprocessError):
+            return None
+
+    def disable_plugin(self, pid: str, reason: str) -> None:
+        """Turn a plugin off the same way the Plugins page does: through the
+        shell's IPC (state + settings file stay in step). Only if the shell
+        cannot be asked do we edit the file directly."""
+        if pid in self.disabled:
+            return
+        self.disabled[pid] = reason
+        unit = self.units.get(pid)
+        if unit:
+            unit.stopping = True
+            self.stop_unit(unit, reason="disabled")
+        label = pid
+        out = self.shell_ipc(["health"])
+        try:
+            rows = json.loads(out).get("plugins", [])
+            row = next((r for r in rows if r.get("id") == pid), None)
+            if row and row.get("label"):
+                label = row["label"]
+        except (ValueError, AttributeError, TypeError):
+            pass
+        if self.shell_ipc(["disablePlugin", pid, reason]) is None:
+            self.edit_settings_enabled(pid, enabled=False)
+        notify("Plugin turned off",
+               f"'{label}' was turned off: {reason}.\nThe rest of the shell is unaffected. "
+               "Turn it back on in Settings \u2192 Plugins once it is fixed.")
+        log(f"plugin {pid} disabled: {reason}")
+
+    def kill_stray_hosts(self) -> None:
+        """Host instances a previous watchdog left behind (a plain `stop` leaves
+        them running): they still hold their configs, and qs -n then refuses
+        every restart with a quiet exit 0. Hosts are stateless services, so
+        they are stopped here and started again as needed right after."""
+        strays = [(pid, args) for pid, args in qs_processes()
+                  if any("watchdog/hosts" in a for a in args)]
+        if not strays:
+            return
+        for pid, _args in strays:
+            log(f"stopping stray host instance pid {pid} from an earlier watchdog")
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+        deadline = time.time() + 3
+        while time.time() < deadline and any(proc_alive(p) for p, _ in strays):
+            time.sleep(0.1)
+        for pid, _ in strays:
+            if proc_alive(pid):
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+
+    def enable_plugin(self, pid: str) -> str:
+        if pid not in self.disabled and pid in self.units:
+            return "already running"
+        self.disabled.pop(pid, None)
+        # a fresh chance: the failure window and any pending restart go
+        self.failures.pop(pid, None)
+        self.next_start.pop(pid, None)
+        answer = self.shell_ipc(["enablePlugin", pid])
+        if answer is None:
+            self.edit_settings_enabled(pid, enabled=True)
+            return "ok"
+        # the shell answered: pass on what it said (it knows its plugins)
+        return answer or "ok"
+
+    def edit_settings_enabled(self, pid: str, enabled: bool) -> None:
+        """Fallback used only while the shell is down: move the id in the
+        settings file itself, as the shell would."""
+        d = read_json(SETTINGS_FILE, {})
+        if not isinstance(d, dict):
+            d = {}
+        cur = d.get("plugins")
+        cur = [str(x) for x in cur] if isinstance(cur, list) else default_enabled()
+        if enabled and pid not in cur:
+            cur.append(pid)
+        if not enabled and pid in cur:
+            cur.remove(pid)
+        d["plugins"] = cur
+        try:
+            tmp = SETTINGS_FILE.with_suffix(".json.watchdog-tmp")
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(d, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+            os.replace(tmp, SETTINGS_FILE)
+            log(f"settings file edited directly ({'enabled' if enabled else 'disabled'} {pid})")
+        except OSError as e:
+            log(f"could not edit settings file: {e}")
+
+    # ------------------------------------------------------- lifecycle ----
+
+    def spawn(self, unit: Unit, adopt: bool = False) -> None:
+        if unit.alive:
+            return
+        if adopt:
+            pid = find_shell_pid()
+            if pid:
+                unit.pid, unit.popen = pid, None
+                unit.started_at = time.time()
+                unit.stopping = False
+                unit.ever_started = True
+                log(f"adopted running shell, pid {pid}")
+                return
+        logf = open(LOGS_DIR / f"{unit.name}.log", "ab", buffering=0)
+        try:
+            if unit.kind == "shell":
+                args = [QS_BIN, "-n", "-p", str(CONFIG_DIR)]
+                env = dict(os.environ)
+            else:
+                host = ensure_host_dir(unit.name)
+                args = [QS_BIN, "-n", "-p", str(host)]
+                env = dict(os.environ)
+                env["AEQUALYN_PLUGIN_ID"] = unit.name
+                env["AEQUALYN_PLUGIN_SOURCE"] = unit.source
+                # each host registers with the portals as itself, instead of
+                # fighting the main shell over the shared quickshell app id
+                env["QS_APP_ID"] = "org.aequalyn.sandbox." + unit.name
+                if unit.test_mode:
+                    env["AEQUALYN_SANDBOX_TEST"] = unit.test_mode
+            env["QS_NO_RELOAD_POPUP"] = "1"
+            unit.popen = subprocess.Popen(args, stdout=logf, stderr=subprocess.STDOUT, env=env)
+            unit.pid = 0
+            unit.started_at = time.time()
+            unit.ever_started = True
+            unit.stopping = False
+            unit.hb_misses = unit.ram_over = 0
+            log(f"started {unit.name} (pid {unit.popen.pid})")
+        except OSError as e:
+            log(f"could not start {unit.name}: {e}")
+            self.record_failure(unit, "start-failed", str(e))
+            self.schedule_restart(unit)
+        finally:
+            logf.close()
+
+    def stop_unit(self, unit: Unit, reason: str = "") -> None:
+        if not unit.alive:
+            return
+        unit.stopping = True
+        pid = unit.current_pid
+        log(f"stopping {unit.name} (pid {pid}){': ' + reason if reason else ''}")
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+        deadline = time.time() + 4
+        while time.time() < deadline and unit.alive:
+            time.sleep(0.1)
+        if unit.alive:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+        unit.hb_misses = unit.ram_over = 0
+
+    # -------------------------------------------------------- policies ----
+
+    def reap(self) -> None:
+        for unit in list(self.units.values()):
+            if not unit.ever_started:
+                continue          # waiting for its first spawn: not dead, not up
+            if unit.name in self.next_start:
+                continue          # already down; a restart is scheduled, don't double-count
+            if unit.alive:
+                continue
+            code = unit.popen.poll() if unit.popen is not None else None
+            unit.pid = 0
+            unit.ever_started = False
+            if unit.stopping:
+                unit.stopping = False
+                log(f"{unit.name} stopped as asked (exit {code})")
+                continue
+            detail = f"exit code {code}" if code is not None else "process gone"
+            self.record_failure(unit, "crashed", detail)
+            self.schedule_restart(unit)
+
+    def schedule_restart(self, unit: Unit) -> None:
+        if unit.name in self.disabled:
+            return
+        delay = self.backoff_seconds(unit.name)
+        self.next_start[unit.name] = time.time() + delay
+        log(f"{unit.name} restarting in {delay:.0f}s")
+
+    def start_due(self) -> None:
+        now = time.time()
+        for name, at in list(self.next_start.items()):
+            if at > now:
+                continue
+            del self.next_start[name]
+            unit = self.units.get(name)
+            if unit and not unit.alive and name not in self.disabled:
+                self.spawn(unit)
+
+    def check_ram(self) -> None:
+        for unit in list(self.units.values()):
+            if not unit.alive:
+                unit.ram_over = 0
+                continue
+            pid = unit.current_pid
+            if not pid:
+                continue
+            unit.ram_kb = tree_rss_kb(pid)
+            budget = self.budget_mb(unit) * 1024
+            if unit.ram_kb > budget:
+                unit.ram_over += 1
+                # a gross overrun (>= 2x budget) is a breach on one sample:
+                # a runaway allocator is stopped within one sampling period
+                # instead of filling gigabytes while samples accumulate
+                gross = unit.ram_kb >= budget * 2
+                log(f"{unit.name} over budget: {unit.ram_kb // 1024} MiB > {budget // 1024} MiB "
+                    f"(sample {unit.ram_over}/{int(self.conf['ramBreachSamples'])}"
+                    + (", gross" if gross else "") + ")")
+                if gross or unit.ram_over >= int(self.conf["ramBreachSamples"]):
+                    self.stop_unit(unit, "memory budget exceeded")
+                    self.record_failure(unit, "used too much memory",
+                                         f"{unit.ram_kb // 1024} MiB RSS")
+                    self.schedule_restart(unit)
+            else:
+                unit.ram_over = 0
+
+    def check_heartbeats(self) -> None:
+        grace = float(self.conf["heartbeatGraceSeconds"])
+        timeout = float(self.conf["heartbeatTimeoutSeconds"])
+        for unit in list(self.units.values()):
+            if not unit.alive or time.time() - unit.started_at < grace:
+                unit.hb_misses = 0
+                continue
+            pid = unit.current_pid
+            if not pid:
+                continue
+            try:
+                if unit.kind == "shell":
+                    args = [QS_BIN, "ipc", "call", "watchdog", "ping"]
+                else:
+                    args = [QS_BIN, "ipc", "--pid", str(pid), "call", "sandbox", "ping"]
+                r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+                ok = r.returncode == 0 and "ok" in (r.stdout or "")
+            except subprocess.TimeoutExpired:
+                ok = False
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if ok:
+                unit.hb_misses = 0
+                continue
+            unit.hb_misses += 1
+            log(f"{unit.name} heartbeat missed ({unit.hb_misses}/2)")
+            if unit.hb_misses >= 2:
+                self.stop_unit(unit, "heartbeat unanswered")
+                self.record_failure(unit, "stopped answering", "its event loop was blocked")
+                self.schedule_restart(unit)
+
+    # ------------------------------------------------------ settings sync --
+
+    def sync_units(self) -> None:
+        """enabledPlugins is the single source of truth, wherever it was
+        changed (Settings page, CLI, an automatic turn-off): follow it. The
+        Store directory is watched too, so a plugin installed or removed while
+        the shell is down (or while its own settings are untouched) is still
+        picked up on the next scan."""
+        try:
+            mtime = SETTINGS_FILE.stat().st_mtime if SETTINGS_FILE.exists() else 0.0
+        except OSError:
+            mtime = 0.0
+        try:
+            stime = STORE_DIR.stat().st_mtime if STORE_DIR.exists() else 0.0
+        except OSError:
+            stime = 0.0
+        if mtime == self.settings_mtime and stime == self.store_mtime:
+            return
+        self.settings_mtime = mtime
+        self.store_mtime = stime
+        wanted = self.sandbox_ids()
+        changed = False
+        # drop units that were turned off or un-sandboxed
+        for name in list(self.units):
+            if name == "shell":
+                continue
+            if name not in wanted:
+                unit = self.units.pop(name)
+                self.next_start.pop(name, None)
+                if unit.alive:
+                    self.stop_unit(unit, "off in settings")
+                    changed = True
+                log(f"stopped supervising {name}: off in settings")
+        # pick up newly enabled sandboxed plugins
+        for pid in sorted(wanted):
+            if pid in self.units:
+                continue
+            source = self.plugin_source(pid)
+            if not source:
+                log(f"cannot sandbox {pid}: no entry file found")
+                continue
+            self.units[pid] = Unit(name=pid, kind="plugin", source=source)
+            self.next_start[pid] = time.time()  # start on the next tick
+            changed = True
+        if changed:
+            log(f"supervising: shell + {sorted(u for u in self.units if u != 'shell')}")
+
+    # ------------------------------------------------------------ socket --
+
+    def open_socket(self) -> None:
+        try:
+            if SOCK_PATH.exists():
+                SOCK_PATH.unlink()
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.bind(str(SOCK_PATH))
+            os.chmod(SOCK_PATH, 0o600)
+            s.listen(4)
+            s.setblocking(False)
+            self.listen = s
+        except OSError as e:
+            log(f"could not open control socket: {e}")
+            self.listen = None
+
+    def serve_socket(self) -> None:
+        if self.listen is None:
+            return
+        while True:
+            try:
+                conn, _ = self.listen.accept()
+            except BlockingIOError:
+                return
+            except OSError as e:
+                if e.errno != errno.EINTR:
+                    return
+                continue
+            try:
+                conn.settimeout(5)
+                data = b""
+                while b"\n" not in data:
+                    chunk = conn.recv(4096)
+                    if not chunk:
+                        break
+                    data += chunk
+                reply = self.handle(json.loads(data.decode("utf-8", "replace") or "{}"))
+                conn.sendall((json.dumps(reply) + "\n").encode("utf-8"))
+            except (OSError, ValueError) as e:
+                reply = {"ok": False, "error": f"bad request: {e}"}
+                try:
+                    conn.sendall((json.dumps(reply) + "\n").encode("utf-8"))
+                except OSError:
+                    pass
+            finally:
+                try:
+                    conn.close()
+                except OSError:
+                    pass
+
+    def handle(self, req: dict) -> dict:
+        cmd = str(req.get("cmd", ""))
+        args = req.get("args", [])
+        if cmd == "status":
+            return {"ok": True, **self.status()}
+        if cmd == "list":
+            rows = []
+            for unit in self.units.values():
+                rows.append({
+                    "id": unit.name, "kind": unit.kind,
+                    "running": unit.alive,
+                    "pid": unit.current_pid,
+                    "uptime": int(time.time() - unit.started_at) if unit.alive else 0,
+                    "rssMiB": round(unit.ram_kb / 1024, 1),
+                    "budgetMiB": self.budget_mb(unit),
+                    "failures": self.failures_in_window(unit.name),
+                    "error": unit.last_error, "test": unit.test_mode,
+                })
+            return {"ok": True, "units": rows,
+                    "disabled": {k: v for k, v in self.disabled.items()},
+                    "sandboxed": sorted(self.sandbox_ids())}
+        if cmd == "restart":
+            who = str(args[0]) if args else "shell"
+            if who == "shell":
+                unit = self.units.get("shell")
+                if unit:
+                    self.stop_unit(unit, "restarted by hand")
+                    unit.stopping = False
+                    self.spawn(unit)
+                    return {"ok": True, "restarted": "shell"}
+                return {"ok": False, "error": "no shell unit"}
+            unit = self.units.get(who)
+            if unit:
+                self.failures.pop(who, None)
+                self.next_start.pop(who, None)
+                unit.test_mode = ""      # a restart by hand means back to normal
+                self.stop_unit(unit, "restarted by hand")
+                unit.stopping = False
+                self.spawn(unit)
+                return {"ok": True, "restarted": who}
+            return {"ok": False, "error": f"{who} is not supervised "
+                                           "(enabled? sandboxed?)"}
+        if cmd == "enable":
+            pid = str(args[0]) if args else ""
+            if not pid:
+                return {"ok": False, "error": "which plugin?"}
+            return {"ok": True, "result": self.enable_plugin(pid)}
+        if cmd == "disable":
+            pid = str(args[0]) if args else ""
+            if not pid:
+                return {"ok": False, "error": "which plugin?"}
+            self.disable_plugin(pid, str(args[1]) if len(args) > 1 else "turned off by hand")
+            return {"ok": True, "disabled": pid}
+        if cmd == "test":
+            pid, mode = (str(args[0]) if args else ""), (str(args[1]) if len(args) > 1 else "")
+            unit = self.units.get(pid)
+            if not unit or unit.kind != "plugin":
+                return {"ok": False, "error": f"{pid} is not a sandboxed plugin"}
+            if mode not in ("", "leak", "hang", "crash"):
+                return {"ok": False, "error": "test mode must be leak, hang or crash"}
+            unit.test_mode = mode
+            self.stop_unit(unit, "test restart")
+            unit.stopping = False
+            self.failures.pop(pid, None)
+            self.spawn(unit)
+            return {"ok": True, "plugin": pid, "test": mode}
+        if cmd == "stop-daemon":
+            kill_children = bool(args and args[0])
+            self.shutting_down = True
+            if kill_children:
+                for unit in self.units.values():
+                    self.stop_unit(unit, "watchdog stopping")
+            # a deliberate stop says so, so `ensure` (the shell's keep-alive)
+            # does not bring the supervisor straight back
+            try:
+                STOP_MARKER.write_text(str(os.getpid()) + "\n")
+            except OSError:
+                pass
+            return {"ok": True, "killed-children": kill_children}
+        return {"ok": False, "error": f"unknown command {cmd!r}"}
+
+    def status(self) -> dict:
+        shell = self.units.get("shell")
+        return {
+            "running": True,
+            "pid": os.getpid(),
+            "shell": {"running": bool(shell and shell.alive),
+                      "pid": shell.current_pid if shell else None,
+                      "rssMiB": round(shell.ram_kb / 1024, 1) if shell else 0,
+                      "budgetMiB": self.conf["shellRamMb"],
+                      "failures": self.failures_in_window("shell")},
+            "plugins": [{"id": u.name, "running": u.alive, "pid": u.current_pid,
+                         "rssMiB": round(u.ram_kb / 1024, 1),
+                         "budgetMiB": self.budget_mb(u),
+                         "failures": self.failures_in_window(u.name),
+                         "test": u.test_mode}
+                        for u in self.units.values() if u.kind == "plugin"],
+            "disabled": dict(self.disabled),
+            "sandboxed": sorted(self.sandbox_ids()),
+        }
+
+    # ------------------------------------------------------------ main ----
+
+    def run(self, adopt: bool) -> None:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        HOSTS_DIR.mkdir(parents=True, exist_ok=True)
+        log(f"aequalyn-watchdog starting (pid {os.getpid()}), qs={QS_BIN}, config={CONFIG_DIR}")
+        try:
+            if STOP_MARKER.exists():
+                STOP_MARKER.unlink()
+        except OSError:
+            pass
+        self.units["shell"] = Unit(name="shell", kind="shell")
+        self.spawn(self.units["shell"], adopt=adopt)
+        self.kill_stray_hosts()
+        self.settings_mtime = -1.0   # force the first sync
+        self.store_mtime = -1.0
+        self.sync_no_sandbox()
+        self.open_socket()
+
+        def on_term(_sig, _frm):
+            self.shutting_down = True
+        signal.signal(signal.SIGTERM, on_term)
+        signal.signal(signal.SIGINT, on_term)
+
+        next_ram = time.monotonic() + 5
+        next_hb = time.monotonic() + float(self.conf["heartbeatSeconds"])
+        ram_every = max(2, int(self.conf["ramCheckSeconds"]))
+        hb_every = max(5, float(self.conf["heartbeatSeconds"]))
+
+        while not self.shutting_down:
+            time.sleep(1.0)
+            self.reap()
+            self.start_due()
+            self.sync_units()
+            self.serve_socket()
+            now = time.monotonic()
+            if now >= next_ram:
+                self.check_ram()
+                next_ram = now + ram_every
+            if now >= next_hb:
+                self.check_heartbeats()
+                next_hb = now + hb_every
+        log("watchdog stopping (supervised processes are left running)")
+        try:
+            if SOCK_PATH.exists():
+                SOCK_PATH.unlink()
+            if PID_FILE.exists():
+                PID_FILE.unlink()
+        except OSError:
+            pass
+
+
+# ------------------------------------------------------------------ cli ----
+
+def send_to_daemon(req: dict, timeout: float = 20) -> dict:
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.settimeout(timeout)
+    s.connect(str(SOCK_PATH))
+    try:
+        s.sendall((json.dumps(req) + "\n").encode("utf-8"))
+        buf = b""
+        while b"\n" not in buf:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            buf += chunk
+        return json.loads(buf.decode("utf-8", "replace").strip() or "{}")
+    finally:
+        s.close()
+
+
+def daemon_alive() -> bool:
+    if not SOCK_PATH.exists():
+        return False
+    try:
+        return send_to_daemon({"cmd": "status"}, timeout=3).get("ok", False)
+    except (OSError, ValueError):
+        return False
+
+
+def cmd_start(args) -> int:
+    if daemon_alive():
+        print("aequalyn-watchdog is already running")
+        return 0
+    conf = {**DEFAULTS, **read_json(WATCHDOG_CONF, {})}
+    if not shutil.which(QS_BIN):
+        print("aequalyn-watchdog: qs/quickshell not found", file=sys.stderr)
+        return 127
+    if args.foreground:
+        Supervisor(conf).run(adopt=True)
+        return 0
+    # detach: double fork, own session, output to the log
+    if os.fork() > 0:
+        # the parent waits for the socket so "start" never reports success
+        # before the supervisor can actually be reached
+        for _ in range(20):
+            if daemon_alive():
+                return 0
+            time.sleep(0.25)
+        return 1
+    os.setsid()
+    if os.fork() > 0:
+        os._exit(0)
+    os.umask(0o077)
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    fd = os.open(DAEMON_LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    os.dup2(fd, 1)
+    os.dup2(fd, 2)
+    devnull = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(devnull, 0)
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+    Supervisor(conf).run(adopt=True)
+    os._exit(0)
+
+
+def cmd_ensure(_args) -> int:
+    """For the shell's keep-alive timer: nothing to do when the supervisor is
+    running (or was deliberately stopped), start it otherwise."""
+    if daemon_alive():
+        return 0
+    if STOP_MARKER.exists():
+        return 0
+    return cmd_start(_args)
+
+
+def cmd_stop(args) -> int:
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running")
+        return 0
+    out = send_to_daemon({"cmd": "stop-daemon", "args": [bool(getattr(args, "kill", False))]})
+    print("stopped" if out.get("ok") else out.get("error", "failed"))
+    return 0 if out.get("ok") else 1
+
+
+def cmd_status(args) -> int:
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running (start it: aequalyn-watchdog start)")
+        return 1
+    st = send_to_daemon({"cmd": "status"})
+    if args.json:
+        print(json.dumps(st, indent=2))
+        return 0
+    sh = st.get("shell", {})
+    state = "up" if sh.get("running") else "DOWN"
+    print(f"shell    {state:<6} pid {sh.get('pid') or '-':<8} "
+          f"ram {sh.get('rssMiB', 0):>7.1f} MiB / {sh.get('budgetMiB')} MiB   "
+          f"failures {sh.get('failures')}")
+    for p in st.get("plugins", []):
+        state = "up" if p.get("running") else "DOWN"
+        print(f"{p['id']:<9}{state:<6} pid {p.get('pid') or '-':<8} "
+              f"ram {p.get('rssMiB', 0):>7.1f} MiB / {p.get('budgetMiB')} MiB   "
+              f"failures {p.get('failures')}"
+              + (f"   [test: {p['test']}]" if p.get("test") else ""))
+    if st.get("disabled"):
+        print("turned off by the watchdog:")
+        for pid, reason in st["disabled"].items():
+            print(f"  {pid}: {reason}")
+    return 0
+
+
+def cmd_restart(args) -> int:
+    who = args.id or "shell"
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running", file=sys.stderr)
+        return 1
+    out = send_to_daemon({"cmd": "restart", "args": [who]})
+    if out.get("ok"):
+        print(f"restarted {out.get('restarted', who)}")
+        return 0
+    print(out.get("error", "failed"), file=sys.stderr)
+    return 1
+
+
+def cmd_toggle(args) -> int:
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running", file=sys.stderr)
+        return 1
+    out = send_to_daemon({"cmd": args.direction, "args": [args.id] + ([args.reason] if getattr(args, "reason", None) else [])})
+    if out.get("ok"):
+        print(out.get("result", args.id + " " + args.direction + "d"))
+        return 0
+    print(out.get("error", "failed"), file=sys.stderr)
+    return 1
+
+
+def cmd_sandboxed(_args) -> int:
+    conf = {**DEFAULTS, **read_json(WATCHDOG_CONF, {})}
+    no = set(conf.get("noSandbox", []))
+    forced = set(conf.get("forceSandbox", []))
+    ids = (sandbox_builtins() | set(sandbox_store()) | forced) - no
+    enabled = set(enabled_from_settings())
+    print("sandboxed when enabled:")
+    for i in sorted(ids):
+        marks = []
+        if i in sandbox_builtins():
+            marks.append("Plugins.js")
+        if i in sandbox_store():
+            marks.append("store")
+        if i in forced:
+            marks.append("forced")
+        print(f"  {i:<16} ({', '.join(marks)})" + ("" if i in enabled else "  [off]"))
+    if no:
+        print("never sandboxed:", ", ".join(sorted(no)))
+    return 0
+
+
+def cmd_log(args) -> int:
+    path = DAEMON_LOG
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        print(f"no log at {path}", file=sys.stderr)
+        return 1
+    for line in lines[-args.n:]:
+        print(line)
+    return 0
+
+
+def cmd_test(args) -> int:
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running", file=sys.stderr)
+        return 1
+    out = send_to_daemon({"cmd": "test", "args": [args.id, args.mode]})
+    if out.get("ok"):
+        print(f"{args.id} restarted in test mode '{args.mode}'; watch it with: "
+              f"aequalyn-watchdog status")
+        return 0
+    print(out.get("error", "failed"), file=sys.stderr)
+    return 1
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        prog="aequalyn-watchdog",
+        description="Supervise the Aequalyn QuickShell shell and sandbox its plugins.")
+    sub = ap.add_subparsers(dest="cmd")
+
+    p = sub.add_parser("start", help="start the supervisor (idempotent; adopts a running shell)")
+    p.add_argument("--foreground", action="store_true", help="stay attached to the terminal")
+    p.add_argument("--adopt", action="store_true",
+                  help="adopt a running shell instead of starting a new one (the default)")
+    p.set_defaults(fn=cmd_start)
+
+    p = sub.add_parser("run", help="start in the foreground (same as start --foreground)")
+    p.set_defaults(fn=cmd_start, foreground=True, adopt=True)
+
+    p = sub.add_parser("ensure", help="start the supervisor unless it is running or was stopped by hand")
+    p.set_defaults(fn=cmd_ensure, foreground=False, adopt=True)
+
+    p = sub.add_parser("stop", help="stop the supervisor (the shell and plugins keep running)")
+    p.add_argument("--kill", action="store_true", help="also stop the supervised processes")
+    p.set_defaults(fn=cmd_stop)
+
+    p = sub.add_parser("status", help="shell + sandboxed plugin state")
+    p.add_argument("--json", action="store_true", help="machine-readable")
+    p.set_defaults(fn=cmd_status)
+
+    p = sub.add_parser("list", help="same as status")
+    p.set_defaults(fn=cmd_status, json=False)
+
+    p = sub.add_parser("restart", help="restart the shell or one plugin")
+    p.add_argument("id", nargs="?", default="shell", help="a plugin id, or 'shell'")
+    p.set_defaults(fn=cmd_restart)
+
+    p = sub.add_parser("enable", help="turn a plugin on (through the shell)")
+    p.add_argument("id")
+    p.set_defaults(fn=cmd_toggle, direction="enable")
+
+    p = sub.add_parser("disable", help="turn a plugin off (through the shell)")
+    p.add_argument("id")
+    p.add_argument("reason", nargs="?", default="")
+    p.set_defaults(fn=cmd_toggle, direction="disable")
+
+    p = sub.add_parser("sandboxed", help="which plugins would run out of process")
+    p.set_defaults(fn=cmd_sandboxed)
+
+    p = sub.add_parser("log", help="tail the watchdog's log")
+    p.add_argument("-n", type=int, default=30)
+    p.set_defaults(fn=cmd_log)
+
+    p = sub.add_parser("test", help="restart a sandboxed plugin in a failure-test mode")
+    p.add_argument("id")
+    p.add_argument("mode", choices=["leak", "hang", "crash"],
+                   help="leak: breach the RAM budget; hang: stop answering; crash: die hard")
+    p.set_defaults(fn=cmd_test)
+
+    args = ap.parse_args()
+    if not hasattr(args, "fn"):
+        ap.print_help()
+        return 0
+    return args.fn(args) or 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -4,16 +4,20 @@ pragma Singleton
 // `qs ipc call plugins rescan` (the Store calls it after every install, update and
 // remove). Each entry has the built-ins' shape, { id, label, source }, plus `info`: what
 // PluginInfo.js says about a built-in (icon, group, keys, about), from the manifest.
+// A plugin whose id is a built-in's (Plugins.js) is refused: it could never run
+// alongside the real one, and would only shadow it.
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../Plugins.js" as PluginRegistry
+
 
 Singleton {
     id: root
     readonly property string dir: Quickshell.env("HOME") + "/.local/share/aequalyn/plugins"
     property var list: []
     function byId(id) { return root.list.find(p => p.id === id) || null; }
-    function rescan() { if (!scan.running) scan.running = true; }
+    function rescan(): bool { if (!scan.running) scan.running = true; return true; }
 
     property Process scan: Process {
         running: true
@@ -38,7 +42,10 @@ print(json.dumps(out))
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const next = JSON.parse(text);
+                    let next = JSON.parse(text);
+                    // a built-in's id is taken: the Store plugin is refused outright
+                    const builtin = PluginRegistry.list.map(p => p.id)
+                    next = next.filter(p => builtin.indexOf(p.id) < 0)
                     // a new array only when something changed: the loaders of the plugins
                     // already running stay as they are
                     if (JSON.stringify(next) !== JSON.stringify(root.list)) root.list = next;
