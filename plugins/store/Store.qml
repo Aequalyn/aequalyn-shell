@@ -32,6 +32,7 @@ Scope {
     readonly property string mono: "JetBrainsMono Nerd Font"
     property bool open: false
     property string section: "home"
+    property string category: ""
 
     readonly property var sections: [
         { key: "home",      label: "Home",       glyph: "\u{F02DC}" },
@@ -47,12 +48,37 @@ Scope {
         { key: "market",    label: "Market",     glyph: "\u{F0110}" },
         { key: "updates",   label: "Updates",    glyph: "\u{F06B0}" }
     ]
+    // the control center's two levels: a short rail of categories, then the
+    // sections of the chosen one beside it. Home stands apart.
+    readonly property var categories: [
+        { key: "get",    title: "Get",     icon: "\u{F0431}", sections: ["plugin", "theme", "cursor", "wallpaper", "look"] },
+        { key: "apps",   title: "Apps",    icon: "\u{F003B}", sections: ["apps", "web", "ai", "appimage"] },
+        { key: "manage", title: "Manage", icon: "\u{F0110}", sections: ["market", "updates"] }
+    ]
+    readonly property var categoryNow: root.categories.find(c => c.key === root.category) || null
     // the shell's own plugins, as the control center lists them; the control center
     // itself is left out because turning it off would lock you out
     readonly property var builtInPlugins: PluginRegistry.list.filter(p => p.id !== "settings")
     function builtInInfo(id) {
         // the registry's clipscape id and PluginInfo's clipboard key are one plugin
         return PluginInfo.of(id === "clipscape" ? "clipboard" : id);
+    }
+    // one place that keeps the two left lists and the page in step, so an IPC
+    // request or a card on Home lands on the right category as well
+    function categoryOf(section) {
+        for (let i = 0; i < root.categories.length; i++)
+            if (root.categories[i].sections.indexOf(section) >= 0) return root.categories[i].key;
+        return "";
+    }
+    function openSection(section) {
+        if (!root.sections.some(s => s.key === section)) return;
+        root.category = root.categoryOf(section);
+        root.section = section;
+    }
+    function openCategory(key) {
+        const c = root.categories.find(x => x.key === key);
+        root.category = c ? c.key : "";
+        root.section = c ? c.sections[0] : "home";
     }
     readonly property var kindWords: ({
         plugin: { one: "plugin", hint: "A git repo with a plugin.json: it is checked (its files, qmllint, what it may run), then installed into ~/.local/share/aequalyn/plugins and switched on at once." },
@@ -605,17 +631,17 @@ Scope {
         function section(name: string): string {
             const section = name;
             if (!root.sections.some(s => s.key === section)) return "no section " + section;
-            root.section = section; root.open = true; root.refresh(); return "ok";
+            root.openSection(section); root.open = true; root.refresh(); return "ok";
         }
         // look for apps in Arch, the AUR, Flathub and Snap
         function search(words: string): void {
-            root.section = "apps"; root.open = true; root.detectApps(); root.searchApps(words, false);
+            root.openSection("apps"); root.open = true; root.detectApps(); root.searchApps(words, false);
         }
         // an .AppImage opened in a file manager (the handler's menu entry runs
         // aequalyn-store open-appimage): this page, its import form filled in and
         // the file already checked, so Enter (or Import) is all that is left
         function appimage(path: string): string {
-            root.section = "appimage"; root.open = true; root.refresh();
+            root.openSection("appimage"); root.open = true; root.refresh();
             appField.text = path;
             root.runJob("Checking " + path, ["check-appimage", path]);
             return "ok";
@@ -623,7 +649,7 @@ Scope {
         // install from a git URL (or a folder), with every check first
         function install(kind: string, source: string): string {
             if (!root.kindWords[kind]) return "no kind " + kind;
-            root.section = kind; root.open = true;
+            root.openSection(kind); root.open = true;
             root.runJob("Installing " + source, ["install", kind, source]);
             return "ok";
         }
@@ -1409,8 +1435,8 @@ Scope {
                     Layout.fillHeight: true
                     spacing: 0
 
-                    // the rail of sections, as the control center's category rail:
-                    // an icon tile above each name, the chosen one accented
+                    // the categories, as the control center's: a short rail down the
+                    // left, then the sections of the chosen one beside it
                     ColumnLayout {
                         Layout.preferredWidth: 96
                         Layout.maximumWidth: 96
@@ -1420,50 +1446,127 @@ Scope {
                         Layout.bottomMargin: 8
                         spacing: 2
                         Repeater {
-                            model: root.sections
+                            model: [{ key: "", title: "Home", icon: "\u{F02DC}" }].concat(root.categories)
                             delegate: Item {
-                                id: railItem
+                                id: catItem
                                 required property var modelData
-                                readonly property bool on: root.section === modelData.key
+                                readonly property bool on: root.category === modelData.key
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 56
                                 Accessible.role: Accessible.PageTab
-                                Accessible.name: modelData.label
+                                Accessible.name: modelData.title
                                 Rectangle {
-                                    id: railBox
+                                    id: catBox
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     y: 4
                                     width: 36; height: 30; radius: 8
-                                    color: railItem.on ? root.theme.bgSelected : railMa.containsMouse ? root.theme.bgSurface : "transparent"
-                                    border.width: railItem.on ? 1 : 0
+                                    color: catItem.on ? root.theme.bgSelected : catMa.containsMouse ? root.theme.bgSurface : "transparent"
+                                    border.width: catItem.on ? 1 : 0
                                     border.color: root.theme.accentPrimary
                                     Text {
                                         anchors.centerIn: parent
-                                        text: railItem.modelData.glyph
-                                        color: railItem.on ? root.theme.accentPrimary : root.theme.textSecondary
+                                        text: catItem.modelData.icon
+                                        color: catItem.on ? root.theme.accentPrimary : root.theme.textSecondary
                                         font.family: root.mono
                                         font.pixelSize: 15
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    anchors.top: railBox.bottom
+                                    anchors.top: catBox.bottom
                                     anchors.topMargin: 3
                                     width: parent.width - 4
-                                    text: railItem.modelData.label
+                                    text: catItem.modelData.title
                                     elide: Text.ElideRight
                                     horizontalAlignment: Text.AlignHCenter
-                                    color: railItem.on ? root.theme.textPrimary : root.theme.textMuted
+                                    color: catItem.on ? root.theme.textPrimary : root.theme.textMuted
                                     font.family: root.mono
                                     font.pixelSize: 10
-                                    font.bold: railItem.on
+                                    font.bold: catItem.on
                                 }
-                                MouseArea { id: railMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.section = modelData.key }
+                                MouseArea { id: catMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openCategory(modelData.key) }
                             }
                         }
                         Item { Layout.fillHeight: true }
                     }
                     Rectangle { Layout.preferredWidth: 1; Layout.fillHeight: true; color: root.theme.bgBorder }
+
+                    // the sections of the category, like the control center's page list
+                    ColumnLayout {
+                        id: sectionNav
+                        Layout.preferredWidth: root.categoryNow ? 214 : 0
+                        Layout.maximumWidth: root.categoryNow ? 214 : 0
+                        Layout.leftMargin: root.categoryNow ? 12 : 0
+                        Layout.topMargin: 12
+                        Layout.bottomMargin: 8
+                        Layout.fillHeight: true
+                        spacing: 2
+                        visible: root.categoryNow !== null
+                        clip: true
+                        Text {
+                            leftPadding: 8
+                            text: root.categoryNow ? root.categoryNow.icon + "  " + root.categoryNow.title : ""
+                            color: root.theme.accentPrimary
+                            font.family: root.mono
+                            font.pixelSize: 14
+                            font.bold: true
+                        }
+                        Text {
+                            leftPadding: 8
+                            bottomPadding: 10
+                            text: root.categoryNow ? root.categoryNow.sections.length + " sections" : ""
+                            color: root.theme.textMuted
+                            font.family: root.mono
+                            font.pixelSize: 11
+                        }
+                        Repeater {
+                            model: root.categoryNow ? root.categoryNow.sections : []
+                            delegate: Rectangle {
+                                id: navItem
+                                required property var modelData
+                                readonly property var info: root.sections.find(s => s.key === modelData) || {}
+                                readonly property bool on: root.section === modelData
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 38
+                                radius: 8
+                                color: navItem.on ? root.theme.bgSelected : navMa.containsMouse ? root.theme.bgSurface : "transparent"
+                                Rectangle {
+                                    visible: navItem.on
+                                    width: 3; height: 20; radius: 2
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: root.theme.accentPrimary
+                                }
+                                Row {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 10
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 18
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: navItem.info.glyph || ""
+                                        color: root.theme.accentPrimary
+                                        font.family: root.mono
+                                        font.pixelSize: 14
+                                    }
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: navItem.info.label || ""
+                                        color: navItem.on ? root.theme.textPrimary : root.theme.textSecondary
+                                        font.family: root.sans
+                                        font.pixelSize: 13
+                                        font.weight: navItem.on ? Font.DemiBold : Font.Normal
+                                    }
+                                }
+                                MouseArea { id: navMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openSection(modelData) }
+                            }
+                        }
+                        Item { Layout.fillHeight: true }
+                    }
+                    Rectangle { visible: root.categoryNow !== null; Layout.preferredWidth: 1; Layout.fillHeight: true; color: root.theme.bgBorder }
 
                     // the page, and the report of the last job under it
                     ColumnLayout {
@@ -1502,7 +1605,7 @@ Scope {
                                             delegate: Btn {
                                                 required property var modelData
                                                 text: modelData.label
-                                                onClicked: root.section = modelData.key
+                                                onClicked: root.openSection(modelData.key)
                                             }
                                         }
                                     }
