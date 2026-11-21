@@ -172,8 +172,19 @@ Scope {
     property var appDetail: null
     property bool appDetailBusy: false
     property var appDetailErrors: ({})
+    readonly property string detailErrorText: Object.keys(root.appDetailErrors)
+        .filter(k => String(k).trim() !== "")
+        .map(k => k + (root.appDetailErrors[k] ? " — " + String(root.appDetailErrors[k]).slice(0, 80) : ""))
+        .join(", ")
     function appIds(g) {
         const ids = { "Arch": "", "AUR": "", "Flatpak": "", "Snap": "" };
+        // the curated card knows every id, even when search only loaded one of
+        // them; those ids must reach app-info or the page loses install paths
+        const c = g.curated || {};
+        ids.Arch = c.pacman || "";
+        ids.AUR = c.aur || "";
+        ids.Flatpak = c.flatpak || "";
+        ids.Snap = c.snap || "";
         for (const s of g.sources) if (ids[s.source] !== undefined && !ids[s.source]) ids[s.source] = s.id;
         return ids;
     }
@@ -217,16 +228,31 @@ Scope {
     function detailSources() {
         if (!root.appPage) return [];
         const fetched = root.appDetail ? root.appDetail.sources : [];
-        if (fetched.length === 0) return root.appPage.sources;
-        return fetched.map(s => {
-            const searchHit = root.appPage.sources.find(x => x.source === s.source) || {};
-            return Object.assign({}, s, {
-                icon: s.icon || searchHit.icon || root.appPage.icon || "",
-                installed: !!s.installed || root.foundInstalled(Object.assign({}, s, { id: s.id })),
-                about: s.about || searchHit.about || "",
-                version: s.version || searchHit.version || "",
-                url: s.url || "",
-                details: s.details || []
+        const ids = root.appIds(root.appPage);
+        let wanted = Object.keys(ids).filter(k => ids[k]).map(k => ({ source: k, id: ids[k] }));
+        if (wanted.length === 0) wanted = root.appPage.sources.map(s => ({ source: s.source, id: s.id }));
+        // app-info can also find an AUR build by the app's plain name; show it
+        // even when no curated id advertised it
+        for (const s of fetched) if (!wanted.some(x => x.source === s.source))
+            wanted.push({ source: s.source, id: s.id });
+        return wanted.map(base => {
+            const got = fetched.find(s => s.source === base.source)
+                || fetched.find(s => root.normKey(s.id) === root.normKey(base.id)) || {};
+            const searchHit = root.appPage.sources.find(x => x.source === base.source && x.id === base.id)
+                || root.appPage.sources.find(x => x.source === base.source) || {};
+            const c = root.appPage.curated || {};
+            return Object.assign({}, got, {
+                source: base.source,
+                id: base.id,
+                name: got.name || searchHit.name || root.appPage.name,
+                icon: got.icon || searchHit.icon || (c.icon ? root.appIcon(c, searchHit) : root.appPage.icon) || "",
+                installed: !!got.installed || root.foundInstalled({ source: base.source, id: base.id }),
+                about: got.about || searchHit.about || "",
+                version: got.version || searchHit.version || "",
+                url: got.url || "",
+                license: got.license || "",
+                size: got.size || "",
+                details: got.details || []
             });
         });
     }
@@ -252,6 +278,40 @@ Scope {
         return out.slice(0, 8);
     }
     // every useful line a manager published, in a compact list that fills its card
+    // find the one app group behind any card: a search result, an installed row
+    // or one of the curated cards. If the group is not loaded yet, build it from
+    // the card itself so every card has somewhere to go.
+    function groupFor(a) {
+        if (!a) return null;
+        const c = root.curatedFor(a);
+        if (c) {
+            const byCurated = root.appGroups.find(g => g.key === "curated:" + c.id);
+            if (byCurated) return byCurated;
+        }
+        const nameKey = "name:" + (root.normKey(a.name || a.id) || "");
+        const byName = root.appGroups.find(g => g.key === nameKey);
+        if (byName) return byName;
+        if (a.source && a.id) {
+            const bySource = root.appGroups.find(g => g.sources.some(s => s.source === a.source && s.id === a.id));
+            if (bySource) return bySource;
+        }
+        const sources = [];
+        if (a.source && a.id) sources.push(a);
+        else {
+            [["Arch", a.pacman], ["AUR", a.aur], ["Flatpak", a.flatpak], ["Snap", a.snap]]
+                .forEach(x => { if (x[1]) sources.push({ source: x[0], id: x[1], name: a.name, about: a.about }); });
+        }
+        return {
+            key: c ? "curated:" + c.id : nameKey,
+            name: (c && c.name) || a.name || a.id,
+            about: (c && c.about) || a.about || "",
+            icon: c && c.icon ? root.appIcon(c, a) : (a.icon || ""),
+            curated: c,
+            sources: sources,
+            installed: sources.some(s => root.foundInstalled(s)) || root.installedVia(a) !== "",
+            popularity: Number(a.popularity) || 0
+        };
+    }
     function sourceDetails(s) {
         if (!s) return [];
         const out = [];
@@ -2114,13 +2174,24 @@ Scope {
                                                     id: appCard
                                                     required property var modelData
                                                     readonly property string via: root.installedVia(modelData)
+                                                    readonly property bool hovered: cardMa.containsMouse
                                                     Layout.fillWidth: true
                                                     Layout.preferredWidth: 203
                                                     height: 164
                                                     radius: 12
-                                                    color: root.theme.bgBase
+                                                    color: hovered ? root.theme.bgHover : root.theme.bgBase
                                                     border.width: 1
                                                     border.color: root.theme.bgBorder
+                                                MouseArea {
+                                                    id: cardMa
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        const g = root.groupFor(appCard.modelData);
+                                                        if (g) root.openApp(g);
+                                                    }
+                                                }
                                                 ColumnLayout {
                                                     anchors.fill: parent
                                                     anchors.margins: 12
@@ -2274,6 +2345,7 @@ Scope {
                                                     id: fcard
                                                     required property var modelData
                                                     readonly property bool have: root.foundInstalled(modelData)
+                                                    readonly property bool hovered: cardMa.containsMouse
                                                     readonly property bool installedHere: !!modelData.installed
                                                     readonly property bool ready: modelData.source === "Arch" || (modelData.source === "AUR" && root.backends.yay)
                                                         || (modelData.source === "Flatpak" && root.backends.flatpak) || (modelData.source === "Snap" && root.backends.snap)
@@ -2281,9 +2353,19 @@ Scope {
                                                     Layout.preferredWidth: 203
                                                     height: 150
                                                     radius: 12
-                                                    color: root.theme.bgBase
+                                                    color: hovered ? root.theme.bgHover : root.theme.bgBase
                                                     border.width: 1
                                                     border.color: root.theme.bgBorder
+                                                    MouseArea {
+                                                        id: cardMa
+                                                        anchors.fill: parent
+                                                        hoverEnabled: true
+                                                        cursorShape: Qt.PointingHandCursor
+                                                        onClicked: {
+                                                            const g = root.groupFor(fcard.modelData);
+                                                            if (g) root.openApp(g);
+                                                        }
+                                                    }
                                                     ColumnLayout {
                                                         anchors.fill: parent
                                                         anchors.margins: 10
@@ -3691,9 +3773,9 @@ Scope {
                             }
                             Text {
                                 Layout.fillWidth: true
-                                visible: Object.keys(root.appDetailErrors).length > 0
-                                text: "Not reached: " + Object.keys(root.appDetailErrors).join(", ")
-                                color: root.theme.accentOrange
+                                visible: root.detailErrorText !== ""
+                                text: "Not reached: " + root.detailErrorText
+                                color: root.theme.accentRed
                                 font.family: root.mono
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
