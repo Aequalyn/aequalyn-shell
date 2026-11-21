@@ -40,6 +40,8 @@ Scope {
     property var active: null
     // remember the last snap so the windows can follow a bar that changes edge
     property var lastSnap: null
+    // previous per-monitor geometry/reservation, to map free floaters across a bar move
+    property var monitorState: ({})
     property string reservedKey: ""
     property double lastLayoutPoll: 0
 
@@ -94,6 +96,16 @@ Scope {
     ]
 
     function norm(a) { return String(a || "").replace(/^0x/, "").toLowerCase() }
+
+    // Repeater hands the click handler a copy of the preset object, so identity
+    // comparisons like indexOf() fail. The name is the stable key.
+    function presetIndexOf(p) {
+        if (!p) return -1
+        const name = String(p.name || "")
+        for (let i = 0; i < root.presets.length; i++)
+            if (root.presets[i].name === name) return i
+        return -1
+    }
 
     // hyprctl reports window geometry as `at: [x, y]` and `size: [w, h]`.
     function geom(c) {
@@ -188,9 +200,36 @@ Scope {
         return -1
     }
 
-    // Global geometry of the screen the flyout is on, from live monitor data.
-    function targetGeometry() {
-        const mon = root.monitors[root.targetMonitor]
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(Math.max(lo, hi), v)) }
+    function sameRect(a, b) {
+        return !!a && !!b && Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1
+            && Math.abs(a.w - b.w) < 1 && Math.abs(a.h - b.h) < 1
+    }
+
+    // Which monitor a floating window is actually on. Its workspace can differ
+    // from the picker's, so snap and reflow must not assume targetMonitor.
+    function clientMonitor(c) {
+        const g = root.geom(c)
+        const cx = g.x + g.w / 2, cy = g.y + g.h / 2
+        let best = -1, bestD = Infinity
+        for (let i = 0; i < root.monitors.length; i++) {
+            const f = root.fullGeometry(root.monitors[i], i)
+            if (cx >= f.x && cx <= f.x + f.w && cy >= f.y && cy <= f.y + f.h) return i
+            const dx = cx - (f.x + f.w / 2), dy = cy - (f.y + f.h / 2)
+            const d = dx * dx + dy * dy
+            if (d < bestD) { bestD = d; best = i }
+        }
+        return best
+    }
+
+    // hyprctl reports the client area; hyprbars draws its titlebar above it.
+    function visualGeometry(c) {
+        const g = root.geom(c)
+        return { x: g.x, y: g.y - root.titleHeight, w: g.w, h: g.h + root.titleHeight }
+    }
+
+    // Physical monitor data -> the logical coordinates windows and pointers use.
+    function fullGeometry(mon, idx) {
         if (mon && Number(mon.width) > 0 && Number(mon.height) > 0) {
             // hyprctl reports physical pixels; window and cursor coordinates,
             // and the layer surfaces, use logical pixels (physical / scale).
@@ -198,19 +237,24 @@ Scope {
             return { x: Number(mon.x) || 0, y: Number(mon.y) || 0,
                      w: Number(mon.width) / scale, h: Number(mon.height) / scale }
         }
-        const screen = Quickshell.screens[root.targetMonitor]
+        const at = idx === undefined ? root.targetMonitor : idx
+        const screen = Quickshell.screens[at]
         if (screen && Number(screen.width) > 0)
             return { x: Number(screen.x) || 0, y: Number(screen.y) || 0,
                      w: Number(screen.width), h: Number(screen.height) }
         return { x: 0, y: 0, w: 1920, h: 1080 }
     }
 
-    // Usable area for snap zones, in the same global logical coordinates as
+    // Global geometry of the screen the flyout is on, from live monitor data.
+    function targetGeometry() {
+        return root.fullGeometry(root.monitors[root.targetMonitor], root.targetMonitor)
+    }
+
+    // Usable area for one monitor, in the same global logical coordinates as
     // windows. `reserved` is [left, top, right, bottom] from the live monitor,
     // so a bar on any side is handled without hard-coding its position.
-    function zoneGeometry() {
-        const full = root.targetGeometry()
-        const mon = root.monitors[root.targetMonitor]
+    function usableGeometry(mon, idx) {
+        const full = root.fullGeometry(mon, idx)
         const res = mon && Array.isArray(mon.reserved) ? mon.reserved : [0, 0, 0, 0]
         const l = Math.max(0, Number(res[0]) || 0)
         const t = Math.max(0, Number(res[1]) || 0)
@@ -223,6 +267,13 @@ Scope {
             w: Math.max(100, full.w - l - r - gap * 2),
             h: Math.max(100, full.h - t - b - gap * 2)
         }
+    }
+    function zoneGeometryFor(idx) {
+        return root.usableGeometry(root.monitors[idx], idx)
+    }
+    function zoneGeometry() {
+        const g = root.zoneGeometryFor(root.targetMonitor)
+        return g
     }
 
     // Dragging up always targets the top of the usable area. A top bar or dock
@@ -270,8 +321,8 @@ Scope {
     }
 
     // Shared by a fresh snap and by re-snapping after the usable area changes.
-    function placeZones(preset, chosen, list) {
-        const g = root.zoneGeometry()
+    function placeZones(preset, chosen, list, monIdx) {
+        const g = root.zoneGeometryFor(monIdx === undefined ? root.targetMonitor : monIdx)
         const zones = zonesFor(preset, chosen)
         for (let i = 0; i < zones.length && i < list.length; i++) {
             const z = zones[i]
@@ -297,12 +348,21 @@ Scope {
             root.open = false
             return
         }
+        const presetIndex = root.presetIndexOf(preset)
+        if (presetIndex < 0) return
+        const chosenPreset = root.presets[presetIndex]
         const list = floaters()
-        placeZones(preset, chosen, list)
+        const idx = root.clientMonitor(root.active)
+        const monIdx = idx >= 0 ? idx : root.targetMonitor
+        // Only the windows that got a zone are snapped. Any extra floaters stay
+        // free, so a later bar move can still slide them out of the new strip.
+        const placed = list.slice(0, chosenPreset.zones.length)
+        placeZones(chosenPreset, chosen, placed, monIdx)
         root.lastSnap = {
-            preset: root.presets.indexOf(preset),
+            preset: presetIndex,
             chosen: chosen,
-            addresses: list.map(c => String(c.address || ""))
+            addresses: placed.map(c => String(c.address || "")),
+            monitor: monIdx
         }
         root.endDragSnap()
         root.snapArmBlocked = true
@@ -324,7 +384,47 @@ Scope {
                                               x.floating === true && x.mapped !== false)
             if (c) list.push(c)
         }
-        if (list.length) placeZones(preset, s.chosen, list)
+        const monIdx = Number.isInteger(s.monitor) ? s.monitor : root.targetMonitor
+        if (list.length) placeZones(preset, s.chosen, list, monIdx)
+    }
+
+    // Windows that were never snapped still have to stay clear of a bar that
+    // moves to a new edge. Map their visible rectangle from the old usable area
+    // to the new one, keeping the titlebar out of the reserved strip as well.
+    function reflowFloating(previous, changed) {
+        if (!previous || !changed || changed.length === 0) return
+        const s = root.lastSnap
+        const validSnap = s && s.preset >= 0 && root.presets[s.preset] && s.addresses
+        const snapped = validSnap ? s.addresses.map(a => root.norm(a)) : []
+        for (const c of root.clients) {
+            if (!c || c.floating !== true || c.mapped === false) continue
+            const addr = root.norm(c.address)
+            if (snapped.indexOf(addr) >= 0) continue
+            const idx = root.clientMonitor(c)
+            if (idx < 0 || !root.monitors[idx]) continue
+            const id = String(root.monitors[idx].id)
+            if (changed.indexOf(id) < 0) continue
+            const before = previous[id], after = root.monitorState[id]
+            if (!before || !after || !before.usable || !after.usable) continue
+            const oldU = before.usable, newU = after.usable
+            const v = root.visualGeometry(c)
+            const rw = v.w / Math.max(1, oldU.w)
+            const rh = v.h / Math.max(1, oldU.h)
+            const rx = (v.x - oldU.x) / Math.max(1, oldU.w)
+            const ry = (v.y - oldU.y) / Math.max(1, oldU.h)
+            const maxW = Math.max(100, newU.w)
+            const maxH = Math.max(100 + root.titleHeight, newU.h)
+            const w = Math.round(root.clamp(rw * newU.w, 100, maxW))
+            const hVis = Math.round(root.clamp(rh * newU.h, 100 + root.titleHeight, maxH))
+            const x = Math.round(root.clamp(newU.x + rx * newU.w, newU.x,
+                                            newU.x + maxW - w))
+            const yVis = Math.round(root.clamp(newU.y + ry * newU.h, newU.y,
+                                               newU.y + maxH - hVis))
+            if (Math.abs(v.x - x) < 1 && Math.abs(v.y - yVis) < 1
+                && Math.abs(v.w - w) < 1 && Math.abs(v.h - hVis) < 1) continue
+            root.place("address:" + String(c.address || ""), x, yVis + root.titleHeight, w,
+                       Math.max(100, hVis - root.titleHeight))
+        }
     }
 
     // A window dragged to the top, or the pointer dwelling in the top strip,
@@ -516,10 +616,28 @@ Scope {
                     if (!Array.isArray(v)) return
                     const key = JSON.stringify(v.map(m => [m.id, m.x, m.y, m.width,
                                                            m.height, m.scale, m.reserved]))
+                    const previous = root.monitorState
+                    const current = {}
+                    const changed = []
+                    for (let i = 0; i < v.length; i++) {
+                        const id = String(v[i].id)
+                        current[id] = { usable: root.usableGeometry(v[i], i) }
+                    }
+                    for (const id of Object.keys(current)) {
+                        const was = previous[id] && previous[id].usable
+                        const now = current[id].usable
+                        if (!was || !root.sameRect(was, now)) changed.push(id)
+                    }
                     const moved = root.reservedKey !== "" && key !== root.reservedKey
                     root.monitors = v
+                    root.monitorState = current
                     root.reservedKey = key
-                    if (moved) root.reapplySnap()
+                    if (moved) {
+                        // snapped windows get their exact zones back; every other
+                        // floater is mapped out from under the new bar position
+                        root.reflowFloating(previous, changed)
+                        root.reapplySnap()
+                    }
                 } catch (e) {}
             }
         }
