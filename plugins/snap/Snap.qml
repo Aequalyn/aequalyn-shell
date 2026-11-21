@@ -1,0 +1,719 @@
+// Snap flyout for floating workspaces.
+//
+// Hover the top-right (maximize) corner of a floating window and a compact grid of
+// snap arrangements appears; clicking one places that window in the highlighted
+// zone and the other floating windows of the workspace in the remaining ones.
+// Super + G opens the same flyout without the mouse.
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Hyprland
+import Quickshell.Wayland
+
+Scope {
+    id: root
+    property var theme: null
+    readonly property string font: "JetBrainsMono Nerd Font"
+
+    property bool open: false
+    property real anchorX: 0
+    property real anchorY: 0
+    property int targetMonitor: 0
+    property double openedAt: 0
+    property var layoutStatus: ({})
+    readonly property int zoneGap: 12
+    // hyprbars draws the titlebar above the geometry hyprctl reports for the
+    // window, so it has to be reserved inside each zone, not added on top.
+    property int titleHeight: 0
+    readonly property bool decorationsEnabled:
+        Quickshell.env("AEQUALYN_NO_FLOAT_DECORATIONS") !== "1"
+
+    property real cursorX: -1
+    property real cursorY: -1
+    property var clients: []
+    property var monitors: []
+    property var active: null
+    // remember the last snap so the windows can follow a bar that changes edge
+    property var lastSnap: null
+    property string reservedKey: ""
+    property double lastLayoutPoll: 0
+
+    // pointer position captured when the picker opens; it preselects the zone
+    // inside the layout, which can then be changed before applying.
+    property real pickX: -1
+    property real pickY: -1
+    property var selectedPreset: null
+    property int chosenZone: 0
+
+    // latched while a drag-to-edge gesture owns the flyout: the focused floating
+    // window is held at the snap edge and the zones are waiting for a pick.
+    property bool dragSnap: false
+    // Position latch for drag-to-top detection.
+    property bool wasAtEdge: false
+    // After a snap or a drag-initiated cancel, stay shut until the window has
+    // genuinely left the trigger line. The cooldown covers the async move that
+    // places the snapped window.
+    property bool snapArmBlocked: false
+    property double blockedAt: 0
+    property string dragAddr: ""
+
+    // normalized zones; the first one is where the focused window goes
+    readonly property var presets: [
+        { name: "Left half",    icon: "󰉝", zones: [[0, 0, .5, 1], [.5, 0, .5, 1]] },
+        { name: "Right half",   icon: "󰉞", zones: [[.5, 0, .5, 1], [0, 0, .5, 1]] },
+        { name: "Top half",     icon: "󰉟", zones: [[0, 0, 1, .5], [0, .5, 1, .5]] },
+        { name: "Bottom half",  icon: "󰉠", zones: [[0, .5, 1, .5], [0, 0, 1, .5]] },
+        { name: "Top left",     icon: "󰉡", zones: [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]] },
+        { name: "Top right",    icon: "󰉢", zones: [[.5, 0, .5, .5], [0, 0, .5, .5], [.5, .5, .5, .5], [0, .5, .5, .5]] },
+        { name: "Bottom left",  icon: "󰉣", zones: [[0, .5, .5, .5], [.5, .5, .5, .5], [0, 0, .5, .5], [.5, 0, .5, .5]] },
+        { name: "Bottom right", icon: "󰉤", zones: [[.5, .5, .5, .5], [0, .5, .5, .5], [.5, 0, .5, .5], [0, 0, .5, .5]] },
+        { name: "Left third",   icon: "󰉥", zones: [[0, 0, .3333, 1], [.3333, 0, .3334, 1], [.6667, 0, .3333, 1]] },
+        { name: "Middle third", icon: "󰉦", zones: [[.3333, 0, .3334, 1], [0, 0, .3333, 1], [.6667, 0, .3333, 1]] },
+        { name: "Right third",  icon: "󰉧", zones: [[.6667, 0, .3333, 1], [0, 0, .3333, 1], [.3333, 0, .3334, 1]] },
+        { name: "Center",       icon: "󰉨", zones: [[.2, .15, .6, .7], [0, 0, .2, 1], [.8, 0, .2, 1]] }
+    ]
+
+    function norm(a) { return String(a || "").replace(/^0x/, "").toLowerCase() }
+
+    // hyprctl reports window geometry as `at: [x, y]` and `size: [w, h]`.
+    function geom(c) {
+        const at = Array.isArray(c.at) ? c.at : [0, 0]
+        const size = Array.isArray(c.size) ? c.size : [0, 0]
+        return { x: Number(at[0]) || 0, y: Number(at[1]) || 0,
+                 w: Number(size[0]) || 0, h: Number(size[1]) || 0 }
+    }
+
+    function refresh() {
+        if (!clientsProc.running) clientsProc.running = true
+        if (!monitorsProc.running) monitorsProc.running = true
+    }
+    function refreshLayout() { layoutProc.running = true }
+
+    function activeIndex() {
+        let addr = ""
+        try { addr = norm(Hyprland.activeToplevel && Hyprland.activeToplevel.address) } catch (e) {}
+        if (!addr) {
+            const focused = root.clients.find(c => c.focused === true)
+            addr = focused ? norm(focused.address) : ""
+        }
+        if (!addr) return -1
+        return root.clients.findIndex(c => norm(c.address) === addr)
+    }
+
+    function wsId(c) {
+        const w = c.workspace
+        return String(w && typeof w === "object" ? w.id : (w || ""))
+    }
+
+    // Focus can stay on a shell surface during a title-bar drag, so pick the
+    // window physically under the pointer (smallest matching frame wins).
+    function dragCandidate() {
+        const px = root.cursorX, py = root.cursorY
+        if (px < 0 || py < 0) return null
+        let best = null, bestArea = Infinity
+        for (const c of root.clients) {
+            if (!c || c.mapped === false) continue
+            const g = root.geom(c)
+            if (px >= g.x && px <= g.x + g.w && py >= g.y - 48 && py <= g.y + g.h) {
+                const area = g.w * g.h
+                if (area < bestArea) { bestArea = area; best = c }
+            }
+        }
+        return best
+    }
+
+    // the floating windows of the focused window's workspace, in stack order
+    function floaters() {
+        const wanted = norm(root.active && root.active.address)
+        let i = wanted ? root.clients.findIndex(c => norm(c.address) === wanted) : -1
+        if (i < 0) i = activeIndex()
+        if (i < 0 || !root.clients[i]) return []
+        const focused = root.clients[i]
+        const ws = root.wsId(focused)
+        const addr = norm(focused.address)
+        const others = root.clients.filter(c => c.floating === true && root.wsId(c) === ws
+                                                 && c.mapped !== false && norm(c.address) !== addr)
+        return [focused].concat(others)
+    }
+
+    function layoutOfFocused() {
+        const ws = Hyprland.focusedWorkspace ? String(Hyprland.focusedWorkspace.id)
+                                              : String(root.layoutStatus.focused || "")
+        const map = root.layoutStatus.workspaces || {}
+        return (ws && map[ws]) || root.layoutStatus.default || ""
+    }
+    function onFloatingWorkspace() { return root.layoutOfFocused() === "floating" }
+
+    function monitorIndex(id) {
+        const wanted = Number(id)
+        for (let i = 0; i < root.monitors.length; i++)
+            if (Number(root.monitors[i].id) === wanted) return i
+        return 0
+    }
+
+    // Global geometry of the screen the flyout is on, from live monitor data.
+    function targetGeometry() {
+        const mon = root.monitors[root.targetMonitor]
+        if (mon && Number(mon.width) > 0 && Number(mon.height) > 0) {
+            // hyprctl reports physical pixels; window and cursor coordinates,
+            // and the layer surfaces, use logical pixels (physical / scale).
+            const scale = Number(mon.scale) > 0 ? Number(mon.scale) : 1
+            return { x: Number(mon.x) || 0, y: Number(mon.y) || 0,
+                     w: Number(mon.width) / scale, h: Number(mon.height) / scale }
+        }
+        const screen = Quickshell.screens[root.targetMonitor]
+        if (screen && Number(screen.width) > 0)
+            return { x: Number(screen.x) || 0, y: Number(screen.y) || 0,
+                     w: Number(screen.width), h: Number(screen.height) }
+        return { x: 0, y: 0, w: 1920, h: 1080 }
+    }
+
+    // Usable area for snap zones, in the same global logical coordinates as
+    // windows. `reserved` is [left, top, right, bottom] from the live monitor,
+    // so a bar on any side is handled without hard-coding its position.
+    function zoneGeometry() {
+        const full = root.targetGeometry()
+        const mon = root.monitors[root.targetMonitor]
+        const res = mon && Array.isArray(mon.reserved) ? mon.reserved : [0, 0, 0, 0]
+        const l = Math.max(0, Number(res[0]) || 0)
+        const t = Math.max(0, Number(res[1]) || 0)
+        const r = Math.max(0, Number(res[2]) || 0)
+        const b = Math.max(0, Number(res[3]) || 0)
+        const gap = root.zoneGap
+        return {
+            x: full.x + l + gap,
+            y: full.y + t + gap,
+            w: Math.max(100, full.w - l - r - gap * 2),
+            h: Math.max(100, full.h - t - b - gap * 2)
+        }
+    }
+
+    // Dragging up always targets the top of the usable area. A top bar shifts
+    // that line below the bar; other bar edges leave it at the monitor top. The
+    // decoration sits above the client geometry, so include its height too.
+    function snapTopLine(mon) {
+        const res = mon && Array.isArray(mon.reserved) ? mon.reserved : [0, 0, 0, 0]
+        const reservedTop = Math.max(0, Number(res[1]) || 0)
+        return Number((mon && mon.y) || 0) + reservedTop + root.titleHeight
+    }
+
+    // zones rotated so the chosen zone is first (where the focused window lands)
+    function zonesFor(preset, chosen) {
+        const z = preset.zones
+        const k = Math.max(0, Math.min(chosen || 0, z.length - 1))
+        return z.slice(k).concat(z.slice(0, k))
+    }
+
+    // The zone under the pointer when the picker opened. Each arrangement has
+    // its own zone rectangles, so this is resolved at click time.
+    function zoneAt(preset, px, py) {
+        if (!preset) return 0
+        const g = root.zoneGeometry()
+        for (let i = 0; i < preset.zones.length; i++) {
+            const z = preset.zones[i]
+            if (px >= g.x + z[0] * g.w && px <= g.x + (z[0] + z[2]) * g.w
+                && py >= g.y + z[1] * g.h && py <= g.y + (z[1] + z[3]) * g.h) return i
+        }
+        return 0
+    }
+
+    function place(win, x, y, w, h) {
+        // Resizing a floating window keeps its centre, so resize first and move
+        // afterwards. Both go in one eval so their order cannot race.
+        const cmd = 'hl.dispatch(hl.dsp.window.resize({ x = ' + w + ', y = ' + h +
+                    ', window = "' + win + '" })); ' +
+                    'hl.dispatch(hl.dsp.window.move({ x = ' + x + ', y = ' + y +
+                    ', window = "' + win + '" }))'
+        Quickshell.execDetached(["hyprctl", "eval", cmd])
+    }
+
+    // Shared by a fresh snap and by re-snapping after the usable area changes.
+    function placeZones(preset, chosen, list) {
+        const g = root.zoneGeometry()
+        const zones = zonesFor(preset, chosen)
+        for (let i = 0; i < zones.length && i < list.length; i++) {
+            const z = zones[i]
+            const zx = g.x + z[0] * g.w
+            const zy = g.y + z[1] * g.h
+            // The titlebar sits above the window geometry hyprctl reports, so
+            // reserve its height inside the rectangle the preview drew.
+            const px = Math.round(zx)
+            const py = Math.round(zy + root.titleHeight)
+            const pw = Math.round(Math.max(100, z[2] * g.w - root.zoneGap))
+            const ph = Math.round(Math.max(100, z[3] * g.h - root.zoneGap - root.titleHeight))
+            const win = "address:" + String(list[i].address || "")
+            // hyprctl's legacy `dispatch` command is not usable with a Lua
+            // config; go through the Lua dispatcher directly.
+            root.place(win, px, py, pw, ph)
+        }
+    }
+
+    function apply(preset, chosen) {
+        if (!preset || !root.active) {
+            root.snapArmBlocked = true
+            root.blockedAt = Date.now()
+            root.open = false
+            return
+        }
+        const list = floaters()
+        placeZones(preset, chosen, list)
+        root.lastSnap = {
+            preset: root.presets.indexOf(preset),
+            chosen: chosen,
+            addresses: list.map(c => String(c.address || ""))
+        }
+        root.endDragSnap()
+        root.snapArmBlocked = true
+        root.blockedAt = Date.now()
+        root.selectedPreset = null
+        root.open = false
+    }
+
+    // When the bar moves to another edge, Hyprland changes the monitor's
+    // reserved sides. Re-run the last snap so the windows follow the new area.
+    function reapplySnap() {
+        const s = root.lastSnap
+        if (!s || !(s.preset >= 0) || !s.addresses || !s.addresses.length) return
+        const preset = root.presets[s.preset]
+        if (!preset) return
+        const list = []
+        for (const a of s.addresses) {
+            const c = root.clients.find(x => norm(x.address) === norm(a) &&
+                                              x.floating === true && x.mapped !== false)
+            if (c) list.push(c)
+        }
+        if (list.length) placeZones(preset, s.chosen, list)
+    }
+
+    // A window dragged to the top of the usable area opens the arrangement
+    // picker. A new drag is the only thing that re-arms it after a snap/cancel.
+    function beginDragSnap() {
+        root.dragSnap = true
+        root.snapArmBlocked = false
+        root.blockedAt = 0
+        root.selectedPreset = null
+        root.show()
+        // Keep the zones assigned to the dragged window even after focus moves
+        // to the picker.
+        const c = root.dragCandidate()
+        if (c && c.floating === true) {
+            root.active = c
+            root.dragAddr = norm(c.address)
+        }
+    }
+
+    function endDragSnap() {
+        root.dragSnap = false
+        root.dragAddr = ""
+    }
+
+    function showAt(x, y, monitor) {
+        root.targetMonitor = Math.max(0, Math.min(monitor || 0, root.monitors.length - 1))
+        root.anchorX = x
+        root.anchorY = y
+        root.selectedPreset = null
+        root.chosenZone = 0
+        root.pickX = x
+        root.pickY = y
+        root.openedAt = Date.now()
+        root.open = true
+        refresh()
+    }
+
+    function show() {
+        refresh()
+        refreshLayout()
+        root.active = root.clients[activeIndex()] || null
+        const i = activeIndex()
+        if (i >= 0 && root.active) {
+            const mon = monitorIndex(root.active.monitor)
+            const geom = root.monitors[mon] || { x: 0, y: 0, width: 1920 }
+            showAt(root.cursorX >= 0 ? root.cursorX : Number(geom.x) + Number(geom.width) / 2,
+                   root.cursorY >= 0 ? root.cursorY : Number(geom.y) + 40, mon)
+        } else {
+            const mon = root.monitors[0] || { x: 0, y: 0, width: 1920 }
+            showAt(Number(mon.x) + Number(mon.width) / 2, Number(mon.y) + 40, 0)
+        }
+    }
+    function hide() {
+        const fromDrag = root.dragSnap
+        root.endDragSnap()
+        if (fromDrag) {
+            root.snapArmBlocked = true
+            root.blockedAt = Date.now()
+        }
+        root.selectedPreset = null
+        root.open = false
+    }
+
+    // ---- pointer -----------------------------------------------------------
+    function ask() {
+        if (!cursorProc.running) cursorProc.running = true
+    }
+
+    Timer {
+        interval: 90
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            root.ask()
+            // Layout changes made outside the shell must reach the drag check.
+            if (Date.now() - root.lastLayoutPoll > 2000) {
+                root.lastLayoutPoll = Date.now()
+                root.refreshLayout()
+            }
+            // Keep geometry fresh even while closed: a drag-to-top gesture is
+            // detected from the window's moving position before any flyout is up.
+            root.refresh()
+            const i = activeIndex()
+            const focused = i >= 0 ? root.clients[i] : null
+            const candidate = root.dragCandidate()
+            let picked = (candidate && candidate.floating === true) ? candidate : focused
+            if (root.dragSnap && root.dragAddr) {
+                const held = root.clients.find(c => norm(c.address) === root.dragAddr)
+                if (held) picked = held
+            }
+            root.active = picked || null
+            if (!root.open && root.active && root.active.floating === true && root.onFloatingWorkspace()) {
+                const g = root.geom(root.active)
+                const x = g.x, y = g.y, w = g.w, h = g.h
+                const mon = root.monitors[monitorIndex(root.active.monitor)]
+                            || { x: 0, y: 0, width: 1920, height: 1080 }
+                // Drag upward to the top of the usable area. With a top bar the
+                // line sits just below it, so the window never has to leave the
+                // screen to arm the picker.
+                const topLine = root.snapTopLine(mon)
+                const atEdge = y >= topLine - 8 && y <= topLine + 48
+                const onWindow = root.cursorX >= x - 24 && root.cursorX <= x + w + 24
+                                 && root.cursorY >= y - 40 && root.cursorY <= y + Math.min(h, 220)
+                if (root.snapArmBlocked) {
+                    // Let the snapped window finish moving, then require a real
+                    // departure from the trigger line before re-arming.
+                    if (Date.now() - root.blockedAt > 1200 && !atEdge) {
+                        root.snapArmBlocked = false
+                        root.blockedAt = 0
+                    }
+                    root.wasAtEdge = atEdge
+                } else if (atEdge && onWindow && !root.wasAtEdge) {
+                    root.wasAtEdge = true
+                    root.beginDragSnap()
+                } else {
+                    root.wasAtEdge = atEdge
+                }
+                if (!root.snapArmBlocked) {
+                    const inMax = root.cursorX >= x + w - 90 && root.cursorX <= x + w
+                                  && root.cursorY >= y && root.cursorY <= y + 34
+                    if (inMax) showAt(root.cursorX, y, monitorIndex(root.active.monitor))
+                }
+            } else if (!root.active) {
+                root.wasAtEdge = false
+            }
+            if (root.open) {
+                const g = root.targetGeometry()
+                const mx = g.x, my = g.y, mw = g.w, mh = g.h
+                const cw = Math.min(660, mw - 16)
+                const ch = Math.min(root.selectedPreset ? 208 : 120, mh - 16)
+                const left = Math.max(mx + 8, Math.min(root.anchorX - cw / 2, mx + mw - cw - 8))
+                const top = Math.max(my + 8, Math.min(root.anchorY + 18, my + mh - ch - 8))
+                const away = root.cursorX < left - 40 || root.cursorX > left + cw + 40
+                             || root.cursorY < top - 40 || root.cursorY > top + ch + 40
+
+                // The drag-originated picker waits for a click on a layout or
+                // outside the card. Other openers still auto-dismiss when the
+                // pointer walks away.
+                if (!root.dragSnap && away && root.cursorX >= 0 && Date.now() - root.openedAt > 1200) root.hide()
+                else refresh()
+            }
+        }
+    }
+
+    // ---- data --------------------------------------------------------------
+    Process {
+        id: clientsProc
+        command: ["sh", "-c", "hyprctl -j clients 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const v = JSON.parse(text || "[]")
+                    if (Array.isArray(v)) root.clients = v
+                } catch (e) {}
+            }
+        }
+    }
+    Process {
+        id: layoutProc
+        command: ["aequalyn-layout", "status"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const v = JSON.parse(text || "{}")
+                    if (v && typeof v === "object") root.layoutStatus = v
+                } catch (e) {}
+            }
+        }
+    }
+    Process {
+        id: monitorsProc
+        command: ["sh", "-c", "hyprctl -j monitors 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const v = JSON.parse(text || "[]")
+                    if (!Array.isArray(v)) return
+                    const key = JSON.stringify(v.map(m => [m.id, m.x, m.y, m.width,
+                                                           m.height, m.scale, m.reserved]))
+                    const moved = root.reservedKey !== "" && key !== root.reservedKey
+                    root.monitors = v
+                    root.reservedKey = key
+                    if (moved) root.reapplySnap()
+                } catch (e) {}
+            }
+        }
+    }
+    Process {
+        id: cursorProc
+        command: ["sh", "-c", "hyprctl -j cursorpos 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const p = JSON.parse(text || "{}")
+                    if (Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y))) {
+                        root.cursorX = Number(p.x)
+                        root.cursorY = Number(p.y)
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+    Process {
+        id: decoProc
+        command: ["sh", "-c", "hyprctl getoption plugin:hyprbars:bar_height -j 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                let h = 0
+                try {
+                    const v = JSON.parse(text || "{}")
+                    if (root.decorationsEnabled && Number(v.int) > 0) h = Number(v.int) + 2
+                } catch (e) {}
+                root.titleHeight = h
+            }
+        }
+    }
+    Connections {
+        target: Hyprland
+        ignoreUnknownSignals: true
+        function onFocusedWorkspaceChanged() { root.refresh(); root.refreshLayout() }
+        function onActiveToplevelChanged() { root.refresh() }
+    }
+    Component.onCompleted: { decoProc.running = true; root.refresh(); root.refreshLayout() }
+
+    IpcHandler {
+        target: "snap"
+        function show(): void { root.show() }
+        function hide(): void { root.hide() }
+        function toggle(): void { root.open ? root.hide() : root.show() }
+        function dragTop(): void { root.beginDragSnap() }
+    }
+
+    readonly property color c_bg: theme ? theme.bgBase : "#17171b"
+    readonly property color c_surface: theme ? theme.bgSurface : "#24242b"
+    readonly property color c_border: theme ? theme.bgBorder : "#3a3a44"
+    readonly property color c_text: theme ? theme.textPrimary : "#f2f2f5"
+    readonly property color c_muted: theme ? theme.textSecondary : "#b8b8c0"
+    readonly property color c_accent: theme ? theme.accentPrimary : "#7aa2f7"
+
+    Variants {
+        model: Quickshell.screens
+        PanelWindow {
+            id: win
+            required property var modelData
+            readonly property int index: {
+                for (let i = 0; i < Quickshell.screens.length; i++)
+                    if (Quickshell.screens[i] === modelData) return i
+                return -1
+            }
+            screen: modelData
+            visible: root.open && index === root.targetMonitor
+            color: "transparent"
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            WlrLayershell.namespace: "aequalyn_snap"
+            exclusionMode: ExclusionMode.Ignore
+            anchors { top: true; bottom: true; left: true; right: true }
+
+            // Clicking anywhere outside the card cancels the picker, including
+            // while it is waiting after a drag and no layout has been chosen.
+            MouseArea {
+                anchors.fill: parent
+                z: -1
+                onClicked: root.hide()
+            }
+
+            Rectangle {
+                id: card
+                width: Math.min(660, win.width - 16)
+                height: Math.min(root.selectedPreset ? 208 : 120, win.height - 16)
+                x: Math.max(8, Math.min(root.anchorX - (modelData.x || 0) - width / 2, win.width - width - 8))
+                y: Math.max(8, Math.min(root.anchorY - (modelData.y || 0) + 18, win.height - height - 8))
+                radius: 14
+                color: root.c_bg
+                border.width: 1
+                border.color: root.c_border
+
+                // Clicks on the card's own background must not fall through to
+                // the outside catcher and dismiss the picker.
+                MouseArea {
+                    anchors.fill: parent
+                    z: -1
+                    onClicked: {}
+                }
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 8
+
+                    Item {
+                        width: parent.width
+                        height: 16
+
+                        Text {
+                            anchors.left: parent.left
+                            text: root.selectedPreset ? root.selectedPreset.name : "Snap layouts"
+                            color: root.c_accent
+                            font.family: root.font
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+
+                        Text {
+                            anchors.right: parent.right
+                            visible: root.selectedPreset !== null
+                            text: "‹ Back"
+                            color: root.c_muted
+                            font.family: root.font
+                            font.pixelSize: 10
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    root.selectedPreset = null
+                                    root.chosenZone = 0
+                                }
+                            }
+                        }
+                    }
+
+                    Row {
+                        width: parent.width
+                        height: root.selectedPreset === null ? implicitHeight : 0
+                        visible: root.selectedPreset === null
+                        spacing: 4
+                        Repeater {
+                            model: root.presets
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                width: 48
+                                height: 32
+                                radius: 7
+                                color: hovered ? root.c_surface : "transparent"
+                                border.width: hovered ? 1 : 0
+                                border.color: root.c_accent
+                                property bool hovered: false
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onEntered: parent.hovered = true
+                                    onExited: parent.hovered = false
+                                    onClicked: {
+                                        root.selectedPreset = modelData
+                                        root.chosenZone = root.zoneAt(modelData, root.pickX, root.pickY)
+                                    }
+                                }
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 36
+                                    height: 20
+                                    color: "transparent"
+                                    Repeater {
+                                        model: modelData.zones
+                                        delegate: Rectangle {
+                                            required property var modelData
+                                            required property int index
+                                            x: modelData[0] * parent.width
+                                            y: modelData[1] * parent.height
+                                            width: modelData[2] * parent.width - 1
+                                            height: modelData[3] * parent.height - 1
+                                            radius: 1
+                                            color: index === 0 ? root.c_accent : Qt.rgba(root.c_muted.r, root.c_muted.g, root.c_muted.b, 0.18)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: parent.width
+                        height: root.selectedPreset !== null ? 116 : 0
+                        visible: root.selectedPreset !== null
+                        radius: 8
+                        color: "transparent"
+                        border.width: visible ? 1 : 0
+                        border.color: root.c_border
+
+                        Repeater {
+                            model: root.selectedPreset ? root.selectedPreset.zones : []
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                x: modelData[0] * parent.width
+                                y: modelData[1] * parent.height
+                                width: Math.max(2, modelData[2] * parent.width - 4)
+                                height: Math.max(2, modelData[3] * parent.height - 4)
+                                radius: 6
+                                color: index === root.chosenZone
+                                    ? Qt.rgba(root.c_accent.r, root.c_accent.g, root.c_accent.b, 0.45)
+                                    : Qt.rgba(root.c_surface.r, root.c_surface.g, root.c_surface.b, 0.85)
+                                border.width: index === root.chosenZone ? 3 : 1
+                                border.color: index === root.chosenZone
+                                    ? root.c_accent : root.c_border
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: String(index + 1)
+                                    color: root.c_text
+                                    font.family: root.font
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onEntered: root.chosenZone = index
+                                    onClicked: root.apply(root.selectedPreset, index)
+                                }
+                            }
+                        }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: root.selectedPreset ? "Click the area you want." : "Choose a layout, then an area."
+                        color: root.c_muted
+                        font.family: root.font
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+        }
+    }
+
+}
