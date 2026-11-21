@@ -11,6 +11,7 @@ var list = [
     { id: "notifications",  label: "Notifications",  source: "plugins/notifications/NotificationPopup.qml" },
     { id: "atelier",        label: "Themes and wallpapers", source: "plugins/atelier/Atelier.qml" },
     { id: "osd",            label: "On-screen display", source: "plugins/osd/OSD.qml" },
+    { id: "snap",           label: "Snap layouts",      source: "plugins/snap/Snap.qml" },
     { id: "monitorManager", label: "Monitor manager", source: "plugins/monitorManager/MonitorManager.qml" },
     { id: "idleInhibitor",  label: "Idle inhibitor", source: "plugins/idleInhibitor/CaffeineToggle.qml" },
     { id: "clipscape",      label: "Clipscape clipboard", source: "plugins/clipscape/Clipscape.qml" },

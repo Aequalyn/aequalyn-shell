@@ -202,12 +202,12 @@ QtObject {
     // Which shell elements are loaded. Missing entries default to all of them.
     property var enabledPlugins: [
         "bar", "appLauncher", "defaultApps", "notifications", "atelier", "osd",
-        "monitorManager", "idleInhibitor", "clipboard", "powerMenu",
+        "monitorManager", "idleInhibitor", "clipboard", "powerMenu", "snap",
         "docks", "plume", "altscape", "programsMenu", "media", "store", "settings"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps", "media", "fm", "keybinds", "store"]
+    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap"]
     property var pluginsKnown: []
     // Plugins that must never run in the supervisor's sandbox, even when marked for
     // it in Plugins.js or by a Store manifest (watchdog.json's noSandbox list ends up

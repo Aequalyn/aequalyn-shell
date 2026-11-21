@@ -22,6 +22,8 @@ var info = {
                       about: "Messages from apps, in the corner. Super + Shift + N: do not disturb." },
     osd:            { icon: "\u{F057E}", group: "screen",     keys: "",                     page: "",
                       about: "Shows the volume and brightness as they change." },
+    snap:           { icon: "\u{F0B3B}", group: "screen",     keys: "Super + G",           page: "",
+                      about: "The snap grid on floating windows, opened from the maximize corner." },
     media:          { icon: "\u{F075A}", group: "screen",     keys: "",                     page: "media",
                       about: "What is playing, on the bar: a live visualizer, the cover and the buttons." },
     appLauncher:    { icon: "\u{F003B}", group: "key",        keys: "Super + D",            page: "apps",
