@@ -948,9 +948,10 @@ Scope {
         required property bool builtIn
         readonly property var info: root.pluginInfoOf(card.modelData, card.builtIn)
         readonly property bool on: (AequalynSettings.enabledPlugins || []).indexOf(card.modelData.id) >= 0
+        height: 112
         Layout.fillWidth: true
-        Layout.preferredWidth: 0
-        Layout.minimumWidth: 0
+        Layout.preferredWidth: 180
+        Layout.minimumWidth: 120
         Layout.preferredHeight: 112
         radius: 12
         color: root.theme.bgBase
@@ -968,6 +969,8 @@ Scope {
                     Layout.preferredHeight: 26
                     radius: 7
                     color: root.theme.bgSurface
+                    border.width: 1
+                    border.color: root.theme.bgBorder
                     Text {
                         anchors.centerIn: parent
                         text: card.info.icon || "\u{F0431}"
@@ -995,9 +998,9 @@ Scope {
             Text {
                 Layout.fillWidth: true
                 text: card.info.about || card.modelData.source || ""
-                color: root.theme.textMuted
+                color: root.theme.textSecondary
                 font.family: root.sans
-                font.pixelSize: 10
+                font.pixelSize: 11
                 wrapMode: Text.WordWrap
                 maximumLineCount: 2
                 elide: Text.ElideRight
@@ -1083,7 +1086,7 @@ Scope {
                         model: 5 - pluginRow.modelData.length
                         delegate: Item {
                             Layout.fillWidth: true
-                            Layout.preferredWidth: 0
+                            Layout.preferredWidth: 180
                             Layout.preferredHeight: 112
                         }
                     }
@@ -1355,24 +1358,24 @@ Scope {
                                         delegate: ItemRow {}
                                     }
                                 }
+                                // community first, then the git form, then the shell's own
+                                // plugins; each grid is fifteen tiles: five across, three rows
+                                PluginGrid {
+                                    entriesTitle: "Community"
+                                    entriesHint: root.itemsOf("plugin").length === 0
+                                        ? "No community plugins from the Store yet. Add one with the form below."
+                                        : "Plugins installed from git, with update and remove on each tile."
+                                    entries: root.itemsOf("plugin")
+                                    builtIn: false
+                                }
+
                                 InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
 
-                                // the plugin grids follow the install form: fifteen tiles
-                                // per page, five across and three rows tall
                                 PluginGrid {
                                     entriesTitle: "Built-in"
                                     entriesHint: "These ship with Aequalyn. Turn them on or open their page here; nothing to download."
                                     entries: root.builtInPlugins
                                     builtIn: true
-                                }
-
-                                PluginGrid {
-                                    entriesTitle: "Community"
-                                    entriesHint: root.itemsOf("plugin").length === 0
-                                        ? "No community plugins from the Store yet. Add one with the form above."
-                                        : "Plugins installed from git, with update and remove on each tile."
-                                    entries: root.itemsOf("plugin")
-                                    builtIn: false
                                 }
 
                                 // Apps: the four backends, then the popular apps, each from
