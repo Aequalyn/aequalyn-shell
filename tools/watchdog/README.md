@@ -184,8 +184,15 @@ Two reload facts worth knowing when testing plugins:
 
 ## Testing the watchdog itself
 
-`aequalyn-watchdog test <id> <mode>` restarts a sandboxed plugin with a
-built-in fault, so every policy can be watched from `status`:
+Two ways to watch the protection work:
+
+* **Watchdog self-test** (Settings → Plugins): a built-in plugin that stages
+  the whole policy on itself when turned on -- crash, leak, crash, each step
+  narrated in a notification, ending turned off by the watchdog. The demo
+  runs only inside its sandbox: it refuses to do anything in-process, so it
+  can never hurt the shell it is demonstrating the protection of.
+* `aequalyn-watchdog test <id> <mode>` restarts any sandboxed plugin with a
+  built-in fault, so single policies can be watched from `status`:
 
 | mode | fault | exercised path |
 | --- | --- | --- |
@@ -196,11 +203,12 @@ built-in fault, so every policy can be watched from `status`:
 A `restart` (by hand) clears the failure window and the test mode.
 All three modes have been run for real against live sandboxed plugins,
 as has the load-error path (a plugin with a syntax error is turned off
-by the shell, in-process or Store), the Store path (a background
-manifest runs sandboxed, a key manifest stays in-process, ids that
-collide with built-ins are refused), supervisor restarts and `kill -9`
-(the shell adopts back, hosts are cleaned and respawned), concurrent
-CLI calls, and a corrupted settings file (last-known state is kept).
+by the shell after a ten-second grace, in-process or Store), the Store
+path (a background manifest runs sandboxed, a key manifest stays
+in-process, ids that collide with built-ins are refused), supervisor
+restarts and `kill -9` (the shell adopts back, hosts are cleaned and
+respawned), concurrent CLI calls, and a corrupted settings file
+(last-known state is kept).
 
 ## Notes and limits
 

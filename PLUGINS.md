@@ -65,6 +65,10 @@ being summoned by a bare `qs ipc call <id>` (only the main shell's targets answe
 that). Plugins people summon with a key, or that draw inside the shell's windows
 (bar widgets, docks, embedded panels), stay in-process and are not sandboxable.
 
+To see all of it happen on purpose, turn on **Watchdog self-test** in Settings →
+Plugins: it crashes, leaks and crashes again in its own process -- with a message
+narrating each step -- while the shell stays up, until the watchdog turns it off.
+
 ## The host singleton
 
 Other parts of the shell (a bar button, the control center) reach your plugin through

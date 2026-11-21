@@ -113,6 +113,11 @@ aequalyn-watchdog sandboxed                  # what would run out of process, an
 aequalyn-watchdog test <id> leak|hang|crash  # inject a fault and watch the policy work
 ```
 
+**See it happen**: Settings → Plugins → **Watchdog self-test**. Turned on, that
+plugin crashes, leaks and crashes again on purpose -- three narrated failures
+in its own process -- while the shell never goes down, until the watchdog
+turns it off with a notification. Turn it on again to watch once more.
+
 Started at login by `aequalyn-session-start` (and by the shell itself if it
 finds no supervisor), it adopts an already-running shell instead of
 replacing it. The full contract — failure classes, budgets
