@@ -1,6 +1,7 @@
 // About: what this is, which version, and where its settings live.
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import "root:/settings"
@@ -19,26 +20,29 @@ CcPage {
         return "aequalyn-sddm install"
     }
 
-    RowLayout {
-        spacing: 18
-        Rectangle {
-            Layout.preferredWidth: 72
-            Layout.preferredHeight: 72
-            radius: 20
-            color: Cc.theme.accentPrimary
-            Text {
-                anchors.centerIn: parent
-                text: "æ"
-                color: Cc.theme.bgBase
-                font.family: Cc.sans
-                font.pixelSize: 36
-                font.bold: true
+    // The wordmark sits on its own above the details, centred on the page.
+    ColumnLayout {
+        Layout.alignment: Qt.AlignHCenter
+        spacing: 12
+        Image {
+            Layout.alignment: Qt.AlignHCenter
+            source: "root:/assets/aequalyn-wordmark.svg"
+            sourceSize.width: 280; sourceSize.height: 69
+            Layout.preferredWidth: 280; Layout.preferredHeight: 69
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorization: 1.0
+                colorizationColor: Cc.theme.accentPrimary
             }
         }
-        ColumnLayout {
-            spacing: 2
-            Text { text: "Aequalyn"; color: Cc.theme.textPrimary; font.family: Cc.sans; font.pixelSize: 22; font.weight: Font.DemiBold }
-            Text { text: "0.1 preview  ·  Arch Linux, Hyprland and Quickshell"; color: Cc.theme.textMuted; font.family: Cc.sans; font.pixelSize: 13 }
+        Text {
+            Layout.alignment: Qt.AlignHCenter
+            text: "0.1 preview  ·  Arch Linux, Hyprland and Quickshell"
+            color: Cc.theme.textMuted
+            font.family: Cc.sans
+            font.pixelSize: 13
         }
     }
     CcSection {
