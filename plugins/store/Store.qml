@@ -163,8 +163,16 @@ Scope {
     property bool searching: false
     // the page of results shown at a time (foundAt: where it starts)
     property int foundAt: 0
-    readonly property int foundStep: 24
+    readonly property int foundStep: 15
     readonly property var foundShown: root.found.filter(r => root.foundSource === "All" || r.source === root.foundSource)
+    // the page's found apps, as rows of five, the page always holding its three rows
+    function foundRows() {
+        const shown = root.foundShown.slice(root.foundAt, root.foundAt + root.foundStep);
+        const rows = [];
+        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
+        while (rows.length < 3) rows.push([]);
+        return rows;
+    }
     function searchApps(q, more) {
         if (searchProc.running) return;
         root.foundPage = more ? root.foundPage + 1 : 1;
@@ -1219,65 +1227,98 @@ Scope {
                                         text: "Could not reach: " + Object.keys(root.foundErrors).join(", ") + ". Search again in a moment."
                                         color: root.theme.accentOrange; font.family: root.sans; font.pixelSize: 11
                                     }
+                                    // five to a row, three rows to a page, ghost slots
+                                    // keeping every page's shape -- the same view as the rest
                                     Repeater {
-                                        model: root.section === "apps" ? root.foundShown.slice(root.foundAt, root.foundAt + root.foundStep) : []
-                                        delegate: Rectangle {
-                                            id: frow
+                                        model: root.section === "apps" ? root.foundRows() : []
+                                        delegate: RowLayout {
+                                            id: foundRow
                                             required property var modelData
-                                            readonly property bool have: root.foundInstalled(modelData)
-                                            readonly property bool ready: modelData.source === "Arch" || (modelData.source === "AUR" && root.backends.yay)
-                                                || (modelData.source === "Flatpak" && root.backends.flatpak) || (modelData.source === "Snap" && root.backends.snap)
                                             Layout.fillWidth: true
-                                            implicitHeight: 54
-                                            radius: 10
-                                            color: root.theme.bgBase
-                                            RowLayout {
-                                                anchors.fill: parent
-                                                anchors.leftMargin: 10
-                                                anchors.rightMargin: 10
-                                                spacing: 10
-                                                Item {
-                                                    Layout.preferredWidth: 32; Layout.preferredHeight: 32
-                                                    Image {
-                                                        id: ficon
-                                                        anchors.fill: parent
-                                                        source: frow.modelData.icon || ""
-                                                        sourceSize.width: 64; sourceSize.height: 64
-                                                        fillMode: Image.PreserveAspectFit
-                                                        asynchronous: true
-                                                        visible: status === Image.Ready
-                                                    }
-                                                    Text {
-                                                        anchors.centerIn: parent
-                                                        visible: ficon.status !== Image.Ready
-                                                        text: "\u{F03D6}"
-                                                        color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 20
-                                                    }
-                                                }
-                                                ColumnLayout {
+                                            // an all-ghost row keeps the card height, so the page
+                                            // holds its 5x3 shape even when nothing is in it
+                                            Layout.preferredHeight: 150
+                                            spacing: 10
+                                            Repeater {
+                                                model: foundRow.modelData
+                                                delegate: Rectangle {
+                                                    id: fcard
+                                                    required property var modelData
+                                                    readonly property bool have: root.foundInstalled(modelData)
+                                                    readonly property bool ready: modelData.source === "Arch" || (modelData.source === "AUR" && root.backends.yay)
+                                                        || (modelData.source === "Flatpak" && root.backends.flatpak) || (modelData.source === "Snap" && root.backends.snap)
                                                     Layout.fillWidth: true
-                                                    spacing: 1
-                                                    RowLayout {
-                                                        spacing: 8
-                                                        Text { text: frow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.maximumWidth: 320 }
-                                                        Pill { text: frow.modelData.source === "Flatpak" ? "Flathub" : frow.modelData.source; tone: root.theme.accentPrimary }
-                                                        Pill { visible: frow.have; text: "Installed"; tone: root.theme.accentGreen }
+                                                    Layout.preferredWidth: 203
+                                                    height: 150
+                                                    radius: 12
+                                                    color: root.theme.bgBase
+                                                    border.width: 1
+                                                    border.color: root.theme.bgBorder
+                                                    ColumnLayout {
+                                                        anchors.fill: parent
+                                                        anchors.margins: 10
+                                                        spacing: 6
+                                                        RowLayout {
+                                                            spacing: 8
+                                                            Item {
+                                                                Layout.preferredWidth: 30; Layout.preferredHeight: 30
+                                                                Image {
+                                                                    id: ficon
+                                                                    anchors.fill: parent
+                                                                    source: fcard.modelData.icon || ""
+                                                                    sourceSize.width: 64; sourceSize.height: 64
+                                                                    fillMode: Image.PreserveAspectFit
+                                                                    asynchronous: true
+                                                                    visible: status === Image.Ready
+                                                                }
+                                                                Text {
+                                                                    anchors.centerIn: parent
+                                                                    visible: ficon.status !== Image.Ready
+                                                                    text: "\u{F03D6}"
+                                                                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 20
+                                                                }
+                                                            }
+                                                            ColumnLayout {
+                                                                spacing: 1
+                                                                Layout.fillWidth: true
+                                                                Text {
+                                                                    text: fcard.modelData.name
+                                                                    color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold
+                                                                    elide: Text.ElideRight; Layout.fillWidth: true
+                                                                }
+                                                                Text {
+                                                                    text: fcard.modelData.source === "Flatpak" ? "Flathub" : fcard.modelData.source
+                                                                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 10
+                                                                }
+                                                            }
+                                                        }
+                                                        Text {
+                                                            text: fcard.modelData.about
+                                                            color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11
+                                                            wrapMode: Text.WordWrap; elide: Text.ElideRight
+                                                            maximumLineCount: 2; Layout.fillWidth: true
+                                                        }
+                                                        Item { Layout.fillHeight: true }
+                                                        RowLayout {
+                                                            Layout.fillWidth: true
+                                                            spacing: 6
+                                                            Pill { visible: fcard.have; text: "Installed"; tone: root.theme.accentGreen }
+                                                            Item { Layout.fillWidth: true }
+                                                            Btn {
+                                                                visible: !fcard.have
+                                                                implicitHeight: 26
+                                                                text: fcard.ready ? "Install" : "Needs " + (fcard.modelData.source === "AUR" ? "the AUR" : fcard.modelData.source === "Flatpak" ? "Flathub" : "Snap")
+                                                                primary: fcard.ready
+                                                                enabled: fcard.ready && !terminal.running
+                                                                onClicked: root.installFound(fcard.modelData)
+                                                            }
+                                                        }
                                                     }
-                                                    Text { text: frow.modelData.about; color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11; elide: Text.ElideRight; Layout.fillWidth: true }
                                                 }
-                                                Text {
-                                                    visible: frow.modelData.popularity > 0
-                                                    text: frow.modelData.source === "AUR" ? frow.modelData.popularity + " votes"
-                                                        : Math.round(frow.modelData.popularity / 1000) + "k installs a month"
-                                                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 10
-                                                }
-                                                Btn {
-                                                    visible: !frow.have
-                                                    text: frow.ready ? "Install" : "Needs " + (frow.modelData.source === "AUR" ? "the AUR" : frow.modelData.source === "Flatpak" ? "Flathub" : "Snap")
-                                                    primary: frow.ready
-                                                    enabled: frow.ready && !terminal.running
-                                                    onClicked: root.installFound(frow.modelData)
-                                                }
+                                            }
+                                            Repeater {
+                                                model: 5 - foundRow.modelData.length
+                                                delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
                                             }
                                         }
                                     }
