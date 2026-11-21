@@ -739,6 +739,14 @@ class Supervisor:
         for pid in sorted(wanted):
             if pid in self.units:
                 continue
+            # it was turned off by the watchdog and is enabled again in
+            # settings: that is a person giving it another chance (the toggle
+            # may have come from the Settings page, not our CLI), so the
+            # disable note and the failure window are stale
+            if pid in self.disabled:
+                self.disabled.pop(pid, None)
+                self.failures.pop(pid, None)
+                log(f"{pid} enabled again in settings: watching it once more")
             source = self.plugin_source(pid)
             if not source:
                 log(f"cannot sandbox {pid}: no entry file found")
