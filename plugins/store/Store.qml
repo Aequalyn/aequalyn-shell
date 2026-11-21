@@ -399,11 +399,25 @@ Scope {
     // package, Google's own installer for Antigravity); this page lists what it
     // knows and runs it.
     property var aiTools: []
-    function loadAi() { if (!aiProc.running) aiProc.running = true; }
-    // a coding agent in a terminal: they are terminal programs
+    property string aiError: ""
+    property int aiPage: 0
+    readonly property int aiPerPage: 15
+    readonly property int aiAt: Math.min(root.aiPage, Math.max(0, Math.ceil(root.aiTools.length / root.aiPerPage) - 1)) * root.aiPerPage
+    function aiRows() {
+        const shown = root.aiTools.slice(root.aiAt, root.aiAt + root.aiPerPage);
+        const rows = [];
+        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
+        while (rows.length < 3) rows.push([]);
+        return rows;
+    }
+    function loadAi() { root.aiError = ""; if (!aiProc.running) aiProc.running = true; }
+    // a coding agent in a terminal: they are terminal programs. ~/.local/bin is
+    // where Aequalyn links them, so it is added here in case this shell was not
+    // started from the Hyprland session that puts it on PATH.
     function aiLaunch(command) {
         const q = "'" + String(command).replace(/'/g, "'\\''") + "'";
-        const script = "if command -v xdg-terminal-exec >/dev/null 2>&1; then exec xdg-terminal-exec " + q
+        const script = "export PATH=\"$HOME/.local/bin:$PATH\"; "
+            + "if command -v xdg-terminal-exec >/dev/null 2>&1; then exec xdg-terminal-exec " + q
             + "; elif command -v kitty >/dev/null 2>&1; then exec kitty sh -lc " + q
             + "; elif command -v foot >/dev/null 2>&1; then exec foot sh -lc " + q
             + "; elif command -v alacritty >/dev/null 2>&1; then exec alacritty -e sh -lc " + q
@@ -414,7 +428,16 @@ Scope {
         id: aiProc
         command: ["aequalyn-ai-tool", "list", "--json"]
         stdout: StdioCollector {
-            onStreamFinished: { try { root.aiTools = JSON.parse(text.trim()); } catch (e) { root.aiTools = []; } }
+            onStreamFinished: {
+                try { root.aiTools = JSON.parse(text.trim()); root.aiError = ""; }
+                catch (e) { root.aiTools = []; root.aiError = "Could not read the AI tool list."; }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: { if (text.trim() !== "") root.aiError = text.trim(); }
+        }
+        onExited: code => {
+            if (code !== 0 && root.aiError === "") root.aiError = "Could not read the AI tool list.";
         }
     }
 
@@ -821,6 +844,122 @@ Scope {
                     text: "Cat"
                     enabled: !root.busy
                     onClicked: card.categoryRequested()
+                }
+            }
+        }
+    }
+
+    // one AI tool: its name, state and the actions the Store can take on it.
+    // Installed agents are launchable here too; update and remove stay beside
+    // Open so the whole lifecycle is in the same card.
+    component AiCard: Rectangle {
+        id: card
+        required property var modelData
+        readonly property bool installedHere: !!modelData.installed
+        readonly property bool elsewhere: !!modelData.availableElsewhere
+        readonly property bool conflict: !!modelData.launcherConflict
+        readonly property string label: modelData.name || modelData.id || ""
+        readonly property string stateText: installedHere
+            ? "Installed · " + (modelData.version || modelData.command)
+            : elsewhere ? "Available · " + (modelData.availablePath || modelData.command)
+            : conflict ? "Command in use" : "Not installed"
+        readonly property color stateTone: installedHere ? root.theme.accentGreen
+            : elsewhere ? root.theme.accentPrimary
+            : conflict ? root.theme.accentOrange : root.theme.textMuted
+        signal openRequested()
+        signal installRequested()
+        signal updateRequested()
+        signal removeRequested()
+        height: 164
+        radius: 12
+        color: root.theme.bgBase
+        border.width: 1
+        border.color: root.theme.bgBorder
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 5
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Rectangle {
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
+                    radius: 8
+                    color: root.theme.bgSurface
+                    border.width: 1
+                    border.color: root.theme.bgBorder
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u{F06A9}"
+                        color: root.theme.accentPrimary
+                        font.family: root.mono
+                        font.pixelSize: 18
+                    }
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+                    Text {
+                        text: card.label
+                        color: root.theme.textPrimary
+                        font.family: root.sans
+                        font.pixelSize: 12
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    Text {
+                        text: card.stateText
+                        color: card.stateTone
+                        font.family: root.mono
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                text: modelData.description || ""
+                color: root.theme.textSecondary
+                font.family: root.sans
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                elide: Text.ElideRight
+                maximumLineCount: 2
+            }
+            Item { Layout.fillHeight: true }
+            Btn {
+                Layout.fillWidth: true
+                implicitHeight: 24
+                text: card.installedHere || card.elsewhere ? "Open"
+                    : card.conflict ? "In use" : "Install"
+                primary: card.installedHere || card.elsewhere || !card.conflict
+                enabled: !root.busy && (card.installedHere || card.elsewhere || !card.conflict)
+                onClicked: {
+                    if (card.installedHere || card.elsewhere) card.openRequested();
+                    else if (!card.conflict) card.installRequested();
+                }
+            }
+            RowLayout {
+                visible: card.installedHere
+                Layout.fillWidth: true
+                spacing: 6
+                Btn {
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    text: "Update"
+                    enabled: !root.busy
+                    onClicked: card.updateRequested()
+                }
+                Btn {
+                    Layout.fillWidth: true
+                    implicitHeight: 24
+                    text: "Remove"
+                    danger: true
+                    enabled: !root.busy
+                    onClicked: card.removeRequested()
                 }
             }
         }
@@ -2081,70 +2220,73 @@ Scope {
                                     }
                                 }
 
-                                // AI tools: the coding agents, each one click away
+                                // AI tools: the coding agents, in the same 5x3 card grid
                                 Box {
                                     visible: root.section === "ai"
                                     title: "Coding agents"
-                                    hint: "Most tools use their publisher's npm package; Antigravity uses Google's official installer. Sign-in stays with each provider."
+                                    hint: "Open launches the agent in a terminal. Install, update and remove go through Aequalyn's tool manager; sign-in stays with each provider."
                                     Repeater {
-                                        model: root.section === "ai" ? root.aiTools : []
-                                        delegate: ColumnLayout {
-                                            id: arow
+                                        model: root.section === "ai" ? root.aiRows() : []
+                                        delegate: RowLayout {
+                                            id: aiRow
                                             required property var modelData
-                                            required property int index
                                             Layout.fillWidth: true
-                                            spacing: 0
-                                            Rectangle { visible: arow.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
-                                            RowLayout {
-                                                Layout.fillWidth: true
-                                                Layout.leftMargin: 12
-                                                Layout.rightMargin: 12
-                                                Layout.topMargin: 9
-                                                Layout.bottomMargin: 9
-                                                spacing: 10
-                                                ColumnLayout {
-                                                    spacing: 2
+                                            Layout.preferredHeight: 164
+                                            spacing: 10
+                                            Repeater {
+                                                model: aiRow.modelData
+                                                delegate: AiCard {
                                                     Layout.fillWidth: true
-                                                    Text { text: arow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold }
-                                                    Text {
-                                                        text: (arow.modelData.description || "")
-                                                            + (arow.modelData.installed ? "  ·  " + arow.modelData.command + " " + (arow.modelData.version || "")
-                                                               : arow.modelData.availableElsewhere ? "  ·  already at " + arow.modelData.availablePath
-                                                               : arow.modelData.launcherConflict ? "  ·  the " + arow.modelData.command + " command is taken"
-                                                               : "  ·  " + arow.modelData.command)
-                                                        color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11
-                                                        wrapMode: Text.WordWrap; Layout.fillWidth: true
-                                                    }
+                                                    Layout.preferredWidth: 203
+                                                    onOpenRequested: root.aiLaunch(modelData.command)
+                                                    onInstallRequested: root.runCmd("Installing " + (modelData.name || modelData.id),
+                                                                                   ["aequalyn-ai-tool", "install", modelData.id])
+                                                    onUpdateRequested: root.runCmd("Updating " + (modelData.name || modelData.id),
+                                                                                  ["aequalyn-ai-tool", "update", modelData.id])
+                                                    onRemoveRequested: root.runCmd("Removing " + (modelData.name || modelData.id),
+                                                                                  ["aequalyn-ai-tool", "remove", modelData.id])
                                                 }
-                                                Btn {
-                                                    text: arow.modelData.installed ? "Update"
-                                                        : arow.modelData.availableElsewhere ? "Open"
-                                                        : arow.modelData.launcherConflict ? "In use" : "Install"
-                                                    primary: !arow.modelData.installed && !arow.modelData.availableElsewhere && !arow.modelData.launcherConflict
-                                                    enabled: !root.busy && (arow.modelData.installed || arow.modelData.availableElsewhere || !arow.modelData.launcherConflict)
-                                                    onClicked: {
-                                                        if (arow.modelData.installed)
-                                                            root.runCmd("Updating " + arow.modelData.name, ["aequalyn-ai-tool", "update", arow.modelData.id]);
-                                                        else if (arow.modelData.availableElsewhere)
-                                                            root.aiLaunch(arow.modelData.command);
-                                                        else if (!arow.modelData.launcherConflict)
-                                                            root.runCmd("Installing " + arow.modelData.name, ["aequalyn-ai-tool", "install", arow.modelData.id]);
-                                                    }
-                                                }
-                                                Btn {
-                                                    visible: !!arow.modelData.installed
-                                                    text: "Remove"
-                                                    danger: true
-                                                    enabled: !root.busy
-                                                    onClicked: root.runCmd("Removing " + arow.modelData.name, ["aequalyn-ai-tool", "remove", arow.modelData.id])
-                                                }
+                                            }
+                                            Repeater {
+                                                model: 5 - aiRow.modelData.length
+                                                delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
                                             }
                                         }
                                     }
+                                    RowLayout {
+                                        visible: root.aiTools.length > root.aiPerPage
+                                        spacing: 6
+                                        Item { Layout.fillWidth: true }
+                                        Text {
+                                            text: root.aiTools.length + (root.aiTools.length === 1 ? " tool" : " tools")
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "‹"
+                                            enabled: root.aiAt > 0
+                                            onClicked: root.aiPage = root.aiAt / root.aiPerPage - 1
+                                        }
+                                        Text {
+                                            text: (root.aiAt + 1) + "–" + Math.min(root.aiAt + root.aiPerPage, root.aiTools.length)
+                                                  + " of " + root.aiTools.length
+                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                        }
+                                        StepBtn {
+                                            glyph: "›"
+                                            enabled: root.aiAt + root.aiPerPage < root.aiTools.length
+                                            onClicked: root.aiPage = root.aiAt / root.aiPerPage + 1
+                                        }
+                                    }
                                     Text {
-                                        visible: root.aiTools.length === 0
+                                        visible: root.aiTools.length === 0 && root.aiError === ""
                                         text: "Reading the AI tool list…"
                                         color: root.theme.textMuted; font.family: root.sans; font.pixelSize: 11
+                                    }
+                                    Text {
+                                        visible: root.aiError !== ""
+                                        text: root.aiError
+                                        color: root.theme.accentOrange; font.family: root.sans; font.pixelSize: 11
+                                        Layout.fillWidth: true
                                     }
                                 }
 
