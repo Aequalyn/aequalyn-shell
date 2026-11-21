@@ -133,12 +133,22 @@ Scope {
     // All apps' Installed filter shows them instead of a separate apps section
     property var installedApps: []
     property string installedQuery: ""
+    // the Installed view has no search result carrying an icon, so borrow the one
+    // from the curated apps: the same dashboard icon the Popular apps grid uses
+    function installedIcon(a, apps) {
+        const keys = [a.id, a.name].map(v => (v || "").toLowerCase()).filter(v => v !== "");
+        const hit = apps.find(x => [x.id, x.name, x.pacman, x.aur, x.flatpak, x.snap]
+            .some(v => !!v && keys.indexOf(String(v).toLowerCase()) >= 0));
+        return hit && hit.icon
+            ? "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + hit.icon + ".png"
+            : "";
+    }
     readonly property var installedResults: root.installedApps
         .filter(a => root.installedQuery === "" ||
                      (a.name + " " + a.id).toLowerCase().indexOf(root.installedQuery.toLowerCase()) >= 0)
         .map(a => ({ source: a.source, id: a.id, name: a.name, version: a.version,
                      about: a.version !== "" ? "Version " + a.version : "Installed",
-                     icon: "", installed: true }))
+                     icon: root.installedIcon(a, root.apps), installed: true }))
     FileView {
         path: Qt.resolvedUrl("apps.json").toString().replace("file://", "")
         onLoaded: { try { root.apps = JSON.parse(text()); } catch (e) { root.apps = []; } }
