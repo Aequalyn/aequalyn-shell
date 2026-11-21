@@ -266,7 +266,7 @@ Item {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.margins: 10
-                        height: Math.min(width * 0.5625, Math.max(24, cell.height - 52))
+                        height: Math.min(width * 0.5625, Math.max(24, cell.height - 58))
                         theme: pane.theme
                         boxes: cell.ghost ? [] : cell.entry.art
                         on: cell.active || cell.selected
@@ -276,7 +276,8 @@ Item {
                         anchors.right: parent.right
                         anchors.top: tileArt.bottom
                         anchors.leftMargin: 11
-                        anchors.rightMargin: 11
+                        // leave room for the cycle dot at the bottom right
+                        anchors.rightMargin: 30
                         anchors.topMargin: 6
                         spacing: 1
                         Text {
@@ -284,16 +285,19 @@ Item {
                             text: cell.ghost ? "" : cell.entry.name
                             color: pane.theme.textPrimary
                             font.family: "sans-serif"
-                            font.pixelSize: 13
+                            font.pixelSize: 12
                             font.bold: cell.active
                             elide: Text.ElideRight
+                            maximumLineCount: 1
                         }
                         Text {
                             width: parent.width
                             text: cell.ghost ? "" : cell.entry.group
                             color: pane.theme.textMuted
                             font.family: "sans-serif"
-                            font.pixelSize: 11
+                            font.pixelSize: 10
+                            elide: Text.ElideRight
+                            maximumLineCount: 1
                         }
                     }
 
