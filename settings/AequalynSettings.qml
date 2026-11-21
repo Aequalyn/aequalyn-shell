@@ -598,11 +598,12 @@ QtObject {
         if (key === "themeApps" || key === "themeMode")
             root.pendingRetheme = true
         if (key === "themeBrowser") {
-            // Publish/withdraw the browser policy as soon as the toggle changes.
-            // --prompt lets the helper ask for sudo once, then installs a narrow
-            // passwordless rule so later theme changes need no interaction.
+            // Publish/withdraw the browser policy as soon as the toggle
+            // changes -- through the root gate, whose approval window is
+            // the only password prompt the desktop ever shows (the script
+            // stages the colour and calls exec-root itself).
             root.browserProc.command = ["sh", "-c",
-                'aequalyn-browser-theme ' + (value ? "on --prompt" : "off --prompt") + ' >/dev/null 2>&1 || true']
+                'aequalyn-browser-theme ' + (value ? "on" : "off") + ' >/dev/null 2>&1 || true']
             root.browserProc.running = true
         }
         if (root.powerKeys.indexOf(key) >= 0)

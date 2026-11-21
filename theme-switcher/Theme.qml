@@ -378,7 +378,10 @@ Singleton {
     }
 
     // Keep the browser policy in step with the bar's base colour that was just
-    // applied. Called at startup too, so never prompt: the toggle asks once.
+    // applied. Called at startup too: the script asks nothing when the colour
+    // already matches, and when it differs the gate's window opens -- that is
+    // the cost of no passwordless side doors, and it is the same door every
+    // plugin uses.
     function applyBrowserTheme(t) {
         browserProc.command = ["sh", "-c",
             'aequalyn-browser-theme sync --color "$1" >/dev/null 2>&1 || true',

@@ -158,11 +158,6 @@ ROOT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,39}$")
 ROOT_LAUNCHERS = {"sudo", "pkexec", "su", "doas"}
 SHELL_LAUNCHERS = {"sh", "bash", "dash", "ash", "zsh", "fish", "ksh"}
 PASS_THROUGH = {"env", "nohup", "setsid", "xargs", "nice", "stdbuf"}
-# first-party helpers the shell itself still runs with sudo -A (About's
-# theme pack, LockScreens' SDDM, the browser theme policy): the shell unit
-# is trusted code, so its own known helpers are excused; a sandboxed
-# plugin unit gets no excuse at all.
-SHELL_ROOT_EXCUSED = ("aequalyn-sddm", "aequalyn-browser-theme")
 
 
 def clean_root_actions(raw, where: str) -> list[dict]:
@@ -1271,15 +1266,14 @@ class Supervisor:
                 if not looks_like_escalation(eargv):
                     continue
                 cmd = " ".join(eargv)[:300]
-                if unit.kind == "shell" and self.excused_shell_root(epid, eargv):
-                    continue
                 kill_tree(epid)
                 log(f"{unit.name} tried to run as root outside the gate: {cmd}")
                 if unit.kind == "shell":
                     notify("The shell tried to run as root",
                            f"Something inside the shell started:\n  {cmd}\n"
-                           "It was stopped. If you did not expect this, look for "
-                           "what changed in your shell configuration.")
+                           "It was stopped. First-party flows go through the gate "
+                           "now, so this is either a leftover or something to look "
+                           "into -- check what changed in your shell.")
                 else:
                     n = self.failures_in_window(unit.name) + 1
                     notify("Plugin stopped: it tried to run as root",
@@ -1291,28 +1285,7 @@ class Supervisor:
                 self.record_failure(unit, "tried to run as root", cmd)
                 break          # one finding per unit per scan is enough
 
-    def excused_shell_root(self, epid: int, eargv: list[str]) -> bool:
-        """The shell unit is trusted first-party code: its own two known
-        helpers (About's theme pack, LockScreens' SDDM, the browser theme
-        policy) still use sudo -A. A sandboxed plugin unit gets no excuse."""
-        chain = " ".join(eargv)
-        p = epid
-        for _ in range(3):          # the helper may sit under an `sh -c`
-            if any(name in chain for name in SHELL_ROOT_EXCUSED):
-                return True
-            try:
-                with open(f"/proc/{p}/status", encoding="utf-8") as f:
-                    for line in f:
-                        if line.startswith("PPid:"):
-                            p = int(line.split()[1])
-                            break
-            except (OSError, ValueError, IndexError):
-                return False
-            if p <= 1:
-                return False
-            up = read_cmdline(p)
-            chain = " ".join(up) if up else ""
-        return False
+    # ------------------------------------------------------------ socket --
 
     def handle(self, conn: socket.socket, req: dict, peer: tuple[int, int]) -> dict:
         cmd = str(req.get("cmd", ""))

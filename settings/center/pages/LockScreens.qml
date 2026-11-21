@@ -109,19 +109,15 @@ CcPage {
 
     function shellQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
 
-    // Run the privileged SDDM helper without pkexec: sudo's own askpass prompt
-    // (zenity) is reliable even where the polkit agent is not.
+    // Run the privileged SDDM helper through the root gate: the approval
+    // window opens (the control center's own declared action), the password
+    // goes to sudo on a pipe. No sudo, no askpass, no polkit -- and the
+    // window is a layer surface, so Settings can stay right where it is.
     function privilegedCommand(subcommand) {
-        const home = Quickshell.env("HOME")
-        return "DISPLAY=" + shellQuote(Quickshell.env("DISPLAY") || "")
-             + " WAYLAND_DISPLAY=" + shellQuote(Quickshell.env("WAYLAND_DISPLAY") || "")
-             + " XDG_RUNTIME_DIR=" + shellQuote(Quickshell.env("XDG_RUNTIME_DIR") || "")
-             + " SUDO_ASKPASS=" + shellQuote(home + "/.local/bin/aequalyn-askpass")
-             + " sudo -A " + shellQuote(home + "/.local/bin/aequalyn-sddm") + " " + subcommand
+        return "aequalyn-sddm " + subcommand
     }
     function privilegedSession(subcommand) {
-        return "qs ipc call aequalyn closeSettings; sleep 0.3; " + privilegedCommand(subcommand)
-             + "; rc=$?; qs ipc call aequalyn openSettings; exit $rc"
+        return privilegedCommand(subcommand)
     }
 
     function previewTheme(name) {

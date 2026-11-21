@@ -12,15 +12,11 @@ CcPage {
     readonly property var u: Cc.updates
 
     function shellQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
-    // Install the optional theme pack through sudo's askpass prompt: the polkit
-    // agent crashes on some GPU/VM setups, so pkexec cannot be used here.
+    // Install the optional theme pack through the root gate: the approval
+    // window opens (the control center's own declared action), and the
+    // password goes to sudo on a pipe. No sudo, no askpass, no polkit.
     function installCommand() {
-        const home = Quickshell.env("HOME")
-        return "DISPLAY=" + shellQuote(Quickshell.env("DISPLAY") || "")
-             + " WAYLAND_DISPLAY=" + shellQuote(Quickshell.env("WAYLAND_DISPLAY") || "")
-             + " XDG_RUNTIME_DIR=" + shellQuote(Quickshell.env("XDG_RUNTIME_DIR") || "")
-             + " SUDO_ASKPASS=" + shellQuote(home + "/.local/bin/aequalyn-askpass")
-             + " sudo -A " + shellQuote(home + "/.local/bin/aequalyn-sddm") + " install"
+        return "aequalyn-sddm install"
     }
 
     RowLayout {
