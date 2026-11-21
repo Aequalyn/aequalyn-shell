@@ -30,6 +30,7 @@ for f in shell.qml PluginManager.qml Plugins.js PLUGINS.md README.md \
 done
 mkdir -p "$LIVE/plugins/watchdog" "$LIVE/tools/watchdog/host"
 cp "$REPO/plugins/watchdog/Watchdog.qml" "$LIVE/plugins/watchdog/"
+cp "$REPO/plugins/watchdog/EscalationWindow.qml" "$LIVE/plugins/watchdog/"
 cp "$REPO/tools/watchdog/aequalyn-watchdog" "$LIVE/tools/watchdog/"
 cp "$REPO/tools/watchdog/host/shell.qml" "$LIVE/tools/watchdog/host/"
 cp "$REPO/tools/watchdog/README.md" "$LIVE/tools/watchdog/"

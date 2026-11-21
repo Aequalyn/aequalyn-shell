@@ -13,7 +13,14 @@ shell down with it. This program is the missing watchdog:
     in Settings (a message in the corner says why) instead of being
     restarted forever;
   * it enforces a RAM budget per process, sampling /proc, children
-    included.
+    included;
+  * it is the one gate to root: a plugin that wants to run as root must
+    DECLARE the actions up front (needsRoot in its manifest, the command
+    pinned there), ask through `aequalyn-watchdog exec-root`, and have the
+    user approve each run in a window that names the plugin and the exact
+    command. Anything that looks like sudo/pkexec outside the gate is
+    stopped and counted like any other fault. It refuses to run as root
+    itself: the whole chain is a user session, by design.
 
 Which plugins are sandboxed:
   * built-ins marked `sandbox: true` in Plugins.js;
@@ -37,11 +44,14 @@ import errno
 import json
 import os
 import re
+import secrets
 import shutil
 import signal
 import socket
+import struct
 import subprocess
 import sys
+import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -100,6 +110,8 @@ DEFAULTS = {
     "backoffMaxSeconds": 30,    # cap for the 2s, 4s, 8s... restart delay
     "forceSandbox": [],         # ids to sandbox even when not marked
     "noSandbox": [],            # ids to never sandbox (wins over everything)
+    "escalationTimeoutSeconds": 120,   # how long the approval window waits
+    "escalationCommandTimeoutSeconds": 300,  # how long a sanctioned root command may run
 }
 
 
@@ -128,6 +140,258 @@ def read_json(path: Path, fallback):
             return json.load(f)
     except (OSError, ValueError):
         return fallback
+
+
+# ------------------------------------------------- root: the one gate ----
+# A plugin may run as root ONLY through the gate here: it declares its
+# actions up front (needsRoot in its manifest -- plugin.json for a Store
+# plugin, a needsRoot: [...] line in Plugins.js for a built-in), and the
+# only door is `aequalyn-watchdog exec-root <actionId>`, which pins the
+# caller by its real process (SO_PEERCRED), asks the shell to show the
+# escalation window naming the plugin and the exact command, and then runs
+# the declared argv with `sudo -S` -- password on stdin, never in argv.
+# A plugin that tries sudo/pkexec on its own is caught at runtime and
+# treated like any other fault (killed, counted, turned off).
+
+ROOT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,39}$")
+# what counts as a privilege launcher in the process tree (level 2)
+ROOT_LAUNCHERS = {"sudo", "pkexec", "su", "doas"}
+SHELL_LAUNCHERS = {"sh", "bash", "dash", "ash", "zsh", "fish", "ksh"}
+PASS_THROUGH = {"env", "nohup", "setsid", "xargs", "nice", "stdbuf"}
+# first-party helpers the shell itself still runs with sudo -A (About's
+# theme pack, LockScreens' SDDM, the browser theme policy): the shell unit
+# is trusted code, so its own known helpers are excused; a sandboxed
+# plugin unit gets no excuse at all.
+SHELL_ROOT_EXCUSED = ("aequalyn-sddm", "aequalyn-browser-theme")
+
+
+def clean_root_actions(raw, where: str) -> list[dict]:
+    """Validate a manifest's needsRoot into safe actions, or [] if broken.
+    The command is what the daemon will run AS ROOT: a fixed argv straight
+    from the manifest, never something the plugin passes in, never a shell."""
+    out: list[dict] = []
+    if not isinstance(raw, list):
+        return out
+    for a in raw:
+        if not isinstance(a, dict):
+            continue
+        aid, label, about = a.get("id", ""), str(a.get("label", ""))[:128], str(a.get("about", ""))[:512]
+        cmd = a.get("command", [])
+        if not ROOT_ID_RE.match(str(aid)):
+            continue
+        if not isinstance(cmd, list) or not (1 <= len(cmd) <= 64):
+            continue
+        argv: list[str] = []
+        for x in cmd:
+            s = str(x)
+            if not s or len(s) > 512 or "\x00" in s or "\n" in s:
+                argv = []
+                break
+            argv.append(s)
+        if not argv or os.path.basename(argv[0]) in ROOT_LAUNCHERS:
+            continue          # the gate adds sudo itself; nesting it is nonsense
+        out.append({"id": str(aid), "label": label or str(aid), "command": argv, "about": about})
+    seen: set[str] = set()
+    clean = []
+    for a in out:
+        if a["id"] in seen:
+            continue
+        seen.add(a["id"])
+        clean.append(a)
+    if len(clean) > 8:
+        log(f"{where}: more than 8 root actions declared, keeping the first 8")
+        clean = clean[:8]
+    return clean
+
+
+def store_root_actions(pid: str) -> list[dict]:
+    """Root actions declared in a Store plugin's plugin.json."""
+    mf = STORE_DIR / pid / "plugin.json"
+    d = read_json(mf, None)
+    return clean_root_actions(d.get("needsRoot") if isinstance(d, dict) else None, str(mf))
+
+
+def builtin_root_actions() -> dict[str, list[dict]]:
+    """{builtin id: actions} from needsRoot: [...] lines in Plugins.js.
+    No built-in declares any today; the door is here for when one does."""
+    try:
+        text = PLUGINS_JS.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    out: dict[str, list[dict]] = {}
+    for line in text.splitlines():
+        i = line.find("needsRoot:")
+        if i < 0:
+            continue
+        m = re.search(r'id:\s*"([^"]+)"', line)
+        j = line.find("[", i)
+        if not m or j < 0:
+            continue
+        depth, end = 0, -1
+        for k in range(j, len(line)):
+            if line[k] == "[":
+                depth += 1
+            elif line[k] == "]":
+                depth -= 1
+                if depth == 0:
+                    end = k
+                    break
+        if end < 0:
+            continue
+        try:
+            raw = json.loads(line[j:end + 1])
+        except ValueError:
+            continue
+        acts = clean_root_actions(raw, "Plugins.js")
+        if acts:
+            out[m.group(1)] = acts
+    return out
+
+
+def root_actions_of(pid: str) -> list[dict]:
+    if (STORE_DIR / pid / "plugin.json").is_file():
+        return store_root_actions(pid)
+    return builtin_root_actions().get(pid, [])
+
+
+def allowed_root() -> dict:
+    """{plugin id: {action id: true}} the user said 'always' to, from
+    settings.json (only for labelling the window; consent is cosmetic)."""
+    d = read_json(SETTINGS_FILE, {})
+    out = {}
+    if isinstance(d, dict) and isinstance(d.get("rootAllowed"), dict):
+        for pid, acts in d["rootAllowed"].items():
+            if isinstance(acts, dict):
+                out[str(pid)] = {str(a) for a, v in acts.items() if v is True}
+    return out
+
+
+# ------------------------------------------------ process tree walking ----
+
+def read_cmdline(pid: int) -> list[str] | None:
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            args = f.read().decode("utf-8", "replace").split("\0")
+        return [a for a in args if a] or None
+    except OSError:
+        return None
+
+
+def children_of(pid: int) -> list[int]:
+    try:
+        with open(f"/proc/{pid}/task/{pid}/children", encoding="utf-8") as f:
+            return [int(x) for x in f.read().split()]
+    except (OSError, ValueError):
+        return []
+
+
+def tree_processes(pid: int, cap: int = 512) -> list[tuple[int, list[str]]]:
+    """The pid and argv of a process and every descendant (a plugin's
+    `sh -c` helpers included). Reads /proc only; nothing is spawned."""
+    out: list[tuple[int, list[str]]] = []
+    seen: set[int] = set()
+    stack = [pid]
+    while stack and len(out) < cap:
+        p = stack.pop()
+        if p in seen:
+            continue
+        seen.add(p)
+        argv = read_cmdline(p)
+        if argv is not None:
+            out.append((p, argv))
+        stack.extend(children_of(p))
+    return out
+
+
+def kill_tree(pid: int) -> None:
+    """SIGKILL a process and everything under it, deepest first."""
+    stack = [pid]
+    allp: list[int] = []
+    seen: set[int] = set()
+    while stack:
+        p = stack.pop()
+        if p in seen:
+            continue
+        seen.add(p)
+        allp.append(p)
+        stack.extend(children_of(p))
+    for p in reversed(allp):
+        try:
+            os.kill(p, signal.SIGKILL)
+        except OSError:
+            pass
+
+
+def ancestors(pid: int, cap: int = 64) -> list[int]:
+    """The pid and every parent up to init (cap on depth). Used to pin a
+    socket caller to the supervised unit it really belongs to."""
+    out: list[int] = []
+    p = pid
+    for _ in range(cap):
+        out.append(p)
+        try:
+            with open(f"/proc/{p}/status", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("PPid:"):
+                        p = int(line.split()[1])
+                        break
+        except (OSError, ValueError, IndexError):
+            break
+        if p <= 1:
+            break
+    return out
+
+
+SO_PEERCRED = 17          # linux; who is on the other end, from the kernel
+
+
+def peer_pid(conn: socket.socket) -> tuple[int, int]:
+    """(pid, uid) of the process that opened the other end of this socket.
+    It cannot be lied about: a plugin cannot name a different owner."""
+    try:
+        data = conn.getsockopt(socket.SOL_SOCKET, SO_PEERCRED, struct.calcsize("3i"))
+        pid, uid, _gid = struct.unpack("3i", data)
+        return pid, uid
+    except OSError:
+        return 0, -1
+
+
+def looks_like_escalation(argv: list[str]) -> bool:
+    """Best-effort: does this argv look like a run at root (sudo, pkexec,
+    su, doas) -- directly, through a shell script argument, or behind
+    env/timeout-style pass-throughs? Pure heuristics over /proc cmdlines."""
+    if not argv:
+        return False
+    base = os.path.basename(argv[0])
+    if base in ROOT_LAUNCHERS:
+        return True
+    if base in SHELL_LAUNCHERS:
+        for a in argv[1:]:
+            for seg in re.split(r"[;&|\n]|\$\(", a):
+                toks = seg.strip().split()
+                if toks and os.path.basename(toks[0]) in ROOT_LAUNCHERS:
+                    return True
+        return False
+    if base in PASS_THROUGH:
+        for a in argv[1:]:
+            if a.startswith("-") or ("=" in a and not a.startswith("/")):
+                continue          # a flag, or VAR=value
+            if os.path.basename(a) in ROOT_LAUNCHERS:
+                return True
+        return False
+    if base == "timeout":
+        past_duration = False
+        for a in argv[1:]:
+            if a.startswith("-"):
+                continue
+            if not past_duration:
+                past_duration = True       # the first bare word is the duration
+                continue
+            # only the command position counts: `timeout 10 grep sudo file`
+            # greps for a word; it does not run sudo
+            return os.path.basename(a) in ROOT_LAUNCHERS
+        return False
+    return False
 
 
 # ------------------------------------------------------- the sandbox set ----
@@ -373,6 +637,9 @@ class Supervisor:
         self.hb_at = 0.0
         self.shutting_down = False
         self.listen: socket.socket | None = None
+        # the escalation gate: requestId -> {event, decision, password, unit}
+        self.esc_lock = threading.Lock()
+        self.pending: dict[str, dict] = {}
 
     # ------------------------------------------------------------- utils --
 
@@ -785,6 +1052,7 @@ class Supervisor:
                 if e.errno != errno.EINTR:
                     return
                 continue
+            req: dict = {}
             try:
                 conn.settimeout(5)
                 data = b""
@@ -793,7 +1061,16 @@ class Supervisor:
                     if not chunk:
                         break
                     data += chunk
-                reply = self.handle(json.loads(data.decode("utf-8", "replace") or "{}"))
+                req = json.loads(data.decode("utf-8", "replace") or "{}")
+                peer = peer_pid(conn)
+                # exec-root runs in its own thread: it waits out the whole
+                # approval window, and the loop must keep answering
+                # heartbeats and CLI calls while it does
+                if req.get("cmd") == "exec-root":
+                    threading.Thread(target=self.handle_exec_root,
+                                     args=(conn, peer, req), daemon=True).start()
+                    continue
+                reply = self.handle(conn, req, peer)
                 conn.sendall((json.dumps(reply) + "\n").encode("utf-8"))
             except (OSError, ValueError) as e:
                 reply = {"ok": False, "error": f"bad request: {e}"}
@@ -802,14 +1079,274 @@ class Supervisor:
                 except OSError:
                     pass
             finally:
-                try:
-                    conn.close()
-                except OSError:
-                    pass
+                if req.get("cmd") != "exec-root":
+                    try:
+                        conn.close()
+                    except OSError:
+                        pass
 
-    def handle(self, req: dict) -> dict:
+    def unit_of_caller(self, peer: tuple[int, int]) -> Unit | None:
+        """Which supervised unit the socket caller belongs to, by its real
+        process chain (SO_PEERCRED + /proc): a plugin cannot claim to be
+        another one. None = not one of ours (a terminal, an orphan)."""
+        pid, uid = peer
+        if uid != os.getuid() or pid <= 0:
+            return None
+        chain = set(ancestors(pid))
+        for unit in self.units.values():
+            if unit.current_pid and unit.current_pid in chain:
+                return unit
+        return None
+
+    # ---------------------------------------------------- the root gate --
+
+    def esc_reply(self, conn: socket.socket, reply: dict) -> None:
+        try:
+            conn.settimeout(None)
+            conn.sendall((json.dumps(reply) + "\n").encode("utf-8"))
+        except OSError:
+            pass
+        try:
+            conn.close()
+        except OSError:
+            pass
+
+    def label_of(self, pid: str) -> str:
+        """What the shell calls this plugin, for the window and the logs."""
+        out = self.shell_ipc(["health"])
+        try:
+            rows = json.loads(out).get("plugins", [])
+            for r in rows:
+                if r.get("id") == pid and r.get("label"):
+                    return str(r["label"])
+        except (ValueError, AttributeError, TypeError):
+            pass
+        return pid
+
+    def handle_exec_root(self, conn: socket.socket, peer: tuple[int, int], req: dict) -> None:
+        """The whole escalation flow, on its own thread (it waits out the
+        approval window). The argv that runs is pinned in the plugin's
+        manifest; the caller is pinned by its process; the user is asked
+        through the shell's window; the password goes to sudo on stdin."""
+        args = req.get("args", [])
+        claim = str(args[0]) if args else ""       # only used by in-process built-ins
+        action_id = str(args[1]) if len(args) > 1 else ""
+        try:
+            unit = self.unit_of_caller(peer)
+            if unit is None:
+                self.esc_reply(conn, {"ok": False,
+                    "error": "not a supervised process: the gate is for plugins "
+                             "(a terminal already has sudo)"})
+                return
+            if unit.kind == "plugin":
+                plugin_id = unit.name          # the kernel says who is asking
+            else:
+                # the shell unit is one process: an in-process built-in names
+                # itself, and that is trusted the same way all shell code is
+                plugin_id = claim
+                if not plugin_id or not builtin_root_actions().get(plugin_id):
+                    self.esc_reply(conn, {"ok": False,
+                        "error": "no built-in declares root actions"})
+                    return
+            actions = root_actions_of(plugin_id)
+            act = next((a for a in actions if a["id"] == action_id), None)
+            if act is None:
+                self.esc_reply(conn, {"ok": False,
+                    "error": f"'{plugin_id}' declares no root action '{action_id}' "
+                             "(the command must be pinned in the manifest, not passed in)"})
+                return
+            with self.esc_lock:
+                # one pending request per unit: a plugin cannot stack
+                # windows until someone clicks Allow in a hurry
+                if any(p["unit"] == unit.name for p in self.pending.values()):
+                    rid = ""
+                else:
+                    rid = f"{time.time_ns():x}-{secrets.token_hex(4)}"
+                    pend = {"unit": unit.name, "event": threading.Event(),
+                            "decision": "", "password": ""}
+                    self.pending[rid] = pend
+            if not rid:
+                # the reply is sent outside the lock: socket IO must never
+                # hold up the supervisor (a stuck client would otherwise
+                # freeze every decide coming through the main loop)
+                self.esc_reply(conn, {"ok": False,
+                    "error": "another root request from this plugin is already waiting"})
+                return
+            cmd_text = " ".join(act["command"])
+            log(f"escalation {rid}: '{plugin_id}' asks to run as root: {cmd_text}")
+            allowed = action_id in allowed_root().get(plugin_id, set())
+            payload = json.dumps({
+                "requestId": rid, "plugin": plugin_id,
+                "label": self.label_of(plugin_id),
+                "version": self.store_version(plugin_id),
+                "source": "store" if (STORE_DIR / plugin_id / "plugin.json").is_file() else "built-in",
+                "action": action_id, "actionLabel": act["label"],
+                "command": cmd_text, "about": act["about"], "allowed": allowed,
+            })
+            if self.shell_ipc(["escalationRequest", payload]) is None:
+                with self.esc_lock:
+                    self.pending.pop(rid, None)
+                log(f"escalation {rid}: denied -- the shell could not be reached to ask")
+                self.esc_reply(conn, {"ok": False,
+                    "error": "the shell could not be reached, so no one could approve"})
+                return
+            if not pend["event"].wait(timeout=float(self.conf["escalationTimeoutSeconds"])):
+                with self.esc_lock:
+                    self.pending.pop(rid, None)
+                log(f"escalation {rid}: denied by timeout")
+                self.esc_reply(conn, {"ok": False, "error": "denied: no answer in time"})
+                return
+            with self.esc_lock:
+                self.pending.pop(rid, None)
+            decision = pend["decision"]
+            if decision == "deny":
+                log(f"escalation {rid}: denied by the user")
+                self.esc_reply(conn, {"ok": False, "error": "denied by the user"})
+                return
+            if decision == "always":
+                # consent remembered; the window still opens next time,
+                # because sudo still needs the password
+                log(f"escalation {rid}: allowed, always, for '{action_id}'")
+            else:
+                log(f"escalation {rid}: allowed once")
+            out = self.run_sanctioned(act["command"], pend["password"])
+            log(f"escalation {rid}: ran '{cmd_text}', exit {out.get('code')}")
+            self.esc_reply(conn, {"ok": out.get("code") == 0, **out})
+        except Exception as e:              # never take the daemon down
+            log(f"escalation flow failed: {e!r}")
+            try:
+                self.esc_reply(conn, {"ok": False, "error": f"internal error: {e}"})
+            except OSError:
+                pass
+
+    def store_version(self, pid: str) -> str:
+        d = read_json(STORE_DIR / pid / "plugin.json", None)
+        return str(d.get("version", "")) if isinstance(d, dict) else ""
+
+    def run_sanctioned(self, argv: list[str], password: str) -> dict:
+        """The one place root is ever handed out: `sudo -S` with the
+        password on stdin (never argv), a timeout, and the command pinned
+        in the manifest. Runs as a child of the daemon, never of a unit,
+        so the escalation scan never sees its own sanctioned runs."""
+        try:
+            proc = subprocess.Popen(
+                ["sudo", "-S", "-p", "", "--"] + argv,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, text=True, start_new_session=True)
+        except OSError as e:
+            return {"code": 127, "out": "", "err": f"could not run sudo: {e}"}
+        try:
+            try:
+                proc.stdin.write((password or "") + "\n")
+                proc.stdin.flush()
+            except (OSError, ValueError):
+                pass                     # sudo may not even need a password
+            try:
+                proc.stdin.close()
+            except OSError:
+                pass
+            out, err = proc.communicate(
+                timeout=int(self.conf["escalationCommandTimeoutSeconds"]))
+        except subprocess.TimeoutExpired:
+            kill_tree(proc.pid)
+            proc.wait()
+            return {"code": 124, "out": "", "err": "the root command timed out"}
+        return {"code": proc.returncode,
+                "out": (out or "")[:4096], "err": (err or "")[:4096]}
+
+    def check_escalations(self) -> None:
+        """Level 2: anything under a supervised unit that looks like a run
+        at root (sudo, pkexec, su, doas) and is not the gate itself. The
+        gate's own sudo is a child of the daemon, so it is never in a
+        unit's tree: every hit here went around the gate."""
+        for unit in list(self.units.values()):
+            if not unit.alive:
+                continue
+            pid = unit.current_pid
+            if not pid:
+                continue
+            for epid, eargv in tree_processes(pid):
+                if not looks_like_escalation(eargv):
+                    continue
+                cmd = " ".join(eargv)[:300]
+                if unit.kind == "shell" and self.excused_shell_root(epid, eargv):
+                    continue
+                kill_tree(epid)
+                log(f"{unit.name} tried to run as root outside the gate: {cmd}")
+                if unit.kind == "shell":
+                    notify("The shell tried to run as root",
+                           f"Something inside the shell started:\n  {cmd}\n"
+                           "It was stopped. If you did not expect this, look for "
+                           "what changed in your shell configuration.")
+                else:
+                    n = self.failures_in_window(unit.name) + 1
+                    notify("Plugin stopped: it tried to run as root",
+                           f"'{self.label_of(unit.name)}' started:\n  {cmd}\n"
+                           "It was stopped. A plugin must declare its root actions "
+                           f"(needsRoot) and go through the approval window. "
+                           f"Attempt {n} of {int(self.conf['maxFailures'])}; after "
+                           "that it is turned off.")
+                self.record_failure(unit, "tried to run as root", cmd)
+                break          # one finding per unit per scan is enough
+
+    def excused_shell_root(self, epid: int, eargv: list[str]) -> bool:
+        """The shell unit is trusted first-party code: its own two known
+        helpers (About's theme pack, LockScreens' SDDM, the browser theme
+        policy) still use sudo -A. A sandboxed plugin unit gets no excuse."""
+        chain = " ".join(eargv)
+        p = epid
+        for _ in range(3):          # the helper may sit under an `sh -c`
+            if any(name in chain for name in SHELL_ROOT_EXCUSED):
+                return True
+            try:
+                with open(f"/proc/{p}/status", encoding="utf-8") as f:
+                    for line in f:
+                        if line.startswith("PPid:"):
+                            p = int(line.split()[1])
+                            break
+            except (OSError, ValueError, IndexError):
+                return False
+            if p <= 1:
+                return False
+            up = read_cmdline(p)
+            chain = " ".join(up) if up else ""
+        return False
+
+    def handle(self, conn: socket.socket, req: dict, peer: tuple[int, int]) -> dict:
         cmd = str(req.get("cmd", ""))
         args = req.get("args", [])
+        # plugins may not steer the supervisor itself: a unit's process may
+        # only ever ask for escalations (exec-root) and read status. The
+        # shell unit may -- its code is ours.
+        if cmd in ("restart", "restart-all", "enable", "disable", "test", "stop-daemon"):
+            unit = self.unit_of_caller(peer)
+            if unit is not None and unit.kind == "plugin":
+                return {"ok": False,
+                        "error": "a plugin cannot control the supervisor "
+                                 "(only request escalations)"}
+        if cmd == "decide":
+            # only the shell's window may answer: the decide CLI is its
+            # child, so the peer resolves to the shell unit. A plugin asking
+            # for root can never approve its own request, and neither can a
+            # stranger who guesses the id.
+            unit = self.unit_of_caller(peer)
+            if unit is None or unit.kind != "shell":
+                return {"ok": False,
+                        "error": "only the shell's approval window may answer"}
+            rid = str(args[0]) if args else ""
+            decision = str(args[1]) if len(args) > 1 else ""
+            if decision not in ("once", "always", "deny"):
+                return {"ok": False, "error": "decision must be once, always or deny"}
+            with self.esc_lock:
+                pend = self.pending.get(rid)
+                if pend is None:
+                    return {"ok": False, "error": "no such pending request (answered or timed out)"}
+                pend["decision"] = decision
+                # the password rides the socket only (uid-checked above,
+                # mode 0600); it is never logged and never in argv
+                pend["password"] = str(req.get("password", ""))[:256] if decision != "deny" else ""
+                pend["event"].set()
+            return {"ok": True}
         if cmd == "status":
             return {"ok": True, **self.status()}
         if cmd == "list":
@@ -880,8 +1417,8 @@ class Supervisor:
             unit = self.units.get(pid)
             if not unit or unit.kind != "plugin":
                 return {"ok": False, "error": f"{pid} is not a sandboxed plugin"}
-            if mode not in ("", "leak", "hang", "crash"):
-                return {"ok": False, "error": "test mode must be leak, hang or crash"}
+            if mode not in ("", "leak", "hang", "crash", "esc"):
+                return {"ok": False, "error": "test mode must be leak, hang, crash or esc"}
             unit.test_mode = mode
             self.stop_unit(unit, "test restart")
             unit.stopping = False
@@ -921,6 +1458,8 @@ class Supervisor:
                         for u in self.units.values() if u.kind == "plugin"],
             "disabled": dict(self.disabled),
             "sandboxed": sorted(self.sandbox_ids()),
+            "escalations": {rid: {"unit": p["unit"]}
+                            for rid, p in self.pending.items()},
         }
 
     # ------------------------------------------------------------ main ----
@@ -968,6 +1507,7 @@ class Supervisor:
             now = time.monotonic()
             if now >= next_ram:
                 self.check_ram()
+                self.check_escalations()
                 next_ram = now + ram_every
             if now >= next_hb:
                 self.check_heartbeats()
@@ -1174,6 +1714,65 @@ def cmd_test(args) -> int:
     return 1
 
 
+def cmd_exec_root(args) -> int:
+    """A plugin's only door to root. The daemon pins the caller by its real
+    process, the shell shows the window (plugin, action, exact command),
+    and the outcome comes back as JSON on stdout."""
+    if not daemon_alive():
+        print("aequalyn-watchdog is not running", file=sys.stderr)
+        return 127
+    conf = read_json(WATCHDOG_CONF, {})
+    wait = 30 + int(conf.get("escalationTimeoutSeconds", 120)) \
+        + int(conf.get("escalationCommandTimeoutSeconds", 300))
+    out = send_to_daemon({"cmd": "exec-root", "args": [args.as_id, args.action]},
+                         timeout=wait)
+    print(json.dumps(out, indent=2))
+    if not out.get("ok"):
+        return out.get("code", 126) if isinstance(out.get("code"), int) else 126
+    return int(out.get("code", 1))
+
+
+def cmd_decide(args) -> int:
+    """The shell's escalation window calls this: its decision, with the
+    password on stdin (never argv, never a log line). One line, bounded
+    wait -- a window that failed to write must not leave this hanging."""
+    pwd = ""
+    try:
+        if not sys.stdin.isatty():
+            import select
+            if select.select([sys.stdin], [], [], 10.0)[0]:
+                pwd = sys.stdin.readline().rstrip("\n")
+    except OSError:
+        pwd = ""
+    out = send_to_daemon({"cmd": "decide", "args": [args.request, args.decision],
+                          "password": pwd[:256]})
+    if out.get("ok"):
+        return 0
+    print(out.get("error", "failed"), file=sys.stderr)
+    return 1
+
+
+def cmd_root_actions(_args) -> int:
+    """What every plugin declared it wants root for (works without the daemon:
+    it reads the manifests)."""
+    found = False
+    ids = sorted({p.parent.name for p in STORE_DIR.glob("*/plugin.json")}
+                 | set(builtin_root_actions()))
+    for pid in ids:
+        acts = root_actions_of(pid)
+        if not acts:
+            continue
+        found = True
+        where = "store" if (STORE_DIR / pid / "plugin.json").is_file() else "built-in"
+        print(f"{pid} ({where}):")
+        for a in acts:
+            print(f"  {a['id']:<14} {a['label']}")
+            print(f"  {'':<14} command: {' '.join(a['command'])}")
+    if not found:
+        print("no plugin declares any root action")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="aequalyn-watchdog",
@@ -1229,11 +1828,36 @@ def main() -> int:
 
     p = sub.add_parser("test", help="restart a sandboxed plugin in a failure-test mode")
     p.add_argument("id")
-    p.add_argument("mode", choices=["leak", "hang", "crash"],
-                   help="leak: breach the RAM budget; hang: stop answering; crash: die hard")
+    p.add_argument("mode", choices=["leak", "hang", "crash", "esc"],
+                   help="leak: breach the RAM budget; hang: stop answering; crash: die hard; "
+                        "esc: reach for root without the gate (the tripwire stops it)")
     p.set_defaults(fn=cmd_test)
 
+    p = sub.add_parser("exec-root",
+                       help="run one of this plugin's DECLARED root actions (an approval window asks first)")
+    p.add_argument("action", help="the action id, as declared in the manifest's needsRoot")
+    p.add_argument("--as", dest="as_id", default="",
+                   help="the built-in asking for it, when it runs in-process "
+                        "(sandboxed plugins are pinned by their process instead)")
+    p.set_defaults(fn=cmd_exec_root)
+
+    p = sub.add_parser("decide", help="answer an escalation request (the shell's window calls this)")
+    p.add_argument("request")
+    p.add_argument("decision", choices=["once", "always", "deny"])
+    p.set_defaults(fn=cmd_decide)
+
+    p = sub.add_parser("root-actions", help="every root action declared by every plugin")
+    p.set_defaults(fn=cmd_root_actions)
+
     args = ap.parse_args()
+    if os.geteuid() == 0:
+        # the whole chain -- this supervisor, qs, every plugin -- is a user
+        # session; running it as root would put the desktop, and every
+        # plugin's escalation, on the other side of the wall the gate keeps
+        print("aequalyn-watchdog must not run as root: it supervises a user "
+              "session (QuickShell). Start it as your user -- "
+              "aequalyn-session-start does.", file=sys.stderr)
+        return 126
     if not hasattr(args, "fn"):
         ap.print_help()
         return 0

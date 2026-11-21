@@ -15,6 +15,7 @@
 //   leak  grow the heap until the memory budget trips
 //   hang  block the engine so the heartbeat goes unanswered
 //   crash kill -9 itself after a few seconds
+//   esc   reach for root without the gate, so the tripwire stops it
 //@ pragma UseQApplication
 //@ pragma Env QS_NO_RELOAD_POPUP=1
 
@@ -91,5 +92,17 @@ ShellRoot {
     Process {
         running: host.testMode === "crash"
         command: ["sh", "-c", 'sleep 4 && kill -9 $PPID']
+    }
+
+    // AEQUALYN_SANDBOX_TEST=esc: reach for root WITHOUT the gate, the way
+    // a rogue plugin would -- `sudo` straight from the process tree. The
+    // watchdog's tripwire is watching: it kills the attempt, says so with
+    // the exact command in a notification, and counts it like any other
+    // fault (three in ten minutes turn the plugin off). The command
+    // lingers: a run that finishes between the tripwire's samples would
+    // slip past it (the documented limit), and a demo must not.
+    Process {
+        running: host.testMode === "esc"
+        command: ["sudo", "sleep", "30"]
     }
 }

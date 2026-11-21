@@ -213,6 +213,21 @@ QtObject {
     // it in Plugins.js or by a Store manifest (watchdog.json's noSandbox list ends up
     // here; the supervisor sets it through the watchdog IPC target). Saved as noSandboxPlugins.
     property var noSandboxPlugins: []
+    // Root actions the user answered "Always allow this" to in the escalation
+    // window: plugin id -> { action id: true }. Consent only -- the command
+    // itself stays pinned in the plugin's manifest (needsRoot), and the window
+    // still opens for the password on every run. Saved as rootAllowed.
+    property var rootAllowed: ({})
+    function allowRoot(id, action, on) {
+        const n = Object.assign({}, root.rootAllowed)
+        const own = Object.assign({}, n[id] || {})
+        if (on) own[action] = true
+        else delete own[action]
+        if (Object.keys(own).length) n[id] = own
+        else delete n[id]
+        root.rootAllowed = n
+        root.save()
+    }
 
     // ---- Dock -------------------------------------------------------------
     // Docks are a plugin now: enabled iff "docks" is in enabledPlugins.
@@ -476,6 +491,7 @@ QtObject {
             plugins: root.enabledPlugins,
             pluginsKnown: root.pluginsKnown,
             noSandboxPlugins: root.noSandboxPlugins,
+            rootAllowed: root.rootAllowed,
             barStyle: root.barStyleCfg,
             dock: {
                 enabled: (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).indexOf("docks") >= 0,
@@ -706,6 +722,19 @@ QtObject {
             // the sandbox exceptions the supervisor pushed (watchdog.json's noSandbox)
             if (Array.isArray(d.noSandboxPlugins))
                 root.noSandboxPlugins = d.noSandboxPlugins.filter(x => typeof x === "string")
+            // remembered root consent, from the escalation window
+            if (d.rootAllowed && typeof d.rootAllowed === "object" && !Array.isArray(d.rootAllowed)) {
+                const ok = {}
+                for (const id in d.rootAllowed) {
+                    const acts = d.rootAllowed[id]
+                    if (acts && typeof acts === "object" && !Array.isArray(acts)) {
+                        const clean = {}
+                        for (const a in acts) if (acts[a] === true) clean[a] = true
+                        if (Object.keys(clean).length) ok[id] = clean
+                    }
+                }
+                root.rootAllowed = ok
+            }
         }
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })

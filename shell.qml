@@ -50,8 +50,12 @@ Scope {
 
   // The in-shell side of the plugin sandbox: the external supervisor pings it
   // (a hang goes unanswered and the shell is restarted) and turns plugins on
-  // and off through it. plugins/watchdog/Watchdog.qml; see tools/watchdog/.
+  // and off through it. It is also where the root-escalation window lives:
+  // the supervisor sends every plugin's root request here, and the answer
+  // (with the password, on a pipe) goes back through its decide command.
+  // plugins/watchdog/Watchdog.qml; see tools/watchdog/.
   Watchdog {
     pluginManager: pm
+    theme: ts.theme
   }
 }

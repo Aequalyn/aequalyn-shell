@@ -54,6 +54,7 @@ CcPage {
         if (page.filter === "off") return !page.isOn(p.id);
         if (page.filter === "keys") return i.keys !== "";
         if (page.filter === "page") return i.page !== "";
+        if (page.filter === "root") return (i.needsRoot || []).length > 0;
         return true;
     }
 
@@ -73,6 +74,15 @@ CcPage {
             ? "Nothing to set here. " + page.infoOf(page.detail).keys + " calls it up while it is on."
             : "Nothing to set here: it works by itself while it is on."
     }
+    CcNote {
+        visible: page.detail !== "" && (page.infoOf(page.detail).needsRoot || []).length > 0
+        text: "This plugin asks to run as root, for this and only this (each run opens the approval window first, with the exact command):\n"
+            + (page.infoOf(page.detail).needsRoot || [])
+                .map(a => "  \u{F033E} " + a.label + " \u2014 " + a.command.join(" ")).join("\n")
+            + (AequalynSettings.rootAllowed[page.detail]
+               ? "\nAllowed without asking again: " + Object.keys(AequalynSettings.rootAllowed[page.detail]).join(", ")
+               : "")
+    }
 
     // ---- them all ---------------------------------------------------------------------
     CcChoice {
@@ -83,6 +93,7 @@ CcPage {
             { key: "off", label: "Off " + (page.plugins.length - page.onCount) },
             { key: "keys", label: "Has a shortcut " + page.plugins.filter(p => page.infoOf(p.id).keys !== "").length },
             { key: "page", label: "Has its own page " + page.plugins.filter(p => page.infoOf(p.id).page !== "").length },
+            { key: "root", label: "Asks for root " + page.plugins.filter(p => (page.infoOf(p.id).needsRoot || []).length > 0).length },
             { key: "pack", label: "Built-in pack " + page.plugins.filter(p => page.infoOf(p.id).pack === true).length }
         ]
         current: page.filter
@@ -228,6 +239,23 @@ CcPage {
                             text: "Built-in"
                             color: Cc.theme.accentPrimary
                             font.family: Cc.sans
+                            font.pixelSize: 10
+                        }
+                    }
+                    Rectangle {
+                        visible: (card.info.needsRoot || []).length > 0
+                        implicitWidth: rootBadge.implicitWidth + 24
+                        implicitHeight: 18
+                        radius: 9
+                        color: Cc.alpha(Cc.theme.accentRed, 0.16)
+                        border.width: 1
+                        border.color: Cc.alpha(Cc.theme.accentRed, 0.4)
+                        Text {
+                            id: rootBadge
+                            anchors.centerIn: parent
+                            text: "\u{F033E} runs as root"
+                            color: Cc.theme.accentRed
+                            font.family: Cc.mono
                             font.pixelSize: 10
                         }
                     }

@@ -31,10 +31,38 @@ for m in sorted(pathlib.Path(sys.argv[1]).glob('*/plugin.json')):
         if i != m.parent.name or not re.match(r'^[a-z][a-z0-9-]{1,39}$', i) or '/' in e or not (m.parent / e).is_file():
             continue
         g = d.get('group') if d.get('group') in ('screen', 'key', 'background') else 'background'
+        # what the plugin wants root for, shown on its card and in the
+        # escalation window; the command is pinned here, never passed in.
+        # The supervisor validates it again before anything runs.
+        nr = []
+        raw = d.get('needsRoot')
+        if isinstance(raw, list):
+            for a in raw[:8]:
+                if not isinstance(a, dict):
+                    continue
+                aid, cmd = str(a.get('id', '')), a.get('command', [])
+                if not re.match(r'^[a-z][a-z0-9-]{0,39}$', aid):
+                    continue
+                if not isinstance(cmd, list) or not (1 <= len(cmd) <= 64):
+                    continue
+                argv = []
+                for x in cmd:
+                    s = str(x)
+                    if not s or len(s) > 512 or '\\x00' in s or '\\n' in s:
+                        argv = None
+                        break
+                    argv.append(s)
+                if not argv or re.match(r'^(sudo|pkexec|su|doas)$', argv[0].rsplit('/', 1)[-1]):
+                    continue
+                if any(x['id'] == aid for x in nr):
+                    continue
+                nr.append({'id': aid, 'label': str(a.get('label', aid))[:128],
+                           'command': argv, 'about': str(a.get('about', ''))[:512]})
         out.append({'id': i, 'label': str(d.get('label', i)), 'source': (m.parent / e).as_uri(),
                     'version': str(d.get('version', '')),
                     'info': {'icon': str(d.get('icon', '')), 'group': g, 'keys': str(d.get('keys', '')),
-                             'page': '', 'about': str(d.get('about', '')), 'user': True}})
+                             'page': '', 'about': str(d.get('about', '')), 'user': True,
+                             'needsRoot': nr}})
     except Exception:
         pass
 print(json.dumps(out))

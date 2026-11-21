@@ -13,6 +13,8 @@ Item {
     id: wd
     // set by shell.qml; null for a moment while it loads
     property var pluginManager: null
+    // the theme the escalation window is drawn with (from shell.qml)
+    property var theme: null
     readonly property real startedAt: Date.now()
 
     // ---- what the supervisor can call ------------------------------------
@@ -76,6 +78,87 @@ Item {
             AequalynSettings.save()
             return "ok"
         }
+
+        // A plugin asked to run one of its declared root actions. The
+        // supervisor already pinned the caller to its real process and the
+        // command is pinned in its manifest; all that is left is asking the
+        // person at the keyboard. The window (below) answers through
+        // `aequalyn-watchdog decide`, with the password on a pipe.
+        function escalationRequest(payload: string): string {
+            try { wd.queueEscalation(JSON.parse(payload)) }
+            catch (e) { return "bad json: " + e }
+            return "ok"
+        }
+    }
+
+    // ---- the escalation window --------------------------------------------
+    // Requests are queued: one window at a time, the next opens when this
+    // one is answered. A window the supervisor cannot reach this for never
+    // happens (it tells the plugin the shell is down), and a window left
+    // unanswered times out on the supervisor's side as a denial.
+    property var escQueue: []
+    property var escCurrent: null
+    function queueEscalation(req) {
+        wd.escQueue = wd.escQueue.concat([req])
+        if (!wd.escCurrent) nextEscalation()
+    }
+    function nextEscalation() {
+        wd.escCurrent = wd.escQueue.length ? wd.escQueue[0] : null
+        wd.escQueue = wd.escQueue.slice(1)
+        escWindow.showRequest(wd.escCurrent)
+    }
+    function answerEscalation(requestId, decision, password) {
+        // the password goes to the supervisor over its socket, through a
+        // pipe: never in argv, never in a log line
+        decideProc.requestId = requestId
+        decideProc.decision = decision
+        decideProc.password = password
+        if (decideProc.running) {
+            // a previous decide still winding down: its process is stopped
+            // and this answer starts fresh a moment later, so a click is
+            // never silently dropped on a busy pipe
+            decideProc.running = false
+            decideRestart.restart()
+        } else {
+            decideProc.running = true
+        }
+        if (wd.escCurrent && wd.escCurrent.requestId === requestId
+            && decision === "always") {
+            // remembered consent, saved where the Plugins page can show it
+            try {
+                AequalynSettings.allowRoot(wd.escCurrent.plugin, wd.escCurrent.action, true)
+            } catch (e) { console.warn("could not remember the root allowance:", e) }
+        }
+        nextEscalation()
+    }
+    // a one-shot restart for the rare case a previous decide had to be
+    // stopped first (see answerEscalation)
+    Timer { id: decideRestart; interval: 150; onTriggered: decideProc.running = true }
+    // answers the current request for the supervisor. stdinEnabled so the
+    // password can be written to the pipe (Process.write, the way the file
+    // manager talks to its daemon) once the process is up
+    property Process decideProc: Process {
+        id: decideProc
+        property string requestId: ""
+        property string decision: "deny"
+        property string password: ""
+        stdinEnabled: true
+        command: ["aequalyn-watchdog", "decide", requestId, decision]
+        onStarted: {
+            try {
+                decideProc.write(password + "\n")
+            } catch (e) { console.warn("escalation: could not hand the password over:", e) }
+        }
+    }
+
+    // the one window a plugin's root request ever opens: it names the
+    // plugin, the action and the exact command, and its answer (with the
+    // password, written to the decide process's pipe) is final
+    EscalationWindow {
+        id: escWindow
+        theme: wd.theme
+        onDecided: (requestId, decision, password) =>
+            wd.answerEscalation(requestId, decision, password)
     }
 
     function known(id) {
