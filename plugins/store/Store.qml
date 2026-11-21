@@ -1078,7 +1078,6 @@ Scope {
                     Repeater {
                         model: pluginRow.modelData
                         delegate: PluginCard {
-                            required property var modelData
                             builtIn: grid.builtIn
                         }
                     }
@@ -2391,6 +2390,7 @@ Scope {
                     }
                 }
 
+            }
             // the picker, drawn inside this window: a layer-shell panel sits over
             // every normal window, so the desktop's own dialog cannot be seen above
             // it -- this one is part of the panel, over the page, under nothing
@@ -2509,7 +2509,6 @@ Scope {
                         color: root.theme.textMuted; font.family: root.sans; font.pixelSize: 11
                     }
                 }
-            }
             }
         }
     }
