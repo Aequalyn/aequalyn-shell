@@ -49,13 +49,17 @@ CcPage {
     property string filter: "all"
     function shows(p) {
         const i = page.infoOf(p.id);
+        const rr = (i.needsRoot || []).concat(p.needsRoot || []);
         if (page.filter === "pack") return i.pack === true;
         if (page.filter === "on") return page.isOn(p.id);
         if (page.filter === "off") return !page.isOn(p.id);
         if (page.filter === "keys") return i.keys !== "";
         if (page.filter === "page") return i.page !== "";
-        if (page.filter === "root") return (i.needsRoot || []).length > 0;
+        if (page.filter === "root") return rr.length > 0;
         return true;
+    }
+    function rootActionsOf(p) {
+        return (page.infoOf(p.id).needsRoot || []).concat(p.needsRoot || [])
     }
 
     // ---- one plugin, opened -----------------------------------------------------------
@@ -75,9 +79,9 @@ CcPage {
             : "Nothing to set here: it works by itself while it is on."
     }
     CcNote {
-        visible: page.detail !== "" && (page.infoOf(page.detail).needsRoot || []).length > 0
-        text: "This plugin asks to run as root, for this and only this (each run opens the approval window first, with the exact command):\n"
-            + (page.infoOf(page.detail).needsRoot || [])
+        visible: page.detail !== "" && page.rootActionsOf(page.detailEntry || ({})).length > 0
+        text: "This part of the desktop asks to run as root, for this and only this (each run opens the approval window first, with the exact command):\n"
+            + page.rootActionsOf(page.detailEntry || ({}))
                 .map(a => "  \u{F033E} " + a.label + " \u2014 " + a.command.join(" ")).join("\n")
             + (AequalynSettings.rootAllowed[page.detail]
                ? "\nAllowed without asking again: " + Object.keys(AequalynSettings.rootAllowed[page.detail]).join(", ")
@@ -93,7 +97,7 @@ CcPage {
             { key: "off", label: "Off " + (page.plugins.length - page.onCount) },
             { key: "keys", label: "Has a shortcut " + page.plugins.filter(p => page.infoOf(p.id).keys !== "").length },
             { key: "page", label: "Has its own page " + page.plugins.filter(p => page.infoOf(p.id).page !== "").length },
-            { key: "root", label: "Asks for root " + page.plugins.filter(p => (page.infoOf(p.id).needsRoot || []).length > 0).length },
+            { key: "root", label: "Asks for root " + page.plugins.filter(p => page.rootActionsOf(p).length > 0).length },
             { key: "pack", label: "Built-in pack " + page.plugins.filter(p => page.infoOf(p.id).pack === true).length }
         ]
         current: page.filter
@@ -140,6 +144,9 @@ CcPage {
         id: card
         property var plugin: ({})
         readonly property var info: page.infoOf(plugin.id)
+        // built-ins declare on their Plugins.js line (plugin.needsRoot), Store
+        // plugins in their manifest (info.needsRoot): one shape, both sources
+        readonly property var rootActions: (card.info.needsRoot || []).concat(card.plugin.needsRoot || [])
         readonly property bool on: page.isOn(plugin.id)
         implicitHeight: 92
         radius: 12
@@ -243,7 +250,7 @@ CcPage {
                         }
                     }
                     Rectangle {
-                        visible: (card.info.needsRoot || []).length > 0
+                        visible: card.rootActions.length > 0
                         implicitWidth: rootBadge.implicitWidth + 24
                         implicitHeight: 18
                         radius: 9

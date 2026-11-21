@@ -140,11 +140,14 @@ tree on every RAM pass, and anything that looks like `sudo`, `pkexec`,
 `timeout` -- is killed with its subtree, notified with the exact command
 line, and counted as a failure like any other fault (three in ten minutes
 turns the plugin off). The gate's own sudo is a child of the supervisor,
-never of a unit, so it is never mistaken for a bypass. The shell's own two
-first-party helpers that still use `sudo -A` (About's theme pack,
-LockScreens' SDDM, the browser theme policy) are the only excused
-callers, and only inside the shell unit -- trusted code watching itself.
-A sandboxed plugin unit gets no excuse at all.
+never of a unit, so it is never mistaken for a bypass. There are no
+excused callers: the first-party flows (the browser colour policy, the
+SDDM lock screen, the theme pack's install) ride the same gate -- their
+actions are declared on the `settings` built-in's line in `Plugins.js`,
+their commands pinned to the root-owned copies in `/usr/local/bin`, and
+their scripts stage what varies (the colour, the theme name) into
+`~/.local/state/aequalyn/gate/`, where the root halves re-find it through
+`SUDO_USER` and trust nothing beyond strict validation.
 
 Honest limits, so nobody thinks this is more than it is: the tripwire is a
 3-second sample over `/proc`, so a run that starts and exits between

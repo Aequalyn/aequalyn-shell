@@ -45,5 +45,26 @@ var list = [
       needsRoot: [{ "id": "who-am-i", "label": "Show the user id it runs as", "about": "Runs /usr/bin/id -u as root; the answer should be 0.",
                     "command": ["/usr/bin/id", "-u"] }] },
     { id: "store",          label: "Store",          source: "plugins/store/Store.qml" },
-    { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml" }
+    // the control center's own privileged actions: every one of them rides
+    // the same gate as any plugin's (exec-root --as settings <action>), so
+    // the approval window is the only password prompt the desktop ever
+    // shows. The commands are pinned here, as plain JSON.
+    { id: "settings",       label: "Control center", source: "settings/ControlCenter.qml",
+      needsRoot: [
+        { "id": "browser-theme-publish", "label": "Publish the bar's colour to the browsers",
+          "about": "Writes the bar's base colour as the managed policy of every installed Chromium-based browser (their frame colour), in /etc.",
+          "command": ["/usr/local/bin/aequalyn-browser-theme", "gate-publish"] },
+        { "id": "browser-theme-clear", "label": "Remove the browsers' colour policy",
+          "about": "Removes the colour.json managed-policy file from every browser.",
+          "command": ["/usr/local/bin/aequalyn-browser-theme", "gate-clear"] },
+        { "id": "sddm-install", "label": "Install the login screen theme pack",
+          "about": "Installs the lock-screen themes and their fonts into /usr/share/sddm/themes.",
+          "command": ["/usr/local/bin/aequalyn-sddm", "gate-install"] },
+        { "id": "sddm-apply", "label": "Set the login screen theme",
+          "about": "Writes which theme SDDM shows at the login screen.",
+          "command": ["/usr/local/bin/aequalyn-sddm", "gate-apply"] },
+        { "id": "sddm-autologin", "label": "Turn autologin on or off",
+          "about": "Writes or removes the SDDM autologin configuration (boots straight into the session, no greeter).",
+          "command": ["/usr/local/bin/aequalyn-sddm", "gate-autologin"] }
+      ] }
 ];
