@@ -41,7 +41,7 @@ Singleton {
     Process {
         id: worker
         running: false
-        onExited: { statusProc.running = true; root._next(); }
+        onExited: { root.refresh(); root._next(); }
     }
 
     function set(id, ws) { run(["aequalyn-layout", "set", id, "--workspace", String(ws)]); }
@@ -59,7 +59,12 @@ Singleton {
         }
         run(["aequalyn-layout", "cycle"].concat(c));
     }
-    function refresh() { statusProc.running = true; }
+    function refresh() {
+        // force a fresh run: setting `true` on an already running process is a no-op,
+        // which can leave the UI with an older status after a quick layout click
+        statusProc.running = false;
+        statusProc.running = true;
+    }
 
     FileView {
         path: Quickshell.env("HOME") + "/.config/aequalyn/layouts.json"
