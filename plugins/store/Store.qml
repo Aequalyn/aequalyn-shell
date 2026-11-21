@@ -1041,48 +1041,55 @@ Scope {
                     Layout.fillHeight: true
                     spacing: 0
 
-                    // the rail of sections, as the control center lists a category's
-                    // pages: the chosen one lifted, a bar at its left
+                    // the rail of sections, as the control center's category rail:
+                    // an icon tile above each name, the chosen one accented
                     ColumnLayout {
-                        Layout.fillWidth: false
-                        Layout.preferredWidth: 214
-                        Layout.maximumWidth: 214
+                        Layout.preferredWidth: 96
+                        Layout.maximumWidth: 96
                         Layout.fillHeight: true
-                        Layout.margins: 12
+                        Layout.leftMargin: 6
+                        Layout.topMargin: 12
+                        Layout.bottomMargin: 8
                         spacing: 2
                         Repeater {
                             model: root.sections
-                            delegate: Rectangle {
+                            delegate: Item {
                                 id: railItem
                                 required property var modelData
                                 readonly property bool on: root.section === modelData.key
+                                readonly property int tally: root.sectionCount(modelData.key)
                                 Layout.fillWidth: true
-                                implicitHeight: 38
-                                radius: 8
-                                color: on ? root.theme.bgSelected : railMa.containsMouse ? root.theme.bgSurface : "transparent"
+                                Layout.preferredHeight: 56
                                 Accessible.role: Accessible.PageTab
                                 Accessible.name: modelData.label
-                                // the chosen section, as the control center marks its pages
                                 Rectangle {
-                                    visible: railItem.on
-                                    width: 3; height: 20; radius: 2
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 2
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    color: root.theme.accentPrimary
-                                }
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    spacing: 10
-                                    Text { text: modelData.glyph; color: root.theme.accentPrimary; font.family: root.mono; font.pixelSize: 14 }
+                                    id: railBox
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    y: 4
+                                    width: 36; height: 30; radius: 8
+                                    color: railItem.on ? root.theme.bgSelected : railMa.containsMouse ? root.theme.bgSurface : "transparent"
+                                    border.width: railItem.on ? 1 : 0
+                                    border.color: root.theme.accentPrimary
                                     Text {
-                                        readonly property int tally: root.sectionCount(modelData.key)
-                                        text: modelData.label + (tally > 0 ? "  " + tally : "")
-                                        color: on ? root.theme.textPrimary : root.theme.textSecondary
-                                        font.family: root.sans; font.pixelSize: 13; font.weight: on ? Font.DemiBold : Font.Normal
-                                        Layout.fillWidth: true
+                                        anchors.centerIn: parent
+                                        text: railItem.modelData.glyph
+                                        color: railItem.on ? root.theme.accentPrimary : root.theme.textSecondary
+                                        font.family: root.mono
+                                        font.pixelSize: 15
                                     }
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.top: railBox.bottom
+                                    anchors.topMargin: 3
+                                    width: parent.width - 4
+                                    text: railItem.modelData.label + (railItem.tally > 0 ? "  " + railItem.tally : "")
+                                    elide: Text.ElideRight
+                                    horizontalAlignment: Text.AlignHCenter
+                                    color: railItem.on ? root.theme.textPrimary : root.theme.textMuted
+                                    font.family: root.mono
+                                    font.pixelSize: 10
+                                    font.bold: railItem.on
                                 }
                                 MouseArea { id: railMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.section = modelData.key }
                             }
@@ -1187,7 +1194,7 @@ Scope {
                                     visible: root.section === "apps"
                                     title: "Popular apps"
                                     hint: "Each from any backend that carries it. Pick one of the four to see only that backend; click it again to see them all. Installs open in a terminal, where sudo asks for your password."
-                                    Flow {
+                                    RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 6
                                         Repeater {
@@ -1197,6 +1204,9 @@ Scope {
                                                 readonly property int count: root.apps.filter(a =>
                                                     modelData === "Arch" ? !!a.pacman : modelData === "AUR" ? !!a.aur
                                                     : modelData === "Flathub" ? !!a.flatpak : !!a.snap).length
+                                                Layout.fillWidth: true
+                                                Layout.preferredWidth: 0
+                                                Layout.minimumWidth: 0
                                                 text: modelData + "  " + count
                                                 primary: root.popSource === modelData
                                                 implicitHeight: 26
@@ -1331,7 +1341,7 @@ Scope {
                                         }
                                         Btn { text: root.searching ? "Searching…" : "Search"; primary: true; enabled: !root.searching; onClicked: root.searchApps(appSearch.text.trim(), false) }
                                     }
-                                    Flow {
+                                    RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 6
                                         Repeater {
@@ -1341,6 +1351,9 @@ Scope {
                                                 readonly property int count: modelData === "All" ? root.found.length
                                                     : modelData === "Installed" ? root.installedApps.length
                                                     : root.found.filter(r => r.source === modelData).length
+                                                Layout.fillWidth: true
+                                                Layout.preferredWidth: 0
+                                                Layout.minimumWidth: 0
                                                 text: modelData + "  " + count + (root.foundErrors[modelData] ? "  ⚠" : "")
                                                 primary: root.foundSource === modelData
                                                 implicitHeight: 26
