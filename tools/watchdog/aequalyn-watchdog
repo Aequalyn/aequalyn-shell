@@ -606,6 +606,9 @@ class Unit:
     last_error: str = ""
     stopping: bool = False          # a stop we asked for: not a failure
     disabled_reason: str = ""
+    planned: bool = False           # starting because of a planned restart
+                                   # (restart-all, what an update calls):
+                                   # demos that ask on enable stay quiet
 
     @property
     def alive(self) -> bool:
@@ -829,6 +832,10 @@ class Supervisor:
                 env["QS_APP_ID"] = "org.aequalyn.sandbox." + unit.name
                 if unit.test_mode:
                     env["AEQUALYN_SANDBOX_TEST"] = unit.test_mode
+                if unit.planned:
+                    # a planned restart (restart-all, what an update calls):
+                    # the plugin starts, but nothing user-facing asked for it
+                    env["AEQUALYN_PLUGIN_PLANNED"] = "1"
             env["QS_NO_RELOAD_POPUP"] = "1"
             # children always start from $HOME, whatever directory the daemon
             # itself was started from: an update replaces the config folder
@@ -841,6 +848,7 @@ class Supervisor:
             unit.started_at = time.time()
             unit.ever_started = True
             unit.stopping = False
+            unit.planned = False      # the env was set for this start only
             unit.hb_misses = unit.ram_over = 0
             log(f"started {unit.name} (pid {unit.popen.pid})")
         except OSError as e:
@@ -1364,12 +1372,16 @@ class Supervisor:
         if cmd == "restart-all":
             # a planned restart, the way an update uses it: shell and every
             # sandboxed plugin stop and start fresh, none of it counted as
-            # failure, and the failure windows start over
+            # failure, and the failure windows start over. The plugin starts
+            # are marked planned: a demo that asks for root when it is
+            # turned on stays quiet when an update merely restarts it.
             for name in list(self.units):
                 self.failures.pop(name, None)
                 self.next_start.pop(name, None)
                 unit = self.units[name]
                 unit.test_mode = ""
+                if unit.kind == "plugin":
+                    unit.planned = True
                 self.stop_unit(unit, "planned restart")
                 unit.stopping = False
             for unit in self.units.values():
