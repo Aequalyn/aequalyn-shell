@@ -58,7 +58,13 @@ Item {
         if (wanted !== Math.floor(at / perPage)) page = wanted;
     }
     function selectActive() {
-        for (let i = 0; i < items.length; i++) if (items[i].id === activeId) { show(i); return; }
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].id !== activeId) continue;
+            // keep the page being viewed: All opens on its first full page instead
+            // of jumping to the active layout's page, which may be nearly empty
+            currentIndex = (i >= at && i < at + perPage) ? i : at;
+            return;
+        }
     }
     function apply(i) {
         const it = items[i];
