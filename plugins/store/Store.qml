@@ -1028,7 +1028,7 @@ Scope {
                 RowLayout {
                     spacing: 8
                     Layout.fillWidth: true
-                    Text { text: row.modelData.label || row.modelData.id; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    Text { text: row.modelData.label || row.modelData.id; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
                     Pill { visible: row.kind === "plugin"; text: row.pluginOn ? "Active" : "Inactive"; tone: row.pluginOn ? root.theme.accentGreen : root.theme.textMuted }
                     Pill { visible: row.kind === "appimage"; text: "AppImage"; tone: root.theme.accentPrimary }
                     Pill { visible: row.modelData.present === false; text: "Missing"; tone: root.theme.accentRed }
@@ -1624,7 +1624,7 @@ Scope {
                                                             Pill { visible: appCard.via !== ""; text: "Installed · " + appCard.via; tone: root.theme.accentGreen }
                                                         }
                                                     }
-                                                    Text { text: appCard.modelData.about; color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                    Text { text: appCard.modelData.about; color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11; wrapMode: Text.WordWrap; elide: Text.ElideRight; maximumLineCount: 2; Layout.fillWidth: true }
                                                     Item { Layout.fillHeight: true }
                                                     GridLayout {
                                                         Layout.fillWidth: true
@@ -1801,6 +1801,7 @@ Scope {
                                                                 Text {
                                                                     text: fcard.modelData.source === "Flatpak" ? "Flathub" : fcard.modelData.source
                                                                     color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 10
+                                                                    elide: Text.ElideRight; Layout.fillWidth: true
                                                                 }
                                                             }
                                                         }
@@ -1974,7 +1975,7 @@ Scope {
                                                     RowLayout {
                                                         spacing: 8
                                                         Layout.fillWidth: true
-                                                        Text { text: wrow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                                        Text { text: wrow.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
                                                         Pill { visible: !!wrow.modelData.categoryLabel; text: wrow.modelData.categoryLabel; tone: root.theme.accentPrimary }
                                                         Pill { visible: !!wrow.modelData.shortcut; text: wrow.modelData.shortcut; tone: root.theme.textMuted }
                                                         Item { Layout.fillWidth: true }
