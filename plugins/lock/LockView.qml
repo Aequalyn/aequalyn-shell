@@ -141,7 +141,7 @@ Item {
   readonly property bool showDate: ["dot","mono","line","terminal","binary","stack","duo","pill","poster","words","quote","day","battery","avatar","card","nowplaying","vertical"].indexOf(style) < 0 || ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon"].indexOf(style) >= 0
   readonly property bool showUser: ["classic","avatar","card","split","terminal","dot"].indexOf(style) >= 0
   readonly property bool centerLayout: ["corner","split","terminal","vertical","card","line"].indexOf(style) < 0
-  readonly property int clockSize: style === "mono" ? 120 : (style === "stack" || style === "duo" ? 110 : (style === "neon" ? 96 : (style === "clean" || style === "glass" || style === "orbit" || style === "dashboard" ? 72 : (style === "battery" ? 72 : (style === "corner" ? 64 : (style === "poster" ? 44 : (style === "nowplaying" ? 28 : (style === "frame" ? 40 : 64))))))))
+  readonly property int clockSize: style === "mono" ? 112 : (style === "stack" || style === "duo" ? 96 : (style === "neon" ? 88 : (style === "clean" || style === "glass" || style === "orbit" || style === "dashboard" ? 68 : (style === "battery" ? 68 : (style === "corner" ? 60 : (style === "poster" ? 40 : (style === "nowplaying" ? 26 : (style === "frame" ? 38 : 60))))))))
   readonly property color clockColor: style === "neon" ? root.accent : (style === "duo" ? root.fg : root.fg)
 
   // ---- special background shapes -------------------------------------------
@@ -231,22 +231,22 @@ Item {
     anchors.bottomMargin: root.style === "corner" ? 110 : 0
     anchors.verticalCenter: ["classic","clean","mono","pill","glass","orbit","dashboard","zen","neon","poster","duo","day","weather","battery","avatar","calendar","line","dot","quote","words","split"].indexOf(root.style) >= 0 ? parent.verticalCenter : undefined
     anchors.verticalCenterOffset: {
-      if (root.style === "classic") return -40
-      if (root.style === "clean") return -20
-      if (root.style === "mono") return -40
-      if (root.style === "glass") return -30
-      if (root.style === "orbit") return -30
-      if (root.style === "dashboard") return -80
-      if (root.style === "zen") return -60
-      if (root.style === "neon") return -60
-      if (root.style === "poster") return -20
-      if (root.style === "day") return -60
-      if (root.style === "weather") return -90
-      if (root.style === "battery") return -60
-      if (root.style === "avatar") return -120
-      if (root.style === "calendar") return -60
-      if (root.style === "split") return -60
-      return 0
+      if (root.style === "classic") return -80
+      if (root.style === "clean") return -60
+      if (root.style === "mono") return -80
+      if (root.style === "glass") return -70
+      if (root.style === "orbit") return -70
+      if (root.style === "dashboard") return -120
+      if (root.style === "zen") return -90
+      if (root.style === "neon") return -90
+      if (root.style === "poster") return -50
+      if (root.style === "day") return -90
+      if (root.style === "weather") return -120
+      if (root.style === "battery") return -90
+      if (root.style === "avatar") return -150
+      if (root.style === "calendar") return -90
+      if (root.style === "split") return -90
+      return -20
     }
   }
 
@@ -255,27 +255,27 @@ Item {
     visible: root.style === "stack" || root.style === "duo"
     text: Qt.formatTime(new Date(), "HH")
     color: root.fg
-    font.family: root.font; font.pixelSize: 110; font.bold: true
+    font.family: root.font; font.pixelSize: 96; font.bold: true
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.horizontalCenterOffset: root.style === "duo" ? -90 : 0
     anchors.verticalCenter: parent.verticalCenter
-    anchors.verticalCenterOffset: root.style === "stack" ? -90 : -40
+    anchors.verticalCenterOffset: root.style === "stack" ? -130 : -70
   }
   Text {
     visible: root.style === "stack" || root.style === "duo"
     text: Qt.formatTime(new Date(), "mm")
     color: root.accent
-    font.family: root.font; font.pixelSize: 110; font.bold: true
+    font.family: root.font; font.pixelSize: 96; font.bold: true
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.horizontalCenterOffset: root.style === "duo" ? 90 : 0
     anchors.verticalCenter: parent.verticalCenter
-    anchors.verticalCenterOffset: root.style === "stack" ? 50 : -40
+    anchors.verticalCenterOffset: root.style === "stack" ? 10 : -70
   }
   Rectangle {
     visible: root.style === "duo"
     width: 4; height: 90; radius: 2
     color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.4)
-    anchors.centerIn: parent; anchors.verticalCenterOffset: -40
+    anchors.centerIn: parent; anchors.verticalCenterOffset: -70
   }
 
   // vertical rotated clock
@@ -368,27 +368,27 @@ Item {
     anchors.bottomMargin: root.style === "corner" ? 70 : (root.style === "vertical" ? 40 : (root.style === "card" ? 175 : 0))
     anchors.verticalCenter: ["classic","clean","mono","glass","orbit","dashboard","zen","neon","poster","duo","day","weather","battery","avatar","calendar","line","quote","split","stack","words"].indexOf(root.style) >= 0 ? parent.verticalCenter : undefined
     anchors.verticalCenterOffset: {
-      if (root.style === "classic") return 30
-      if (root.style === "clean") return 45
-      if (root.style === "mono") return 30
-      if (root.style === "glass") return 25
-      if (root.style === "orbit") return 25
-      if (root.style === "dashboard") return -20
-      if (root.style === "zen") return -10
-      if (root.style === "neon") return 10
-      if (root.style === "poster") return 30
-      if (root.style === "duo") return 20
-      if (root.style === "day") return 25
-      if (root.style === "weather") return -30
-      if (root.style === "battery") return 25
-      if (root.style === "avatar") return -70
-      if (root.style === "calendar") return 0
-      if (root.style === "split") return 0
-      if (root.style === "stack") return 130
-      if (root.style === "words") return 10
-      if (root.style === "quote") return 20
-      if (root.style === "line") return -60
-      return 0
+      if (root.style === "classic") return 10
+      if (root.style === "clean") return 20
+      if (root.style === "mono") return 10
+      if (root.style === "glass") return 0
+      if (root.style === "orbit") return 0
+      if (root.style === "dashboard") return -40
+      if (root.style === "zen") return -30
+      if (root.style === "neon") return -10
+      if (root.style === "poster") return 10
+      if (root.style === "duo") return 30
+      if (root.style === "day") return -10
+      if (root.style === "weather") return -50
+      if (root.style === "battery") return -10
+      if (root.style === "avatar") return -90
+      if (root.style === "calendar") return -20
+      if (root.style === "split") return -10
+      if (root.style === "stack") return 150
+      if (root.style === "words") return 30
+      if (root.style === "quote") return 30
+      if (root.style === "line") return -70
+      return -10
     }
   }
 
@@ -484,25 +484,25 @@ Item {
     anchors.verticalCenter: (!root.fieldBottom && root.style !== "terminal") ? parent.verticalCenter : undefined
     anchors.verticalCenterOffset: {
       if (root.fieldBottom) return 0
-      if (root.style === "classic") return 80
-      if (root.style === "clean") return 100
-      if (root.style === "glass") return 80
-      if (root.style === "orbit") return 100
-      if (root.style === "dashboard") return 100
-      if (root.style === "zen" || root.style === "quote") return 80
-      if (root.style === "neon") return 90
-      if (root.style === "split") return 120
-      if (root.style === "stack") return 140
-      if (root.style === "duo") return 100
-      if (root.style === "day" || root.style === "weather") return 80
-      if (root.style === "battery") return 90
-      if (root.style === "avatar") return 40
-      if (root.style === "calendar") return 90
-      if (root.style === "line") return 0
-      if (root.style === "dot") return 10
-      if (root.style === "words") return 90
+      if (root.style === "classic") return 120
+      if (root.style === "clean") return 130
+      if (root.style === "glass") return 120
+      if (root.style === "orbit") return 130
+      if (root.style === "dashboard") return 140
+      if (root.style === "zen" || root.style === "quote") return 110
+      if (root.style === "neon") return 120
+      if (root.style === "split") return 150
+      if (root.style === "stack") return 170
+      if (root.style === "duo") return 130
+      if (root.style === "day" || root.style === "weather") return 110
+      if (root.style === "battery") return 120
+      if (root.style === "avatar") return 70
+      if (root.style === "calendar") return 120
+      if (root.style === "line") return 30
+      if (root.style === "dot") return 30
+      if (root.style === "words") return 120
       if (root.style === "pill") return 0
-      return 90
+      return 120
     }
     anchors.top: root.style === "terminal" ? parent.top : undefined
     anchors.topMargin: root.style === "terminal" ? 200 : 0
@@ -560,7 +560,7 @@ Item {
   Text {
     visible: root.style !== "dot" && root.style !== "line"
     anchors.horizontalCenter: field.horizontalCenter
-    anchors.top: field.bottom; anchors.topMargin: 12
+    anchors.top: field.bottom; anchors.topMargin: 16
     text: root.failureMessage
       ? root.failureMessage + (root.failedAttempts > 1 ? " (" + root.failedAttempts + ")" : "")
       : (root.glanceScanning ? "Scanning face…" : (root.authenticating ? "Checking…" : "Password, then Enter · Space for face unlock"))
