@@ -15,7 +15,7 @@ One picker for everything that sets the look of the desktop.
 | --- | --- |
 | **Themes** | Folder themes (palette + backgrounds), wallpaper colours and 200+ curated palettes. The whole shell previews the theme under the cursor. |
 | **Wallpapers** | Images, videos, theme backgrounds and painted wallpapers, filterable and searchable. |
-| **Layouts** | 37 window layouts as pictures: pick one for any workspace, choose which ones Super + L goes through, set the main pane and gap. |
+| **Layouts** | 38 window layouts as pictures: pick one for any workspace, choose which ones Super + L goes through, set the main pane and gap. |
 | **Rotation** | Static, theme set, slideshow, time of day, per workspace or live video; transitions; monitors; painting a wallpaper from the palette. |
 | **Palette** | Wallpaper or fixed colours, lock, dark / light / auto, matugen scheme, contrast. |
 | **Bar** | Band, Pill, Isles or Pebbles; 26 looks in five families; 8 ensembles that dress the bar and every dock at once; placement, hover, separators, colours and every part (ends, surface, lines, ornaments). |
@@ -189,3 +189,8 @@ qs -p .            # or: ln -s "$PWD" ~/.config/quickshell && qs -n -d
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
 See [LICENSE](LICENSE) for the full text.
+
+## Documentation
+
+- `SECURITY.md` — security model and concerns.
+- `SKILL.md` — development/install skill reference.
