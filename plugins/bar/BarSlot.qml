@@ -23,6 +23,8 @@ Item {
   readonly property bool beingDragged: band.dragging && band.dragRegion === region && band.dragIndex === index
   // BarDecor measures these slots and only counts the ones that say whether they're hovered
   readonly property bool hovered: hh.hovered
+  // and whether the widget's panel is open: the bar draws its own mark for that
+  readonly property bool open: bar && (bar.widgetPopup === modelData || bar.widgetPopup === "atelier-" + modelData)
 
   // ---- its colour, when the widgets take the theme's (Bar page) -----------------------
   // A widget that can take one says so with `property color ink`; the others (the tray's

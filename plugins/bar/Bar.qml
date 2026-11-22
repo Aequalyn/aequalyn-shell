@@ -112,6 +112,16 @@ Scope {
   }
   // what a widget paints with: the colour the bar gives it, else its own
   function inked(ink, own) { return ink && ink.a > 0 ? ink : own; }
+  // the colour for text and icons on the bar: the theme's, your own, or always
+  // readable (black or white when the shapes get too close to the theme's text)
+  readonly property color textColor: {
+    if (!styled || look.widgetText === "theme") return theme.textPrimary;
+    if (look.widgetText === "custom") return Qt.color(look.customFg);
+    const bg = Qt.color(Colors.forMode(theme, look.colorMode, look).bg);
+    const lum = c => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    return Math.abs(lum(theme.textPrimary) - lum(bg)) < 0.4
+      ? (lum(bg) > 0.5 ? "#101010" : "#f5f5f5") : theme.textPrimary;
+  }
   // a reading short enough for a side bar: no %, "°C" as "°", no decimals ("16.2%" -> "16")
   function compact(t) {
     let s = String(t === undefined || t === null ? "" : t).replace("%", "").replace(/°[CF]/, "°").trim();
@@ -275,6 +285,9 @@ Scope {
     powerProc.running = true;
   }
 
+  // ---- screen corners and frame, from the bar's look ----------------------
+  ScreenDecor { theme: root.theme }
+
   // ---- windows (one bar per screen) --------------------------------------
   Variants {
     model: Quickshell.screens
@@ -381,7 +394,7 @@ Scope {
             id: ghostText
             anchors.centerIn: parent
             text: band.dragGhostLabel
-            color: root.theme.textPrimary
+            color: root.textColor
             font.pixelSize: 11
             font.family: root.font
           }

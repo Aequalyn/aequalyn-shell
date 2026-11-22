@@ -49,7 +49,7 @@ Rectangle {
       anchors.verticalCenter: parent.verticalCenter
       visible: btn.showName && btn.label !== "" && !bar.vertical
       text: btn.label
-      color: btn.bar.theme.textPrimary
+      color: btn.bar.textColor
       font.pixelSize: 11
       font.family: btn.bar.font
     }

@@ -36,12 +36,26 @@ Item {
     onVerticalChanged: { lastKey = ""; refresh(); }
     readonly property string screenEdge: vertical ? (edgeAtStart ? "left" : "right") : (edgeAtStart ? "top" : "bottom")
 
+    // the bar fades back when nothing is under the mouse, if you asked for that
+    HoverHandler { id: barHover; acceptedButtons: Qt.NoButton }
+    opacity: deco.look && !barHover.hovered ? deco.look.idleOpacity / 100 : 1
+    Behavior on opacity { NumberAnimation { duration: deco.look ? deco.look.fadeTime : 300; easing.type: Easing.InOutQuad } }
+    // one place for the motion settings in the Motion group
+    readonly property int speed: deco.look ? deco.look.speed : 180
+    readonly property int easing: !deco.look ? Easing.OutCubic
+        : deco.look.easing === "springy" ? Easing.OutBack
+        : (deco.look.easing === "linear" ? Easing.Linear : Easing.OutCubic)
+
     // ---- colors ---------------------------------------------------------------
     readonly property var pal: look ? Colors.forMode(deco.theme, look.colorMode, look) : Colors.mono
     // Palette colors: the shapes take the theme's colors in the pattern the widgets'
-    // colours use (Bar page), every color in turn unless another is chosen
-    function toneFor(index) {
-        if (!look || look.colorMode !== "palette" || index < 0 || pal.spectrum.length === 0) return "";
+    // colours use (Bar page), every color in turn unless another is chosen. A color
+    // per group can be set for the left, middle and right separately.
+    function toneFor(index, region) {
+        if (!look) return "";
+        if (look.groupColors && region)
+            return region === "left" ? look.leftColor : (region === "center" ? look.centerColor : look.rightColor);
+        if (look.colorMode !== "palette" || index < 0 || pal.spectrum.length === 0) return "";
         return Colors.inkAt(pal.spectrum, AequalynSettings.barInkPattern, index);
     }
 
@@ -53,10 +67,11 @@ Item {
             d.border = "accent";
             if (d.lines === "none") d.lines = "solid";
         }
-        if (region === "center" && look.centerStyle === "tinted") d.gradientTo = "accent";
-        const tone = toneFor(index);
+        const tone = toneFor(index, region);
         const p = Style.params(d, pal, w, h, deco.margin, { edge: deco.screenEdge, tone: tone !== "" ? tone : undefined,
-            blur: AequalynSettings.blurEnabled, blurEnabled: AequalynSettings.blurEnabled });
+            blur: AequalynSettings.blurEnabled, blurEnabled: AequalynSettings.blurEnabled,
+            floating: Shapes.floating(look), edgeAtStart: deco.edgeAtStart,
+            tinted: region === "center" && look.centerStyle === "tinted" });
         p.dir = BarLooks.dirFor(look, region);
         p.r = r;
         p.ends = look.shape === "full" ? "square" : look.ends;
@@ -88,7 +103,7 @@ Item {
                 const a = Math.max(start, v0), b = Math.min(start + size, v1);
                 if (b - a < 2) continue;
                 out.push({ a: Math.round(a), len: Math.round(b - a), region: deco.regionNames[s],
-                           hovered: it.hovered === true, open: false });
+                           hovered: it.hovered === true, open: it.open === true });
             }
         }
         return out;
@@ -152,8 +167,8 @@ Item {
             y: deco.vertical ? a - m : c - mStart
             width: deco.vertical ? w + mStart + mEnd : len + 2 * m
             height: deco.vertical ? len + 2 * m : w + mStart + mEnd
-            Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-            Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: deco.speed; easing.type: deco.easing } }
+            Behavior on y { NumberAnimation { duration: deco.speed; easing.type: deco.easing } }
 
             Canvas {
                 anchors.fill: parent
@@ -206,13 +221,15 @@ Item {
                 width: 1; height: parent.height
                 rotation: parent.kind === "slash" ? 20 : 0
                 antialiasing: true
-                color: deco.theme ? Qt.rgba(deco.theme.textPrimary.r, deco.theme.textPrimary.g, deco.theme.textPrimary.b, 0.3) : "white"
+                color: deco.theme ? Qt.rgba(deco.theme.textPrimary.r, deco.theme.textPrimary.g, deco.theme.textPrimary.b,
+                    deco.look ? deco.look.sepOpacity / 100 : 0.3) : "white"
             }
             Rectangle {
                 visible: parent.kind === "dot"
                 anchors.centerIn: parent
                 width: 3; height: 3; radius: 1.5
-                color: deco.theme ? Qt.rgba(deco.theme.textPrimary.r, deco.theme.textPrimary.g, deco.theme.textPrimary.b, 0.4) : "white"
+                color: deco.theme ? Qt.rgba(deco.theme.textPrimary.r, deco.theme.textPrimary.g, deco.theme.textPrimary.b,
+                    deco.look ? Math.min(1, deco.look.sepOpacity / 100 + 0.1) : 0.4) : "white"
             }
         }
     }
@@ -227,15 +244,19 @@ Item {
             required property real c
             required property real w
             required property real r
-            readonly property string style: deco.look ? deco.look.hover : "none"
-            readonly property color tone: deco.look && deco.look.hoverColor === "accent" && deco.theme
-                ? deco.theme.accentPrimary : (deco.theme ? deco.theme.textPrimary : "white")
+            required property string role
+            required property string region
+            readonly property string style: deco.look ? (mark.role === "open" ? deco.look.openMark : deco.look.hover) : "none"
+            readonly property color tone: deco.look && (mark.role === "open" || deco.look.hoverColor === "accent") && deco.theme
+                ? (deco.look.groupColors ? (mark.region === "left" ? deco.look.leftColor
+                    : (mark.region === "center" ? deco.look.centerColor : deco.look.rightColor)) : deco.theme.accentPrimary)
+                : (deco.theme ? deco.theme.textPrimary : "white")
             x: deco.vertical ? c : a; y: deco.vertical ? a : c
             width: deco.vertical ? w : len; height: deco.vertical ? len : w
-            Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-            Behavior on y { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-            Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-            Behavior on height { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: Math.round(deco.speed * 0.7); easing.type: deco.easing } }
+            Behavior on y { NumberAnimation { duration: Math.round(deco.speed * 0.7); easing.type: deco.easing } }
+            Behavior on width { NumberAnimation { duration: Math.round(deco.speed * 0.7); easing.type: deco.easing } }
+            Behavior on height { NumberAnimation { duration: Math.round(deco.speed * 0.7); easing.type: deco.easing } }
             Rectangle {
                 anchors.fill: parent
                 visible: mark.style === "fill"
@@ -251,7 +272,7 @@ Item {
                 border.color: Qt.rgba(mark.tone.r, mark.tone.g, mark.tone.b, 0.4)
             }
             Rectangle {
-                visible: mark.style === "underline"
+                visible: mark.style === "underline" || mark.style === "line"
                 // on the windows' side: under the widget, or beside it on a side bar
                 width: deco.vertical ? 2 : parent.width * 0.5; height: deco.vertical ? parent.height * 0.5 : 2; radius: 1
                 x: deco.vertical ? (deco.edgeAtStart ? parent.width - 3 : 1) : (parent.width - width) / 2

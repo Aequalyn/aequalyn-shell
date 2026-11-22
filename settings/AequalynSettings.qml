@@ -249,7 +249,7 @@ QtObject {
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
     property var barCenter: ["clock", "media", "title"]
-    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "settingsbutton"]
+    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "barbutton", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
@@ -265,6 +265,7 @@ QtObject {
         screenshot: "Screenshot",
         appsmenu: "Apps menu (Arch)",
         settingsbutton: "Settings button",
+        barbutton: "Bar button",
         clipscape: "Clipscape (clipboard history)",
         caffeine: "Caffeine (idle inhibit)",
         plume: "Cursor effects (Plume)",
@@ -310,7 +311,7 @@ QtObject {
     function normalizeBarRegions() {
         const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
-            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "settingsbutton"]
+            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "barbutton", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
         // instead of silently dropping extras. The bar sections scroll when a
         // region has more plugins than fits on screen.
@@ -696,6 +697,8 @@ QtObject {
             root.barLeft = ["appsmenu"].concat(root.barLeft)
         if (root.barLeft.indexOf("settingsbutton") < 0 && root.barCenter.indexOf("settingsbutton") < 0 && root.barRight.indexOf("settingsbutton") < 0)
             root.barRight = root.barRight.concat(["settingsbutton"])
+        if (root.barLeft.indexOf("barbutton") < 0 && root.barCenter.indexOf("barbutton") < 0 && root.barRight.indexOf("barbutton") < 0)
+            root.barRight = root.barRight.concat(["barbutton"])
         root.clockSeconds = pick(a.clockSeconds, root.clockSeconds)
         root.use24h = pick(a.use24h, root.use24h)
         root.showBarDate = pick(a.showBarDate, root.showBarDate)

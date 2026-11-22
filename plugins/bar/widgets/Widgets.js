@@ -36,6 +36,7 @@ var files = {
     bluetooth:      "Bluetooth.qml",
     temperature:    "Temperature.qml",
     settingsbutton: "SettingsButton.qml",
+    barbutton:      "BarButton.qml",
     clipscape:      "ClipscapeButton.qml"
 };
 
