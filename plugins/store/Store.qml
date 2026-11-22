@@ -13,6 +13,7 @@
 // runs aequalyn-store, and its report shows live under the page.
 import QtQuick
 import QtQuick.Layouts
+import QtMultimedia
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
@@ -2296,13 +2297,13 @@ Scope {
                                                                       smooth: true
                                                                       onStatusChanged: if (status === Image.Error) visible = false
                                                                   }
-                                                                  Text {
-                                                                      anchors.centerIn: parent
+                                                                  Video {
+                                                                      anchors.fill: parent
                                                                       visible: catCard.isVideo
-                                                                      text: "\u{F03D8}"
-                                                                      color: root.theme.textMuted
-                                                                      font.family: root.mono
-                                                                      font.pixelSize: 18
+                                                                      source: root.catalogPreview(catCard.modelData.id)
+                                                                      fillMode: VideoOutput.PreserveAspectCrop
+                                                                      autoPlay: false
+                                                                      loops: MediaPlayer.NoLooping
                                                                   }
                                                               }
                                                               ColumnLayout {
