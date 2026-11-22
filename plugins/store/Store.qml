@@ -530,7 +530,8 @@ Scope {
             + "  id=$(basename \"$(dirname \"$t\")\"); "
             + "  name=$(jq -r '.name // \"'\"$id\"'\"' \"$t\" 2>/dev/null || echo \"$id\"); "
             + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ]; then inst=1; else inst=0; fi; "
-            + "  printf '%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\"; "
+            + "  if [ \"$id\" = \"spectral\" ]; then lab=Community; else lab=Built-in; fi; "
+            + "  printf '%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$lab\"; "
             + "done"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -538,7 +539,8 @@ Scope {
                 for (const line of text.split("\n")) {
                     if (line.trim() === "") continue;
                     const p = line.split("\t");
-                    out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1" });
+                    out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1",
+                               label: p[3] || "Built-in" });
                 }
                 root.themeCatalog = out;
             }
@@ -2279,6 +2281,12 @@ Scope {
                                                               horizontalAlignment: Text.AlignHCenter
                                                               elide: Text.ElideMiddle
                                                               Layout.fillWidth: true
+                                                          }
+                                                          Pill {
+                                                              visible: root.section === "theme" && !!catCard.modelData.label
+                                                              text: catCard.modelData.label || "Built-in"
+                                                              tone: (catCard.modelData.label === "Community") ? root.theme.accentPrimary : root.theme.textMuted
+                                                              Layout.alignment: Qt.AlignHCenter
                                                           }
                                                           Pill {
                                                               visible: !!catCard.modelData.installed
