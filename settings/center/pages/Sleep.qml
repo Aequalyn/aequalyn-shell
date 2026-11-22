@@ -276,7 +276,7 @@ CcPage {
                         id: previewLock
                         anchors.fill: parent
                         theme: AequalynDefaultTheme {}
-                        wallpaperPath: AequalynSettings.wallpaperPath
+                        wallpaperPath: AequalynSettings.lockWallpaperSource === "solid" ? "" : (AequalynSettings.wallpaperPath || "")
                         userName: Quickshell.env("USER") || ""
                         use24h: AequalynSettings.use24h
                         lockStyle: AequalynSettings.lockStyle
