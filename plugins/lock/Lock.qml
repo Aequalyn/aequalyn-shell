@@ -14,6 +14,14 @@ Item {
     LockService.theme = root.theme
     LockService.use24h = AequalynSettings.use24h
     LockService.lockStyle = AequalynSettings.lockStyle
+    LockService.lockWallpaperSource = AequalynSettings.lockWallpaperSource
+    LockService.appliedWallpaperPath = AequalynSettings.wallpaperPath
+    LockService.lockFieldPosition = AequalynSettings.lockFieldPosition
+    LockService.lockShowUser = AequalynSettings.lockShowUser
+    LockService.lockShowClock = AequalynSettings.lockShowClock
+    LockService.lockShowDate = AequalynSettings.lockShowDate
+    LockService.lockShowMedia = AequalynSettings.lockShowMedia
+    LockService.lockShowBattery = AequalynSettings.lockShowBattery
   }
 
   onThemeChanged: syncSettings()
@@ -22,6 +30,14 @@ Item {
     target: AequalynSettings
     function onUse24hChanged() { root.syncSettings() }
     function onLockStyleChanged() { root.syncSettings() }
+    function onLockWallpaperSourceChanged() { root.syncSettings() }
+    function onLockFieldPositionChanged() { root.syncSettings() }
+    function onLockShowUserChanged() { root.syncSettings() }
+    function onLockShowClockChanged() { root.syncSettings() }
+    function onLockShowDateChanged() { root.syncSettings() }
+    function onLockShowMediaChanged() { root.syncSettings() }
+    function onLockShowBatteryChanged() { root.syncSettings() }
+    function onWallpaperPathChanged() { root.syncSettings() }
   }
 
   Component.onCompleted: syncSettings()

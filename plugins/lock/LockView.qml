@@ -14,6 +14,12 @@ Item {
   property string userName: ""
   property bool use24h: true
   property string lockStyle: "classic"
+  property string fieldPosition: "center"
+  property bool settingShowUser: true
+  property bool settingShowClock: true
+  property bool settingShowDate: true
+  property bool settingShowMedia: true
+  property bool settingShowBattery: false
   property string failureMessage: ""
   property int failedAttempts: 0
   property bool authenticating: false
@@ -66,6 +72,8 @@ Item {
   readonly property string shortDateText: Qt.formatDate(new Date(), "ddd d")
   property string infoText: ""
   property string infoText2: ""
+  property string mediaText: ""
+  property string batteryText: ""
 
   function refreshInfo() {
     if (style === "weather") infoProc.command = [root.homeBin("aequalyn-lock-info"), "weather"]
@@ -103,8 +111,20 @@ Item {
     }
   }
 
+  Process {
+    id: mediaProc
+    command: ["bash", "-c", "playerctl metadata --format '{{artist}} - {{title}}' 2>/dev/null | head -1"]
+    stdout: StdioCollector { onStreamFinished: root.mediaText = String(text || "").trim() }
+  }
+  Process {
+    id: batteryProc
+    command: ["bash", "-c", "b=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1); [ -n \"$b\" ] && echo \"󰁹 ${b}%\""]
+    stdout: StdioCollector { onStreamFinished: root.batteryText = String(text || "").trim() }
+  }
   Timer { interval: 1000; repeat: true; running: true; onTriggered: { clockText.text = Qt.formatTime(new Date(), root.timeFormat); if (root.style === "binary") root.refreshInfo() } }
   Timer { interval: 60000; repeat: true; running: ["weather","words","quote","day","battery","dashboard","calendar","nowplaying"].indexOf(root.style) >= 0; onTriggered: root.refreshInfo() }
+  Timer { interval: 10000; repeat: true; running: root.settingShowMedia; triggeredOnStart: true; onTriggered: { mediaProc.running = false; mediaProc.running = true } }
+  Timer { interval: 30000; repeat: true; running: root.settingShowBattery; triggeredOnStart: true; onTriggered: { batteryProc.running = false; batteryProc.running = true } }
 
   Image {
     id: wallpaper
@@ -137,9 +157,12 @@ Item {
   }
 
   // ---- style helpers -------------------------------------------------------
-  readonly property bool showClock: style !== "dot"
-  readonly property bool showDate: ["dot","mono","line","terminal","binary","stack","duo","pill","poster","words","quote","day","battery","avatar","card","nowplaying","vertical"].indexOf(style) < 0 || ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon"].indexOf(style) >= 0
-  readonly property bool showUser: ["classic","avatar","card","split","terminal","dot"].indexOf(style) >= 0
+  readonly property bool styleWantsClock: style !== "dot"
+  readonly property bool styleWantsDate: ["dot","mono","line","terminal","binary","stack","duo","pill","poster","words","quote","day","battery","avatar","card","nowplaying","vertical"].indexOf(style) < 0 || ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon"].indexOf(style) >= 0
+  readonly property bool styleWantsUser: ["classic","avatar","card","split","terminal","dot"].indexOf(style) >= 0
+  readonly property bool showClock: root.settingShowClock && styleWantsClock
+  readonly property bool showDate: root.settingShowDate && styleWantsDate
+  readonly property bool showUser: root.settingShowUser && styleWantsUser
   readonly property bool centerLayout: ["corner","split","terminal","vertical","card","line"].indexOf(style) < 0
   readonly property int clockSize: style === "mono" ? 112 : (style === "stack" || style === "duo" ? 96 : (style === "neon" ? 88 : (style === "clean" || style === "glass" || style === "orbit" || style === "dashboard" ? 68 : (style === "battery" ? 68 : (style === "corner" ? 60 : (style === "poster" ? 40 : (style === "nowplaying" ? 26 : (style === "frame" ? 38 : 60))))))))
   readonly property color clockColor: style === "neon" ? root.accent : (style === "duo" ? root.fg : root.fg)
@@ -461,9 +484,13 @@ Item {
   }
 
   // ---- password field ------------------------------------------------------
-  readonly property bool fieldBottom: ["corner","frame","card","mono","nowplaying","poster","vertical"].indexOf(root.style) >= 0
-  readonly property bool fieldLeft: ["split","terminal","words"].indexOf(root.style) >= 0
-  readonly property bool fieldPill: root.style === "pill"
+  readonly property string effectiveFieldPosition: {
+    if (root.fieldPosition === "bottom" || root.fieldPosition === "left" || root.fieldPosition === "center") return root.fieldPosition
+    return "center"
+  }
+  readonly property bool fieldBottom: effectiveFieldPosition === "bottom" || (effectiveFieldPosition === "center" && ["corner","frame","card","mono","nowplaying","poster","vertical"].indexOf(root.style) >= 0)
+  readonly property bool fieldLeft: effectiveFieldPosition === "left" || (effectiveFieldPosition === "center" && ["split","terminal","words"].indexOf(root.style) >= 0)
+  readonly property bool fieldPill: root.style === "pill" && effectiveFieldPosition === "center"
 
   Rectangle {
     id: field
@@ -566,6 +593,27 @@ Item {
       : (root.glanceScanning ? "Scanning face…" : (root.authenticating ? "Checking…" : "Password, then Enter · Space for face unlock"))
     color: root.failureMessage ? root.error : root.muted
     font.family: root.font; font.pixelSize: 12
+  }
+
+  Text {
+    visible: root.settingShowMedia && root.mediaText !== ""
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom; anchors.bottomMargin: root.settingShowBattery && root.batteryText !== "" ? 72 : 52
+    text: "󰎆  " + root.mediaText
+    color: root.muted
+    font.family: root.font; font.pixelSize: 11
+    elide: Text.ElideRight
+    width: Math.min(parent.width - 80, 600)
+    horizontalAlignment: Text.AlignHCenter
+  }
+
+  Text {
+    visible: root.settingShowBattery && root.batteryText !== ""
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom; anchors.bottomMargin: 52
+    text: root.batteryText
+    color: root.muted
+    font.family: root.font; font.pixelSize: 11
   }
 
   Text {

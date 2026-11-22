@@ -192,6 +192,38 @@ CcPage {
         }
     }
     CcSection {
+        title: "Lock screen editor"
+        hint: "Customize what the Quickshell lock screen shows."
+
+        CcChoice {
+            title: "Wallpaper"
+            options: [
+                { key: "wallpaper", label: "Current" },
+                { key: "theme",     label: "Theme" },
+                { key: "solid",     label: "Solid" }
+            ]
+            current: AequalynSettings.lockWallpaperSource
+            onChosen: key => { AequalynSettings.lockWallpaperSource = key; AequalynSettings.save() }
+        }
+
+        CcChoice {
+            title: "Password field"
+            options: [
+                { key: "center", label: "Center" },
+                { key: "bottom", label: "Bottom" },
+                { key: "left",   label: "Left" }
+            ]
+            current: AequalynSettings.lockFieldPosition
+            onChosen: key => { AequalynSettings.lockFieldPosition = key; AequalynSettings.save() }
+        }
+
+        CcToggle { setting: "lockShowClock"; title: "Show clock" }
+        CcToggle { setting: "lockShowDate";  title: "Show date" }
+        CcToggle { setting: "lockShowUser";  title: "Show user name" }
+        CcToggle { setting: "lockShowMedia"; title: "Show now playing" }
+        CcToggle { setting: "lockShowBattery"; title: "Show battery" }
+    }
+    CcSection {
         title: "Sleep"
         CcToggle { setting: "suspendEnabled"; title: "Go to sleep when I'm away"; sub: "Saves the battery. Off: only the screen turns off." }
         CcSlider {

@@ -413,6 +413,14 @@ QtObject {
     // how the screen looks while locked: "classic" (made from the wallpaper) or one of
     // the designs in ~/.config/hypr/lockscreens, applied by bin/aequalyn-lockscreen
     property string lockStyle: "classic"
+    property string lockWallpaperSource: "wallpaper" // wallpaper | theme | solid
+    property string lockFieldPosition: "center" // center | bottom | left
+    property bool lockShowUser: true
+    property bool lockShowClock: true
+    property bool lockShowDate: true
+    property bool lockShowMedia: true
+    property bool lockShowBattery: false
+
     function setLockStyle(name) {
         if (!/^[a-z0-9-]+$/.test(String(name))) return
         root.lockStyle = name
@@ -535,7 +543,14 @@ QtObject {
                 screenOffMinutes: root.screenOffMinutes,
                 suspendEnabled: root.suspendEnabled,
                 suspendMinutes: root.suspendMinutes,
-                lockStyle: root.lockStyle
+                lockStyle: root.lockStyle,
+                lockWallpaperSource: root.lockWallpaperSource,
+                lockFieldPosition: root.lockFieldPosition,
+                lockShowUser: root.lockShowUser,
+                lockShowClock: root.lockShowClock,
+                lockShowDate: root.lockShowDate,
+                lockShowMedia: root.lockShowMedia,
+                lockShowBattery: root.lockShowBattery
             }
         })
         return data
@@ -783,6 +798,13 @@ QtObject {
         root.lockEnabled = pick(p.lockEnabled, root.lockEnabled)
         root.lockMinutes = pick(p.lockMinutes, root.lockMinutes)
         root.lockStyle = /^[a-z0-9-]+$/.test(String(p.lockStyle)) ? String(p.lockStyle) : root.lockStyle
+        root.lockWallpaperSource = ["wallpaper","theme","solid"].indexOf(p.lockWallpaperSource) >= 0 ? p.lockWallpaperSource : root.lockWallpaperSource
+        root.lockFieldPosition = ["center","bottom","left"].indexOf(p.lockFieldPosition) >= 0 ? p.lockFieldPosition : root.lockFieldPosition
+        root.lockShowUser = pick(p.lockShowUser, root.lockShowUser)
+        root.lockShowClock = pick(p.lockShowClock, root.lockShowClock)
+        root.lockShowDate = pick(p.lockShowDate, root.lockShowDate)
+        root.lockShowMedia = pick(p.lockShowMedia, root.lockShowMedia)
+        root.lockShowBattery = pick(p.lockShowBattery, root.lockShowBattery)
         root.screenOffEnabled = pick(p.screenOffEnabled, root.screenOffEnabled)
         root.screenOffMinutes = pick(p.screenOffMinutes, root.screenOffMinutes)
         root.suspendEnabled = pick(p.suspendEnabled, root.suspendEnabled)

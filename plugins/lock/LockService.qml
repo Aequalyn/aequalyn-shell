@@ -15,6 +15,19 @@ Singleton {
   property var theme: null
   property bool use24h: true
   property string lockStyle: "classic"
+  property string lockWallpaperSource: "wallpaper"
+  property string appliedWallpaperPath: ""
+  property string lockFieldPosition: "center"
+  property bool lockShowUser: true
+  property bool lockShowClock: true
+  property bool lockShowDate: true
+  property bool lockShowMedia: true
+  property bool lockShowBattery: false
+  readonly property string effectiveWallpaperPath: {
+    if (root.lockWallpaperSource === "solid") return ""
+    if (root.lockWallpaperSource === "theme") return root.appliedWallpaperPath || root.wallpaperPath
+    return root.wallpaperPath || root.appliedWallpaperPath
+  }
 
   readonly property string home: Quickshell.env("HOME") || ""
   readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME") || ""
@@ -330,10 +343,16 @@ Singleton {
       LockView {
         anchors.fill: parent
         theme: root.theme
-        wallpaperPath: root.wallpaperPath
+        wallpaperPath: root.effectiveWallpaperPath
         userName: root.userName
         use24h: root.use24h
         lockStyle: root.lockStyle
+        fieldPosition: root.lockFieldPosition
+        settingShowUser: root.lockShowUser
+        settingShowClock: root.lockShowClock
+        settingShowDate: root.lockShowDate
+        settingShowMedia: root.lockShowMedia
+        settingShowBattery: root.lockShowBattery
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
         authenticating: root.authenticating
