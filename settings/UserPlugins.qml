@@ -58,10 +58,14 @@ for m in sorted(pathlib.Path(sys.argv[1]).glob('*/plugin.json')):
                     continue
                 nr.append({'id': aid, 'label': str(a.get('label', aid))[:128],
                            'command': argv, 'about': str(a.get('about', ''))[:512]})
+        pv = next((str(p) for p in [m.parent / 'preview.png', m.parent / 'preview.jpg',
+                                    m.parent / 'preview.webp', m.parent / 'preview.mp4',
+                                    m.parent / 'preview.webm'] if p.is_file()), '')
         out.append({'id': i, 'label': str(d.get('label', i)), 'source': (m.parent / e).as_uri(),
                     'version': str(d.get('version', '')),
                     'info': {'icon': str(d.get('icon', '')), 'group': g, 'keys': str(d.get('keys', '')),
                              'page': '', 'about': str(d.get('about', '')), 'user': True,
+                             'preview': str(d.get('preview') or d.get('image') or d.get('screenshot') or pv),
                              'needsRoot': nr}})
     except Exception:
         pass
