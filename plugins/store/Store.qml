@@ -2280,8 +2280,8 @@ Scope {
                                                           RowLayout {
                                                               spacing: 7
                                                               Rectangle {
-                                                                  Layout.preferredWidth: 40
-                                                                  Layout.preferredHeight: 40
+                                                                  Layout.preferredWidth: 56
+                                                                  Layout.preferredHeight: 56
                                                                   radius: 8
                                                                   color: root.theme.bgSurface
                                                                   border.width: 1
