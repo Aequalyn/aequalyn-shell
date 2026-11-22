@@ -479,10 +479,16 @@ Scope {
     // ---- themes & wallpapers published in Aequalyn/aequalyn-themes ---------------------
     readonly property string themeRepoDir: Quickshell.env("HOME") + "/.cache/aequalyn/aequalyn-themes"
     property var themeCatalog: []
+    property string themeLabelFilter: "All"
     property var wallpaperCatalog: []
     property bool repoSyncing: false
     function syncThemeRepo() { if (!repoSync.running) repoSync.running = true; }
-    function catalogItems() { return root.section === "theme" ? root.themeCatalog : root.wallpaperCatalog; }
+    function catalogItems() {
+        let items = root.section === "theme" ? root.themeCatalog : root.wallpaperCatalog;
+        if (root.section === "theme" && root.themeLabelFilter !== "All")
+            items = items.filter(i => (i.label || "Built-in") === root.themeLabelFilter);
+        return items;
+    }
     function catalogRows() {
         const items = root.catalogItems();
         const rows = [];
@@ -2208,6 +2214,30 @@ Scope {
                                                  : "Themes published in github.com/Aequalyn/aequalyn-themes. Install runs the same checks.")
                                              : (root.wallpaperCatalog.length === 0 ? "No wallpapers found yet. Press Sync to fetch them."
                                                  : "Wallpapers published in github.com/Aequalyn/aequalyn-themes.")
+                                     RowLayout {
+                                         visible: root.section === "theme"
+                                         Layout.fillWidth: true
+                                         spacing: 6
+                                         Btn {
+                                             text: "All"
+                                             primary: root.themeLabelFilter === "All"
+                                             implicitHeight: 26
+                                             onClicked: root.themeLabelFilter = "All"
+                                         }
+                                         Btn {
+                                             text: "Built-in"
+                                             primary: root.themeLabelFilter === "Built-in"
+                                             implicitHeight: 26
+                                             onClicked: root.themeLabelFilter = "Built-in"
+                                         }
+                                         Btn {
+                                             text: "Community"
+                                             primary: root.themeLabelFilter === "Community"
+                                             implicitHeight: 26
+                                             onClicked: root.themeLabelFilter = "Community"
+                                         }
+                                         Item { Layout.fillWidth: true }
+                                     }
                                      RowLayout {
                                          Layout.fillWidth: true
                                          Item { Layout.fillWidth: true }
