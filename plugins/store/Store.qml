@@ -50,6 +50,7 @@ Scope {
     readonly property var resultSources: ["All", "Apps", "Arch", "AUR", "Flatpak", "Snap", "Installed", "Settings"]
         .concat(Pages.categories.map(c => c.key))
     function resultLabel(source) {
+        if (source === "Apps") return "All Apps";
         const c = Pages.categories.find(x => x.key === source);
         return c ? c.title : source;
     }
@@ -562,7 +563,7 @@ Scope {
         { key: "cursor",    label: "Cursors",    glyph: "\u{F01BE}" },
         { key: "wallpaper", label: "Wallpapers", glyph: "\u{F02E9}" },
         { key: "look",      label: "Looks",      glyph: "\u{F0E09}" },
-        { key: "apps",      label: "Apps",       glyph: "\u{F003B}" },
+        { key: "apps",      label: "All Apps",   glyph: "\u{F003B}" },
         { key: "web",       label: "Web apps",   glyph: "\u{F0595}" },
         { key: "ai",        label: "AI tools",   glyph: "\u{F06A9}" },
         { key: "appimage",  label: "AppImages",  glyph: "\u{F01D4}" },
@@ -573,10 +574,41 @@ Scope {
     // sections of the chosen one beside it. Home stands apart.
     readonly property var categories: [
         { key: "get",    title: "Get",     icon: "\u{F0431}", sections: ["plugin", "theme", "cursor", "wallpaper", "look"] },
-        { key: "apps",   title: "Apps",    icon: "\u{F003B}", sections: ["apps", "web", "ai", "appimage"] },
+        { key: "apps",   title: "Apps",    icon: "\u{F003B}", sections: ["apps", "web", "ai"]
+            .concat(root.appCategories.map(c => "appcat:" + c.key)).concat(["appimage"]) },
         { key: "manage", title: "Manage", icon: "\u{F0110}", sections: ["market", "updates"] }
     ]
     readonly property var categoryNow: root.categories.find(c => c.key === root.category) || null
+    // The Apps rail shows All Apps, Web apps and AI tools, then the Super + I
+    // categories, then AppImages. Picking a category opens just that category's
+    // page; All Apps keeps its own search, source and category filters.
+    readonly property var sectionNavItems: {
+        if (!root.categoryNow) return [];
+        const items = [];
+        for (const key of root.categoryNow.sections) {
+            if (key.indexOf("appcat:") === 0) {
+                const c = root.appCategories.find(x => x.key === key.slice(7));
+                if (c) items.push({ key: "apps", label: c.label, glyph: c.icon || "", appCategory: c.key });
+                continue;
+            }
+            const s = root.sections.find(x => x.key === key) || {};
+            items.push(key === "apps"
+                ? { key: "apps", label: "All Apps", glyph: s.glyph || "", appCategory: "all" }
+                : { key: key, label: s.label || key, glyph: s.glyph || "" });
+        }
+        return items;
+    }
+    function navIsOn(item) {
+        if (!item || root.section !== item.key) return false;
+        if (item.appCategory === undefined) return item.key !== "apps" || root.appCategory === "all";
+        return root.appCategory === item.appCategory;
+    }
+    readonly property var currentNavItem: root.sectionNavItems.find(i => root.navIsOn(i)) || null
+    function currentTitle() {
+        if (root.currentNavItem) return root.currentNavItem.label;
+        const s = root.sections.find(x => x.key === root.section);
+        return s ? s.label : "";
+    }
     // the shell's own plugins, as the control center lists them; the control center
     // itself is left out because turning it off would lock you out
     readonly property var builtInPlugins: PluginRegistry.list.filter(p => p.id !== "settings")
@@ -734,11 +766,24 @@ Scope {
         if (!root.sections.some(s => s.key === section)) return;
         root.category = root.categoryOf(section);
         root.section = section;
+        if (section === "apps") root.appCategory = "all";
     }
     function openCategory(key) {
         const c = root.categories.find(x => x.key === key);
         root.category = c ? c.key : "";
         root.section = c ? c.sections[0] : "home";
+        if (c && c.key === "apps") root.appCategory = "all";
+    }
+    function openNav(item) {
+        if (!item) return;
+        if (item.appCategory !== undefined) {
+            root.openSection("apps");
+            root.appCategory = item.appCategory;
+            root.foundAt = 0;
+        } else {
+            if (item.key === "apps") root.appCategory = "all";
+            root.openSection(item.key);
+        }
     }
     readonly property var kindWords: ({
         plugin: { one: "plugin", hint: "A git repo with a plugin.json: it is checked (its files, qmllint, what it may run), then installed into ~/.local/share/aequalyn/plugins and switched on at once." },
@@ -1031,17 +1076,12 @@ Scope {
     // the page of results shown at a time (foundAt: where it starts)
     property int foundAt: 0
     readonly property int foundStep: 15
-    readonly property var foundShown: root.foundSource === "Installed"
+    readonly property var appPool: root.foundSource === "Installed"
         ? root.installedResults
         : root.found.filter(r => root.foundSource === "All" || r.source === root.foundSource)
-    // the page's found apps, as rows of five, the page always holding its three rows
-    function foundRows() {
-        const shown = root.foundShown.slice(root.foundAt, root.foundAt + root.foundStep);
-        const rows = [];
-        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
-        while (rows.length < 3) rows.push([]);
-        return rows;
-    }
+    readonly property var foundShown: root.appCategory === "all"
+        ? root.appPool
+        : root.appPool.filter(r => root.categoryForResult(r) === root.appCategory)
     function searchApps(q, more) {
         // Installed is a local view: filter what is already here, no network search
         if (root.foundSource === "Installed") {
@@ -1358,9 +1398,9 @@ Scope {
     onSectionChanged: {
         if (section !== "web") { root.categoryTarget = null; root.renamingCategory = ""; }
         if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
-        if (section === "apps") { detectApps(); if (root.foundPage === 0) searchApps("", false); }
+        if (section === "apps") { root.appCategory = "all"; detectApps(); if (root.foundPage === 0) searchApps("", false); }
         if (section === "web") loadWebapps();
-        if (section === "ai") loadAi();
+        if (section === "ai") { detectApps(); loadAi(); }
         if (section === "appimage") checkHandler();
         if (section === "theme" || section === "wallpaper") root.syncThemeRepo();
         pageIn.restart();
@@ -2757,7 +2797,7 @@ Scope {
                                 // Apps: the four backends, then the popular apps, each from
                                 // any backend that has it; installed packages are in All apps
                                 Box {
-                                    visible: root.section === "apps"
+                                    visible: root.section === "apps" && root.appCategory === "all"
                                     title: "Backends"
                                     hint: "Where apps come from. Arch's own repositories (multilib included) are always here; the AUR, Flathub and Snap are one click away."
                                     Repeater {
@@ -2790,142 +2830,26 @@ Scope {
                                     }
                                 }
                                 Box {
-                                    visible: root.section === "apps"
+                                    visible: root.section === "apps" && root.appCategory === "all"
                                     title: "Popular apps"
                                     hint: "Every card shows all four ways to install it. A greyed button means that app has no build there; installs open in a terminal, where sudo asks for your password."
-                                    // five to a row (a RowLayout shares its width out), three
-                                    // rows to a page, ghost slots keeping every page's shape
-                                    Repeater {
-                                        model: root.section === "apps" ? root.popRows() : []
-                                        delegate: RowLayout {
-                                            id: popRow
-                                            required property var modelData
-                                            Layout.fillWidth: true
-                                            // an all-ghost row keeps the card height, so the page
-                                            // holds its 5x3 shape even when nothing is in it
-                                            Layout.preferredHeight: 164
-                                            spacing: 10
-                                            Repeater {
-                                                model: popRow.modelData
-                                                delegate: Rectangle {
-                                                    id: appCard
-                                                    required property var modelData
-                                                    readonly property string via: root.installedVia(modelData)
-                                                    readonly property bool hovered: cardMa.containsMouse
-                                                    Layout.fillWidth: true
-                                                    Layout.preferredWidth: 203
-                                                    height: 164
-                                                    radius: 12
-                                                    color: hovered ? root.theme.bgHover : root.theme.bgBase
-                                                    border.width: 1
-                                                    border.color: root.theme.bgBorder
-                                                MouseArea {
-                                                    id: cardMa
-                                                    anchors.fill: parent
-                                                    hoverEnabled: true
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onClicked: {
-                                                        const g = root.groupFor(appCard.modelData);
-                                                        if (g) root.openApp(g);
-                                                    }
-                                                }
-                                                ColumnLayout {
-                                                    anchors.fill: parent
-                                                    anchors.margins: 12
-                                                    spacing: 6
-                                                    RowLayout {
-                                                        spacing: 10
-                                                        Image {
-                                                            source: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + appCard.modelData.icon + ".png"
-                                                            sourceSize.width: 64; sourceSize.height: 64
-                                                            Layout.preferredWidth: 34; Layout.preferredHeight: 34
-                                                            fillMode: Image.PreserveAspectFit
-                                                            asynchronous: true
-                                                            smooth: true
-                                                        }
-                                                        ColumnLayout {
-                                                            spacing: 1
-                                                            Layout.fillWidth: true
-                                                            Text { text: appCard.modelData.name; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight; Layout.fillWidth: true }
-                                                            Pill { visible: appCard.via !== ""; text: "Installed · " + appCard.via; tone: root.theme.accentGreen }
-                                                        }
-                                                    }
-                                                    Text { text: appCard.modelData.about; color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11; wrapMode: Text.WordWrap; elide: Text.ElideRight; maximumLineCount: 2; Layout.fillWidth: true }
-                                                    Item { Layout.fillHeight: true }
-                                                    GridLayout {
-                                                        Layout.fillWidth: true
-                                                        columns: 2
-                                                        rows: 2
-                                                        flow: GridLayout.LeftToRight
-                                                        columnSpacing: 4
-                                                        rowSpacing: 4
-                                                        Repeater {
-                                                            model: [
-                                                                { via: "Arch", has: !!appCard.modelData.pacman, ready: true },
-                                                                { via: "AUR", has: !!appCard.modelData.aur, ready: root.backends.yay === true },
-                                                                { via: "Flatpak", has: !!appCard.modelData.flatpak, ready: root.backends.flatpak === true },
-                                                                { via: "Snap", has: !!appCard.modelData.snap, ready: root.backends.snap === true }
-                                                            ]
-                                                            delegate: Btn {
-                                                                required property var modelData
-                                                                text: modelData.via
-                                                                Layout.fillWidth: true
-                                                                Layout.preferredWidth: 0
-                                                                Layout.minimumWidth: 0
-                                                                Layout.preferredHeight: 24
-                                                                primary: modelData.has && modelData.ready && appCard.via === ""
-                                                                enabled: modelData.has && modelData.ready && !root.anyBusy()
-                                                                onClicked: root.installApp(appCard.modelData, modelData.via)
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        Repeater {
-                                            model: 5 - popRow.modelData.length
-                                            delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
-                                        }
-                                    }
-                                    }
-
-                                    // the pages of the popular grid, ‹ and › to walk them
-                                    RowLayout {
-                                        visible: root.popShown.length > 15
-                                        spacing: 6
-                                        Item { Layout.fillWidth: true }
-                                        Text {
-                                            text: root.popShown.length + " apps"
-                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                        }
-                                        StepBtn {
-                                            glyph: "‹"
-                                            enabled: root.popAt > 0
-                                            onClicked: root.popPage = root.popAt / 15 - 1
-                                        }
-                                        Text {
-                                            text: (root.popAt + 1) + "–" + Math.min(root.popAt + 15, root.popShown.length)
-                                                  + " of " + root.popShown.length
-                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                        }
-                                        StepBtn {
-                                            glyph: "›"
-                                            enabled: root.popAt + 15 < root.popShown.length
-                                            onClicked: root.popPage = root.popAt / 15 + 1
-                                        }
+                                    SourceCards {
+                                        model: root.section === "apps" ? root.popShown : []
+                                        page: root.popPage
+                                        onGoToPage: value => root.popPage = value
                                     }
                                 }
                                 // every app from every backend
                                 Box {
-                                    visible: root.section === "apps"
-                                    title: "All apps"
-                                    hint: root.foundSource === "Installed"
+                                    visible: root.section === "apps" && root.appCategory === "all"
+                                    title: "All Apps"
+                                    hint: "Pick a group in the side list, or here, to narrow the apps. " + (root.foundSource === "Installed"
                                         ? (root.installedQuery === ""
                                            ? "Everything installed from Arch, the AUR, Flathub and Snap, command-line tools included. Search to narrow this list."
                                            : "Installed packages matching \"" + root.installedQuery + "\".")
                                         : root.foundQuery === ""
                                           ? "Flathub's most installed and Snap's featured apps. Search to look through Arch, the AUR, Flathub and Snap at once."
-                                          : "Everything that matches \"" + root.foundQuery + "\" in Arch, the AUR, Flathub and Snap."
+                                          : "Everything that matches \"" + root.foundQuery + "\" in Arch, the AUR, Flathub and Snap.")
                                     RowLayout {
                                         spacing: 8
                                         Field {
@@ -2942,9 +2866,9 @@ Scope {
                                             model: ["All", "Installed", "Arch", "AUR", "Flatpak", "Snap"]
                                             delegate: Btn {
                                                 required property string modelData
-                                                readonly property int count: modelData === "All" ? root.found.length
-                                                    : modelData === "Installed" ? root.installedApps.length
-                                                    : root.found.filter(r => r.source === modelData).length
+                                                readonly property int count: modelData === "All" ? root.appPool.length
+                                                    : modelData === "Installed" ? root.installedResults.length
+                                                    : root.appPool.filter(r => r.source === modelData).length
                                                 Layout.fillWidth: true
                                                 Layout.preferredWidth: 0
                                                 Layout.minimumWidth: 0
@@ -2954,6 +2878,7 @@ Scope {
                                                 onClicked: {
                                                     root.installedQuery = modelData === "Installed" ? appSearch.text.trim() : "";
                                                     root.foundSource = modelData;
+                                                    root.appCategory = "all";
                                                     root.foundAt = 0;
                                                 }
                                             }
@@ -3132,6 +3057,28 @@ Scope {
                                         text: root.searching ? "Loading…" : "More from Flathub (page " + (root.foundPage + 1) + " of " + root.flathubPages + ")"
                                         enabled: !root.searching
                                         onClicked: root.searchApps(root.foundQuery, true)
+                                    }
+                                }
+                                // One page for the chosen Super + I category, with the
+                                // same source-button cards and page opening as Popular apps.
+                                Repeater {
+                                    model: root.currentAppCategory ? [root.currentAppCategory] : []
+                                    delegate: Box {
+                                        required property var modelData
+                                        property int cardPage: 0
+                                        title: modelData.label + (modelData.key === "other" ? "" : " apps")
+                                        hint: "Each app has its install-source buttons, as in Popular apps. Click the card itself to open the app's own page."
+                                        SourceCards {
+                                            model: root.categoryAppCards(modelData.key)
+                                            page: cardPage
+                                            limit: root.categoryAppLimit
+                                            onGoToPage: value => cardPage = value
+                                        }
+                                        Text {
+                                            visible: root.categoryAppCards(modelData.key).length === 0
+                                            text: "No apps in this group yet. Search from the title bar to add more to the list."
+                                            color: root.theme.textMuted; font.family: root.sans; font.pixelSize: 11
+                                        }
                                     }
                                 }
                                 // Web apps: what you have, the form, and the browser
