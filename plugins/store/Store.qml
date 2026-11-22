@@ -593,7 +593,9 @@ Scope {
         busyClear.restart();
         Quickshell.execDetached(["sh", "-c",
             'if command -v kitty >/dev/null; then exec kitty sh -c "$1"; '
-            + 'elif command -v foot >/dev/null; then exec foot sh -c "$1"; else exec alacritty -e sh -c "$1"; fi', "sh", tail]);
+            + 'elif command -v foot >/dev/null; then exec foot sh -c "$1"; '
+            + 'elif command -v alacritty >/dev/null; then exec alacritty -e sh -c "$1"; '
+            + 'elif command -v ghostty >/dev/null; then exec ghostty -e sh -c "$1"; fi', "sh", tail]);
     }
 
     // A package through the root gate: the approval window decides (the page
@@ -840,6 +842,7 @@ Scope {
             + "; elif command -v kitty >/dev/null 2>&1; then exec kitty sh -lc " + q
             + "; elif command -v foot >/dev/null 2>&1; then exec foot sh -lc " + q
             + "; elif command -v alacritty >/dev/null 2>&1; then exec alacritty -e sh -lc " + q
+            + "; elif command -v ghostty >/dev/null 2>&1; then exec ghostty -e sh -lc " + q
             + "; else echo 'No terminal emulator found.'; fi";
         Quickshell.execDetached(["sh", "-c", script]);
     }

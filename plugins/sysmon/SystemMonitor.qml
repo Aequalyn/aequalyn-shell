@@ -65,7 +65,7 @@ Scope {
             .concat([{ icon: "\u{F018D}", title: "Open btop in a terminal", sub: "Every process, with more detail", action: "btop" }])
         hints: [["↑ ↓", "move"], ["Enter", "open btop on its row"], ["Esc", "close"]]
         onActivated: (item) => {
-            if (item && item.action === "btop") { Quickshell.execDetached(["kitty", "-e", "btop"]); panel.open = false }
+            if (item && item.action === "btop") { Quickshell.execDetached(["sh", "-c", "if command -v xdg-terminal-exec >/dev/null 2>&1; then exec xdg-terminal-exec btop; elif command -v kitty >/dev/null 2>&1; then exec kitty -e btop; elif command -v foot >/dev/null 2>&1; then exec foot btop; elif command -v alacritty >/dev/null 2>&1; then exec alacritty -e btop; elif command -v ghostty >/dev/null 2>&1; then exec ghostty -e btop; fi"]); panel.open = false }
         }
     }
     IpcHandler {

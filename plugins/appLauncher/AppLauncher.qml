@@ -76,7 +76,7 @@ Scope {
     const cmd = String(e.exec).replace(/%[a-zA-Z]/g, "").trim();
     if (e.runInTerminal)
       Quickshell.execDetached(["sh", "-c",
-        't=kitty; command -v kitty >/dev/null 2>&1 || t=foot; command -v foot >/dev/null 2>&1 || t=alacritty; '
+        't=kitty; command -v kitty >/dev/null 2>&1 || t=foot; command -v foot >/dev/null 2>&1 || t=alacritty; command -v alacritty >/dev/null 2>&1 || t=ghostty; '
         + 'exec "$t" -e sh -c "$1"', "sh", cmd]);
     else
       Quickshell.execDetached(["sh", "-c", cmd]);

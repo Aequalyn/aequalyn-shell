@@ -146,7 +146,7 @@ Scope {
   }
 
   function launchApp(entry) {
-    if (entry.isCli) Quickshell.execDetached(["kitty", "-e", entry.name]);
+    if (entry.isCli) Quickshell.execDetached(["sh", "-c", "if command -v xdg-terminal-exec >/dev/null 2>&1; then exec xdg-terminal-exec " + entry.name + "; elif command -v kitty >/dev/null 2>&1; then exec kitty -e " + entry.name + "; elif command -v foot >/dev/null 2>&1; then exec foot " + entry.name + "; elif command -v alacritty >/dev/null 2>&1; then exec alacritty -e " + entry.name + "; elif command -v ghostty >/dev/null 2>&1; then exec ghostty -e " + entry.name + "; fi"]);
     else entry.execute();
     root.open = false;
   }
