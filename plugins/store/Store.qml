@@ -2305,7 +2305,6 @@ Scope {
                                                                   source: root.catalogPreview(catCard.modelData.id)
                                                                   fillMode: VideoOutput.PreserveAspectCrop
                                                                   autoPlay: false
-                                                                  loops: MediaPlayer.NoLooping
                                                               }
                                                               Text {
                                                                   anchors.centerIn: parent
