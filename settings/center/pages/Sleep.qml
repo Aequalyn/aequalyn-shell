@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import "root:/settings"
 import "root:/plugins/idleInhibitor"
+import "root:/plugins/lock"
 import ".."
 
 CcPage {
@@ -236,6 +237,122 @@ CcPage {
         CcToggle { setting: "lockShowUser";  title: "Show user name" }
         CcToggle { setting: "lockShowMedia"; title: "Show now playing" }
         CcToggle { setting: "lockShowBattery"; title: "Show battery" }
+
+        Text {
+            text: "Live preview — drag clock or password field"
+            color: Cc.theme.textMuted
+            font.pixelSize: 12
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.topMargin: 8
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 260
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
+            radius: 12
+            color: Cc.theme.bgSurface
+            border.color: Cc.theme.bgBorder
+            clip: true
+
+            Item {
+                id: previewRoot
+                anchors.fill: parent
+                property real sx: width / 1280
+                property real sy: height / 720
+                property real s: Math.min(sx, sy)
+
+                Item {
+                    id: previewStage
+                    width: 1280; height: 720
+                    scale: previewRoot.s
+                    transformOrigin: Item.TopLeft
+                    x: (previewRoot.width - width * scale) / 2
+                    y: (previewRoot.height - height * scale) / 2
+
+                    LockView {
+                        id: previewLock
+                        anchors.fill: parent
+                        theme: AequalynDefaultTheme {}
+                        wallpaperPath: AequalynSettings.wallpaperPath
+                        userName: Quickshell.env("USER") || ""
+                        use24h: AequalynSettings.use24h
+                        lockStyle: AequalynSettings.lockStyle
+                        fieldPosition: AequalynSettings.lockFieldPosition
+                        settingShowUser: AequalynSettings.lockShowUser
+                        settingShowClock: AequalynSettings.lockShowClock
+                        settingShowDate: AequalynSettings.lockShowDate
+                        settingShowMedia: AequalynSettings.lockShowMedia
+                        settingShowBattery: AequalynSettings.lockShowBattery
+                        customClockX: AequalynSettings.lockClockX
+                        customClockY: AequalynSettings.lockClockY
+                        customFieldX: AequalynSettings.lockFieldX
+                        customFieldY: AequalynSettings.lockFieldY
+                        authenticating: false
+                        glanceScanning: false
+                        fingerprintConfigured: false
+                        fingerprintClaimed: false
+                        sessionSecure: false
+                        preview: true
+                    }
+
+                    // drag handle: clock
+                    Rectangle {
+                        id: clockHandle
+                        width: 220; height: 90; radius: 10
+                        color: Qt.rgba(1,1,1,0.02)
+                        border.color: Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.7)
+                        border.width: 1
+                        visible: AequalynSettings.lockShowClock
+                        x: (AequalynSettings.lockClockX >= 0 ? AequalynSettings.lockClockX : 0.5) * previewStage.width - width/2
+                        y: (AequalynSettings.lockClockY >= 0 ? AequalynSettings.lockClockY : 0.35) * previewStage.height - height/2
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.SizeAllCursor
+                            drag.target: parent; drag.axis: Drag.XAndYAxis
+                            onReleased: {
+                                AequalynSettings.lockClockX = Math.max(0.05, Math.min(0.95, (parent.x + parent.width/2) / previewStage.width))
+                                AequalynSettings.lockClockY = Math.max(0.05, Math.min(0.95, (parent.y + parent.height/2) / previewStage.height))
+                                AequalynSettings.save()
+                            }
+                        }
+                        Text { anchors.centerIn: parent; text: "Clock"; color: Cc.theme.accentPrimary; font.pixelSize: 14; font.family: "JetBrainsMono Nerd Font" }
+                    }
+
+                    // drag handle: field
+                    Rectangle {
+                        id: fieldHandle
+                        width: 300; height: 56; radius: 10
+                        color: Qt.rgba(1,1,1,0.02)
+                        border.color: Qt.rgba(Cc.theme.accentSecondary.r, Cc.theme.accentSecondary.g, Cc.theme.accentSecondary.b, 0.7)
+                        border.width: 1
+                        x: (AequalynSettings.lockFieldX >= 0 ? AequalynSettings.lockFieldX : 0.5) * previewStage.width - width/2
+                        y: (AequalynSettings.lockFieldY >= 0 ? AequalynSettings.lockFieldY : 0.68) * previewStage.height - height/2
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.SizeAllCursor
+                            drag.target: parent; drag.axis: Drag.XAndYAxis
+                            onReleased: {
+                                AequalynSettings.lockFieldX = Math.max(0.05, Math.min(0.95, (parent.x + parent.width/2) / previewStage.width))
+                                AequalynSettings.lockFieldY = Math.max(0.05, Math.min(0.95, (parent.y + parent.height/2) / previewStage.height))
+                                AequalynSettings.save()
+                            }
+                        }
+                        Text { anchors.centerIn: parent; text: "Password"; color: Cc.theme.accentSecondary; font.pixelSize: 14; font.family: "JetBrainsMono Nerd Font" }
+                    }
+                }
+            }
+        }
+
+        CcButton {
+            text: "Reset element positions"
+            icon: "\u{F0453}"
+            onClicked: {
+                AequalynSettings.lockClockX = -1; AequalynSettings.lockClockY = -1
+                AequalynSettings.lockFieldX = -1; AequalynSettings.lockFieldY = -1
+                AequalynSettings.save()
+            }
+        }
     }
     CcSection {
         title: "Sleep"

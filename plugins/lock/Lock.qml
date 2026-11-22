@@ -22,6 +22,10 @@ Item {
     LockService.lockShowDate = AequalynSettings.lockShowDate
     LockService.lockShowMedia = AequalynSettings.lockShowMedia
     LockService.lockShowBattery = AequalynSettings.lockShowBattery
+    LockService.lockClockX = AequalynSettings.lockClockX
+    LockService.lockClockY = AequalynSettings.lockClockY
+    LockService.lockFieldX = AequalynSettings.lockFieldX
+    LockService.lockFieldY = AequalynSettings.lockFieldY
   }
 
   onThemeChanged: syncSettings()
@@ -38,6 +42,10 @@ Item {
     function onLockShowMediaChanged() { root.syncSettings() }
     function onLockShowBatteryChanged() { root.syncSettings() }
     function onWallpaperPathChanged() { root.syncSettings() }
+    function onLockClockXChanged() { root.syncSettings() }
+    function onLockClockYChanged() { root.syncSettings() }
+    function onLockFieldXChanged() { root.syncSettings() }
+    function onLockFieldYChanged() { root.syncSettings() }
   }
 
   Component.onCompleted: syncSettings()

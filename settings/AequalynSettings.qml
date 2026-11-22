@@ -420,6 +420,10 @@ QtObject {
     property bool lockShowDate: true
     property bool lockShowMedia: true
     property bool lockShowBattery: false
+    property real lockClockX: -1
+    property real lockClockY: -1
+    property real lockFieldX: -1
+    property real lockFieldY: -1
 
     function setLockStyle(name) {
         if (!/^[a-z0-9-]+$/.test(String(name))) return
@@ -550,7 +554,11 @@ QtObject {
                 lockShowClock: root.lockShowClock,
                 lockShowDate: root.lockShowDate,
                 lockShowMedia: root.lockShowMedia,
-                lockShowBattery: root.lockShowBattery
+                lockShowBattery: root.lockShowBattery,
+                lockClockX: root.lockClockX,
+                lockClockY: root.lockClockY,
+                lockFieldX: root.lockFieldX,
+                lockFieldY: root.lockFieldY
             }
         })
         return data
@@ -805,6 +813,10 @@ QtObject {
         root.lockShowDate = pick(p.lockShowDate, root.lockShowDate)
         root.lockShowMedia = pick(p.lockShowMedia, root.lockShowMedia)
         root.lockShowBattery = pick(p.lockShowBattery, root.lockShowBattery)
+        root.lockClockX = pick(p.lockClockX, root.lockClockX)
+        root.lockClockY = pick(p.lockClockY, root.lockClockY)
+        root.lockFieldX = pick(p.lockFieldX, root.lockFieldX)
+        root.lockFieldY = pick(p.lockFieldY, root.lockFieldY)
         root.screenOffEnabled = pick(p.screenOffEnabled, root.screenOffEnabled)
         root.screenOffMinutes = pick(p.screenOffMinutes, root.screenOffMinutes)
         root.suspendEnabled = pick(p.suspendEnabled, root.suspendEnabled)

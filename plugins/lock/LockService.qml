@@ -23,6 +23,10 @@ Singleton {
   property bool lockShowDate: true
   property bool lockShowMedia: true
   property bool lockShowBattery: false
+  property real lockClockX: -1
+  property real lockClockY: -1
+  property real lockFieldX: -1
+  property real lockFieldY: -1
   readonly property string effectiveWallpaperPath: {
     if (root.lockWallpaperSource === "solid") return ""
     if (root.lockWallpaperSource === "theme") return root.appliedWallpaperPath || root.wallpaperPath
@@ -353,6 +357,10 @@ Singleton {
         settingShowDate: root.lockShowDate
         settingShowMedia: root.lockShowMedia
         settingShowBattery: root.lockShowBattery
+        customClockX: root.lockClockX
+        customClockY: root.lockClockY
+        customFieldX: root.lockFieldX
+        customFieldY: root.lockFieldY
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
         authenticating: root.authenticating

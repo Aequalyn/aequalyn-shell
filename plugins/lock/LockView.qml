@@ -20,6 +20,11 @@ Item {
   property bool settingShowDate: true
   property bool settingShowMedia: true
   property bool settingShowBattery: false
+  property real customClockX: -1
+  property real customClockY: -1
+  property real customFieldX: -1
+  property real customFieldY: -1
+  property bool preview: false
   property string failureMessage: ""
   property int failedAttempts: 0
   property bool authenticating: false
@@ -91,7 +96,7 @@ Item {
   function homeBin(name) { return (Quickshell.env("HOME") || "") + "/.local/bin/" + name }
 
   onStyleChanged: refreshInfo()
-  Component.onCompleted: { refreshInfo(); input.forceActiveFocus() }
+  Component.onCompleted: { refreshInfo(); if (!root.preview) input.forceActiveFocus() }
 
   Process {
     id: infoProc
@@ -239,38 +244,26 @@ Item {
   // ---- clock ---------------------------------------------------------------
   Text {
     id: clockText
+    readonly property bool customPos: root.customClockX >= 0 && root.customClockY >= 0
     visible: root.showClock && root.style !== "stack" && root.style !== "duo" && root.style !== "binary" && root.style !== "words" && root.style !== "quote" && root.style !== "vertical"
     text: root.timeText
     color: root.clockColor
     font.family: root.font
     font.pixelSize: root.clockSize
     font.bold: true
-    anchors.horizontalCenter: root.centerLayout || ["pill","frame","nowplaying","poster","orbit","glass","dashboard","day","weather","battery","avatar","calendar","neon"].indexOf(root.style) >= 0 ? parent.horizontalCenter : undefined
-    anchors.left: ["corner","split","terminal"].indexOf(root.style) >= 0 ? parent.left : undefined
-    anchors.leftMargin: root.style === "corner" ? 60 : (root.style === "split" ? parent.width * 0.08 : (root.style === "terminal" ? 80 : 0))
-    anchors.top: ["frame","nowplaying","terminal"].indexOf(root.style) >= 0 ? parent.top : undefined
-    anchors.topMargin: root.style === "frame" ? 70 : (root.style === "nowplaying" ? 60 : (root.style === "terminal" ? 80 : 0))
-    anchors.bottom: ["corner"].indexOf(root.style) >= 0 ? parent.bottom : undefined
-    anchors.bottomMargin: root.style === "corner" ? 110 : 0
-    anchors.verticalCenter: ["classic","clean","mono","pill","glass","orbit","dashboard","zen","neon","poster","duo","day","weather","battery","avatar","calendar","line","dot","quote","words","split"].indexOf(root.style) >= 0 ? parent.verticalCenter : undefined
-    anchors.verticalCenterOffset: {
-      if (root.style === "classic") return -80
-      if (root.style === "clean") return -60
-      if (root.style === "mono") return -80
-      if (root.style === "glass") return -70
-      if (root.style === "orbit") return -70
-      if (root.style === "dashboard") return -120
-      if (root.style === "zen") return -90
-      if (root.style === "neon") return -90
-      if (root.style === "poster") return -50
-      if (root.style === "day") return -90
-      if (root.style === "weather") return -120
-      if (root.style === "battery") return -90
-      if (root.style === "avatar") return -150
-      if (root.style === "calendar") return -90
-      if (root.style === "split") return -90
-      return -20
-    }
+    Binding { when: clockText.customPos; target: clockText; property: "x"; value: Math.max(0, Math.min(clockText.parent.width - clockText.width, root.customClockX * clockText.parent.width - clockText.width / 2)) }
+    Binding { when: clockText.customPos; target: clockText; property: "y"; value: Math.max(0, Math.min(clockText.parent.height - clockText.height, root.customClockY * clockText.parent.height - clockText.height / 2)) }
+    anchors.horizontalCenter: customPos ? undefined : (root.centerLayout || ["pill","frame","nowplaying","poster","orbit","glass","dashboard","day","weather","battery","avatar","calendar","neon"].indexOf(root.style) >= 0 ? parent.horizontalCenter : undefined)
+    anchors.left: customPos ? undefined : (["corner","split","terminal"].indexOf(root.style) >= 0 ? parent.left : undefined)
+    anchors.leftMargin: customPos ? 0 : (root.style === "corner" ? 60 : (root.style === "split" ? parent.width * 0.08 : (root.style === "terminal" ? 80 : 0)))
+    anchors.top: customPos ? undefined : (["frame","nowplaying","terminal"].indexOf(root.style) >= 0 ? parent.top : undefined)
+    anchors.topMargin: customPos ? 0 : (root.style === "frame" ? 70 : (root.style === "nowplaying" ? 60 : (root.style === "terminal" ? 80 : 0)))
+    anchors.bottom: customPos ? undefined : (["corner"].indexOf(root.style) >= 0 ? parent.bottom : undefined)
+    anchors.bottomMargin: customPos ? 0 : (root.style === "corner" ? 110 : 0)
+    anchors.verticalCenter: customPos ? undefined : (["classic","clean","mono","pill","glass","orbit","dashboard","zen","neon","poster","duo","day","weather","battery","avatar","calendar","line","dot","quote","words","split"].indexOf(root.style) >= 0 ? parent.verticalCenter : undefined)
+    anchors.verticalCenterOffset: customPos ? 0 : ({
+      classic: -80, clean: -60, mono: -80, glass: -70, orbit: -70, dashboard: -120, zen: -90, neon: -90, poster: -50, day: -90, weather: -120, battery: -90, avatar: -150, calendar: -90, split: -90
+    }[root.style] !== undefined ? { classic: -80, clean: -60, mono: -80, glass: -70, orbit: -70, dashboard: -120, zen: -90, neon: -90, poster: -50, day: -90, weather: -120, battery: -90, avatar: -150, calendar: -90, split: -90 }[root.style] : -20)
   }
 
   // stack/duo split clocks
@@ -500,41 +493,24 @@ Item {
     color: root.style === "terminal" || root.style === "line" || root.style === "dot" ? root.bg : (root.style === "mono" ? root.bg : Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.92))
     border.color: root.failureMessage ? root.error : (input.activeFocus ? root.accent : (root.style === "line" ? "transparent" : root.border))
     border.width: root.style === "line" || root.style === "dot" || root.style === "terminal" ? 0 : (input.activeFocus || root.failureMessage ? 2 : 1)
-    anchors.horizontalCenter: (!root.fieldLeft && !root.fieldPill) ? parent.horizontalCenter : undefined
-    anchors.horizontalCenterOffset: root.style === "card" ? 40 : (root.style === "corner" ? 0 : 0)
-    anchors.left: root.fieldLeft ? parent.left : (root.fieldPill ? undefined : undefined)
-    anchors.leftMargin: root.style === "split" ? parent.width * 0.08 : (root.style === "terminal" ? 80 : (root.style === "words" ? 100 : 0))
-    anchors.right: root.style === "corner" ? parent.right : undefined
-    anchors.rightMargin: root.style === "corner" ? 60 : 0
-    anchors.bottom: root.fieldBottom ? parent.bottom : undefined
-    anchors.bottomMargin: root.style === "corner" ? 70 : (root.style === "frame" ? 90 : (root.style === "card" ? 105 : (root.style === "mono" || root.style === "nowplaying" || root.style === "poster" ? 80 : (root.style === "vertical" ? 60 : 0))))
-    anchors.verticalCenter: (!root.fieldBottom && root.style !== "terminal") ? parent.verticalCenter : undefined
-    anchors.verticalCenterOffset: {
-      if (root.fieldBottom) return 0
-      if (root.style === "classic") return 120
-      if (root.style === "clean") return 130
-      if (root.style === "glass") return 120
-      if (root.style === "orbit") return 130
-      if (root.style === "dashboard") return 140
-      if (root.style === "zen" || root.style === "quote") return 110
-      if (root.style === "neon") return 120
-      if (root.style === "split") return 150
-      if (root.style === "stack") return 170
-      if (root.style === "duo") return 130
-      if (root.style === "day" || root.style === "weather") return 110
-      if (root.style === "battery") return 120
-      if (root.style === "avatar") return 70
-      if (root.style === "calendar") return 120
-      if (root.style === "line") return 30
-      if (root.style === "dot") return 30
-      if (root.style === "words") return 120
-      if (root.style === "pill") return 0
-      return 120
-    }
-    anchors.top: root.style === "terminal" ? parent.top : undefined
-    anchors.topMargin: root.style === "terminal" ? 200 : 0
-    // pill layout: field sits right side of pill
-    x: root.fieldPill ? (parent.width - pillShape.width) / 2 + pillShape.width - width - 12 : x
+    readonly property bool customPos: root.customFieldX >= 0 && root.customFieldY >= 0
+    anchors.horizontalCenter: customPos ? undefined : ((!root.fieldLeft && !root.fieldPill) ? parent.horizontalCenter : undefined)
+    anchors.horizontalCenterOffset: customPos ? 0 : (root.style === "card" ? 40 : 0)
+    anchors.left: customPos ? undefined : (root.fieldLeft ? parent.left : undefined)
+    anchors.leftMargin: customPos ? 0 : (root.style === "split" ? parent.width * 0.08 : (root.style === "terminal" ? 80 : (root.style === "words" ? 100 : 0)))
+    anchors.right: customPos ? undefined : (root.style === "corner" ? parent.right : undefined)
+    anchors.rightMargin: customPos ? 0 : (root.style === "corner" ? 60 : 0)
+    anchors.bottom: customPos ? undefined : (root.fieldBottom ? parent.bottom : undefined)
+    anchors.bottomMargin: customPos ? 0 : (root.style === "corner" ? 70 : (root.style === "frame" ? 90 : (root.style === "card" ? 105 : (root.style === "mono" || root.style === "nowplaying" || root.style === "poster" ? 80 : (root.style === "vertical" ? 60 : 0)))))
+    anchors.verticalCenter: customPos ? undefined : ((!root.fieldBottom && root.style !== "terminal") ? parent.verticalCenter : undefined)
+    anchors.verticalCenterOffset: customPos ? 0 : (root.fieldBottom ? 0 : ({
+      classic: 120, clean: 130, glass: 120, orbit: 130, dashboard: 140, zen: 110, quote: 110, neon: 120, split: 150, stack: 170, duo: 130, day: 110, weather: 110, battery: 120, avatar: 70, calendar: 120, line: 30, dot: 30, words: 120, pill: 0
+    }[root.style] !== undefined ? { classic: 120, clean: 130, glass: 120, orbit: 130, dashboard: 140, zen: 110, quote: 110, neon: 120, split: 150, stack: 170, duo: 130, day: 110, weather: 110, battery: 120, avatar: 70, calendar: 120, line: 30, dot: 30, words: 120, pill: 0 }[root.style] : 120))
+    anchors.top: customPos ? undefined : (root.style === "terminal" ? parent.top : undefined)
+    anchors.topMargin: customPos ? 0 : (root.style === "terminal" ? 200 : 0)
+    Binding { when: field.customPos; target: field; property: "x"; value: Math.max(0, Math.min(field.parent.width - field.width, root.customFieldX * field.parent.width - field.width / 2)) }
+    Binding { when: field.customPos; target: field; property: "y"; value: Math.max(0, Math.min(field.parent.height - field.height, root.customFieldY * field.parent.height - field.height / 2)) }
+    Binding { when: !field.customPos && root.fieldPill; target: field; property: "x"; value: (field.parent.width - pillShape.width) / 2 + pillShape.width - field.width - 12 }
 
     TextInput {
       id: input
@@ -628,6 +604,6 @@ Item {
 
   Connections {
     target: LockService
-    function onSessionSecureChanged() { if (root.sessionSecure) input.forceActiveFocus() }
+    function onSessionSecureChanged() { if (root.sessionSecure && !root.preview) input.forceActiveFocus() }
   }
 }
