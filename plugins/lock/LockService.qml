@@ -491,6 +491,8 @@ Singleton {
         authenticating: root.authenticating,
         failed: root.failedAttempts,
         event: root.event,
+        lockStyle: root.lockStyle,
+        customLayoutLen: (root.lockCustomLayout || "").length,
         wallpaperPath: root.wallpaperPath
       })
     }
