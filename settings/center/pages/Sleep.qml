@@ -185,14 +185,17 @@ CcPage {
     property string cachedWallpaper: ""
     readonly property string resolvedWallpaper: {
         if (AequalynSettings.lockWallpaperSource === "solid") return ""
-        if (AequalynSettings.lockWallpaperSource === "theme") return AequalynSettings.wallpaperPath || page.cachedWallpaper || LockService.wallpaperPath || ""
-        return page.cachedWallpaper || AequalynSettings.wallpaperPath || LockService.wallpaperPath || ""
+        const live = String(AequalynSettings.wallpaperPath || "").trim()
+        const cached = String(page.cachedWallpaper || "").trim()
+        const svc = String(LockService.wallpaperPath || "").trim()
+        if (AequalynSettings.lockWallpaperSource === "theme") return live || cached || svc
+        return live || cached || svc
     }
     FileView {
         id: wallpaperCache
         path: Quickshell.env("HOME") + "/.cache/aequalyn/current-wallpaper"
-        blockLoading: true
         printErrors: false
+        watchChanges: true
         onTextChanged: {
             const raw = typeof wallpaperCache.text === "function" ? wallpaperCache.text() : wallpaperCache.text
             page.cachedWallpaper = String(raw || "").trim()
