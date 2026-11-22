@@ -3777,13 +3777,14 @@ Scope {
                                             id: aiRow
                                             required property var modelData
                                             Layout.fillWidth: true
-                                            Layout.preferredHeight: 164
+                                            Layout.preferredHeight: 150
                                             spacing: 10
                                             Repeater {
                                                 model: aiRow.modelData
                                                 delegate: AiCard {
                                                     Layout.fillWidth: true
                                                     Layout.preferredWidth: 203
+                                                    onOpened: root.openAiApp(modelData)
                                                     onOpenRequested: root.aiLaunch(modelData.command)
                                                     onInstallRequested: root.runCmd("Installing " + (modelData.name || modelData.id),
                                                                                    ["aequalyn-ai-tool", "install", modelData.id])
