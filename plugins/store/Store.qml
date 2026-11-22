@@ -2266,28 +2266,28 @@ Scope {
                                                       required property var modelData
                                                       readonly property bool isVideo: root.isVideoName(catCard.modelData.id)
                                                       Layout.fillWidth: true
-                                                      Layout.preferredWidth: 203
-                                                      height: 200
+                                                      Layout.preferredWidth: 180
+                                                      Layout.minimumWidth: 120
+                                                      height: 112
                                                       radius: 12
                                                       color: root.theme.bgBase
                                                       border.width: 1
                                                       border.color: root.theme.bgBorder
                                                       ColumnLayout {
                                                           anchors.fill: parent
-                                                          anchors.margins: 10
-                                                          spacing: 6
-                                                          Item {
-                                                              Layout.fillWidth: true
-                                                              Layout.preferredHeight: 110
+                                                          anchors.margins: 9
+                                                          spacing: 4
+                                                          RowLayout {
+                                                              spacing: 7
                                                               Rectangle {
-                                                                  anchors.fill: parent
+                                                                  Layout.preferredWidth: 40
+                                                                  Layout.preferredHeight: 40
                                                                   radius: 8
                                                                   color: root.theme.bgSurface
                                                                   border.width: 1
                                                                   border.color: root.theme.bgBorder
                                                                   clip: true
                                                                   Image {
-                                                                      id: catImg
                                                                       anchors.fill: parent
                                                                       visible: !catCard.isVideo
                                                                       source: root.catalogPreview(catCard.modelData.id)
@@ -2298,40 +2298,47 @@ Scope {
                                                                   }
                                                                   Text {
                                                                       anchors.centerIn: parent
-                                                                      visible: catCard.isVideo || catImg.status !== Image.Ready
+                                                                      visible: catCard.isVideo
                                                                       text: "\u{F03D8}"
                                                                       color: root.theme.textMuted
                                                                       font.family: root.mono
-                                                                      font.pixelSize: 26
+                                                                      font.pixelSize: 18
                                                                   }
                                                               }
-                                                          }
-                                                          Text {
-                                                              text: root.section === "theme" ? (catCard.modelData.name || catCard.modelData.id) : catCard.modelData.id
-                                                              color: root.theme.textPrimary
-                                                              font.family: root.sans
-                                                              font.pixelSize: 12
-                                                              font.weight: Font.DemiBold
-                                                              horizontalAlignment: Text.AlignHCenter
-                                                              elide: Text.ElideMiddle
-                                                              Layout.fillWidth: true
-                                                          }
-                                                          Pill {
-                                                              visible: root.section === "theme" && !!catCard.modelData.label
-                                                              text: catCard.modelData.label || "Built-in"
-                                                              tone: (catCard.modelData.label === "Community") ? root.theme.accentPrimary : root.theme.textMuted
-                                                              Layout.alignment: Qt.AlignHCenter
-                                                          }
-                                                          Pill {
-                                                              visible: !!catCard.modelData.installed
-                                                              text: "Installed"
-                                                              tone: root.theme.accentGreen
-                                                              Layout.alignment: Qt.AlignHCenter
+                                                              ColumnLayout {
+                                                                  spacing: 1
+                                                                  Layout.fillWidth: true
+                                                                  Text {
+                                                                      text: root.section === "theme" ? (catCard.modelData.name || catCard.modelData.id) : catCard.modelData.id
+                                                                      color: root.theme.textPrimary
+                                                                      font.family: root.sans
+                                                                      font.pixelSize: 12
+                                                                      font.weight: Font.DemiBold
+                                                                      elide: Text.ElideRight
+                                                                      Layout.fillWidth: true
+                                                                  }
+                                                                  Pill {
+                                                                      visible: root.section === "theme" && !!catCard.modelData.label
+                                                                      text: catCard.modelData.label || "Built-in"
+                                                                      tone: (catCard.modelData.label === "Community") ? root.theme.accentPrimary : root.theme.textMuted
+                                                                  }
+                                                                  Pill {
+                                                                      visible: !!catCard.modelData.installed
+                                                                      text: "Installed"
+                                                                      tone: root.theme.accentGreen
+                                                                  }
+                                                              }
+                                                              Rectangle {
+                                                                  Layout.preferredWidth: 6
+                                                                  Layout.preferredHeight: 6
+                                                                  radius: 3
+                                                                  color: catCard.modelData.installed ? root.theme.accentGreen : root.theme.textMuted
+                                                              }
                                                           }
                                                           Item { Layout.fillHeight: true }
                                                           Btn {
                                                               Layout.fillWidth: true
-                                                              implicitHeight: 28
+                                                              implicitHeight: 24
                                                               text: catCard.modelData.installed ? "Reinstall" : "Install"
                                                               primary: !catCard.modelData.installed
                                                               enabled: !root.busy
