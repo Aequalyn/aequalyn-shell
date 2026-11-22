@@ -146,7 +146,8 @@ var labels = {
     "SUPER + O": ["The screen map", "apps"],
     "SUPER + SHIFT + O": ["Refresh the screen layout", "apps"],
     "SUPER + SHIFT + C": ["Keep the screen awake", "apps"],
-    "SUPER + I": ["Open the installer", "apps"],
+    "SUPER + I": ["Install chooser", "apps"],
+    "SUPER + R": ["Remove chooser", "apps"],
     "SUPER + N": ["Dismiss notifications", "apps"],
     "SUPER + SHIFT + N": ["Do not disturb", "apps"],
     // the built-in pack
@@ -204,6 +205,7 @@ for (var ws = 1; ws <= 10; ws++) {
 // names for the binds a newer Aequalyn may add: from the action itself
 var ipcNames = {
     launcher: "App launcher", programs: "Programs menu", defaults: "Default apps",
+    installMenu: "Install chooser", removeMenu: "Remove chooser",
     aequalyn: "Control center", atelier: "Themes and wallpapers", monitors: "Screens",
     idle: "Keep awake", notifications: "Notifications", power: "Power menu",
     clipscape: "Clipboard", altscape: "Window switcher", media: "Media",

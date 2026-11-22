@@ -8,6 +8,7 @@ var list = [
     { id: "appLauncher",    label: "App launcher",   source: "plugins/appLauncher/AppLauncher.qml" },
     { id: "defaultApps",    label: "Default apps launcher", source: "plugins/defaultApps/DefaultApps.qml" },
     { id: "programsMenu",   label: "Programs menu",  source: "plugins/programsMenu/ProgramsMenu.qml" },
+    { id: "installMenu",    label: "Install chooser", source: "plugins/installMenu/InstallMenu.qml" },
     { id: "notifications",  label: "Notifications",  source: "plugins/notifications/NotificationPopup.qml" },
     { id: "atelier",        label: "Themes and wallpapers", source: "plugins/atelier/Atelier.qml" },
     { id: "osd",            label: "On-screen display", source: "plugins/osd/OSD.qml" },

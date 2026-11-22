@@ -34,6 +34,8 @@ var info = {
                       about: "Plugins, themes, cursors, wallpapers and looks from git, checked before they are kept." },
     programsMenu:   { icon: "\u{F035C}", group: "key",        keys: "Super + Space",        page: "",
                       about: "Every program, desktop and command line, by category." },
+    installMenu:    { icon: "\u{F067}", group: "key",        keys: "Super + I",            page: "",
+                      about: "Curated install options by group: AI, Service, Development, Editor, Style, Gaming, Browser and Terminal." },
     defaultApps:    { icon: "\u{F0BE0}", group: "key",        keys: "Super + Alt + A",      page: "apps",
                       about: "Choose the apps that open your links, files and mail." },
     atelier:        { icon: "\u{F03D8}", group: "key",        keys: "Super + T · Super + W", page: "picker",
