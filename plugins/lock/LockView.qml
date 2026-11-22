@@ -620,30 +620,17 @@ Item {
       x: cx * root.width - width / 2
       y: cy * root.height - height / 2
       width: kind === "field" ? Math.min(320, root.width - 40)
-            : kind === "clock" ? clockText.implicitWidth
-            : kind === "date" ? dateText.implicitWidth
-            : kind === "user" ? userText.implicitWidth
-            : kind === "media" ? mediaTextItem.implicitWidth
-            : kind === "battery" ? batteryTextItem.implicitWidth
-            : kind === "weather" ? weatherText.implicitWidth
-            : kind === "quote" ? Math.min(700, root.width - 80)
-            : kind === "day" ? dayText.implicitWidth
-            : kind === "calendar" ? 280
-            : kind === "binary" ? binaryCol.implicitWidth
-            : kind === "words" ? Math.min(600, root.width - 80)
+            : kind === "clock" ? 280 : kind === "date" ? 260 : kind === "user" ? 200
+            : kind === "media" ? Math.min(360, root.width - 40) : kind === "battery" ? 140
+            : kind === "weather" ? 220 : kind === "quote" ? Math.min(500, root.width - 80)
+            : kind === "day" ? 220 : kind === "calendar" ? 280
+            : kind === "binary" ? 220 : kind === "words" ? Math.min(500, root.width - 80)
             : 200
-      height: kind === "field" ? 56
-            : kind === "clock" ? clockText.implicitHeight
-            : kind === "date" ? dateText.implicitHeight
-            : kind === "user" ? userText.implicitHeight
-            : kind === "media" ? mediaTextItem.implicitHeight
-            : kind === "battery" ? batteryTextItem.implicitHeight
-            : kind === "weather" ? weatherText.implicitHeight
-            : kind === "quote" ? quoteText.implicitHeight
-            : kind === "day" ? dayText.implicitHeight
-            : kind === "calendar" ? calendarText.implicitHeight
-            : kind === "binary" ? binaryCol.implicitHeight
-            : kind === "words" ? wordsText.implicitHeight
+      height: kind === "field" ? 56 : kind === "clock" ? 90 : kind === "date" ? 44
+            : kind === "user" ? 44 : kind === "media" ? 44 : kind === "battery" ? 44
+            : kind === "weather" ? 44 : kind === "quote" ? 70
+            : kind === "day" ? 44 : kind === "calendar" ? 180
+            : kind === "binary" ? 60 : kind === "words" ? 80
             : 40
       visible: shown
 

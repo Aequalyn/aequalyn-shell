@@ -236,7 +236,12 @@ CcPage {
     }
 
     function writeCustomLayout(elements) {
-        AequalynSettings.lockCustomLayout = JSON.stringify({ elements: elements })
+        const scr = Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+        AequalynSettings.lockCustomLayout = JSON.stringify({
+            refW: scr ? scr.width : 1920,
+            refH: scr ? scr.height : 1080,
+            elements: elements
+        })
         AequalynSettings.save()
     }
 
@@ -350,12 +355,13 @@ CcPage {
                     Item {
                         id: previewRoot
                         anchors.fill: parent
-                        property real s: Math.min(width / 1280, height / 720)
 
                         Item {
                             id: previewStage
-                            width: 1280; height: 720
-                            scale: previewRoot.s
+                            readonly property real refW: Quickshell.screens.length > 0 ? Quickshell.screens[0].width : 1920
+                            readonly property real refH: Quickshell.screens.length > 0 ? Quickshell.screens[0].height : 1080
+                            width: refW; height: refH
+                            scale: Math.min(previewRoot.width / refW, previewRoot.height / refH)
                             transformOrigin: Item.TopLeft
                             x: (previewRoot.width - width * scale) / 2
                             y: (previewRoot.height - height * scale) / 2
@@ -389,22 +395,28 @@ CcPage {
                                     required property int index
                                     readonly property string kind: String(modelData.type || "")
                                     visible: modelData.visible !== false
-                                    width: kind === "field" ? 320 : (kind === "clock" ? 240 : 200)
-                                    height: kind === "field" ? 64 : (kind === "clock" ? 100 : 50)
+                                    width: kind === "field" ? Math.min(320, previewStage.width - 40)
+                                         : kind === "clock" ? 280 : kind === "date" ? 260 : kind === "user" ? 200
+                                         : kind === "media" ? 360 : kind === "battery" ? 140
+                                         : kind === "weather" ? 220 : kind === "quote" ? 500
+                                         : kind === "day" ? 220 : kind === "calendar" ? 280
+                                         : kind === "binary" ? 220 : kind === "words" ? 500 : 200
+                                    height: kind === "field" ? 56 : kind === "clock" ? 90 : kind === "quote" ? 70
+                                          : kind === "words" ? 80 : kind === "binary" ? 60 : kind === "calendar" ? 180 : 44
                                     radius: 8
-                                    color: Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.08)
-                                    border.color: dragArea.containsMouse || dragArea.drag.active ? Cc.theme.accentSecondary : Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.75)
+                                    color: dragArea.containsMouse || dragArea.drag.active ? Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.10) : "transparent"
+                                    border.color: dragArea.containsMouse || dragArea.drag.active ? Cc.theme.accentSecondary : Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.35)
                                     border.width: 1
                                     x: Number(modelData.x ?? 0.5) * previewStage.width - width/2
                                     y: Number(modelData.y ?? 0.5) * previewStage.height - height/2
                                     z: 10
 
                                     Text {
+                                        visible: dragArea.containsMouse || dragArea.drag.active
                                         anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 4
                                         text: kind
                                         color: Cc.theme.accentPrimary
                                         font.pixelSize: 10; font.family: "JetBrainsMono Nerd Font"
-                                        opacity: 0.9
                                     }
                                     MouseArea {
                                         id: dragArea
