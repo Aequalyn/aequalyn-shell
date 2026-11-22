@@ -54,12 +54,7 @@ Item {
     return known.indexOf(s) >= 0 ? s : "classic"
   }
   readonly property var defaultCustomItems: [
-    { type: "clock", x: 0.5, y: 0.28, visible: true },
-    { type: "date", x: 0.5, y: 0.40, visible: true },
-    { type: "user", x: 0.5, y: 0.50, visible: true },
-    { type: "field", x: 0.5, y: 0.62, visible: true },
-    { type: "media", x: 0.5, y: 0.84, visible: false },
-    { type: "battery", x: 0.5, y: 0.90, visible: false }
+    { type: "field", x: 0.5, y: 0.72, visible: true }
   ]
   readonly property var customItems: {
     if (root.style !== "custom") return []
@@ -98,14 +93,14 @@ Item {
   property string batteryText: ""
 
   function refreshInfo() {
-    if (style === "weather") infoProc.command = [root.homeBin("aequalyn-lock-info"), "weather"]
-    else if (style === "words") infoProc.command = [root.homeBin("aequalyn-lock-info"), "words"]
-    else if (style === "quote") infoProc.command = [root.homeBin("aequalyn-lock-info"), "quote"]
-    else if (style === "day") infoProc.command = [root.homeBin("aequalyn-lock-info"), "day"]
+    const has = (t) => root.style === "custom" && root.customItems.some(e => e.type === t && e.visible !== false)
+    if (style === "weather" || has("weather")) infoProc.command = [root.homeBin("aequalyn-lock-info"), "weather"]
+    else if (style === "words" || has("words")) infoProc.command = [root.homeBin("aequalyn-lock-info"), "words"]
+    else if (style === "quote" || has("quote")) infoProc.command = [root.homeBin("aequalyn-lock-info"), "quote"]
+    else if (style === "day" || has("day")) infoProc.command = [root.homeBin("aequalyn-lock-info"), "day"]
     else if (style === "battery") infoProc.command = [root.homeBin("aequalyn-lock-info"), "battery"]
-    else if (style === "binary") infoProc.command = [root.homeBin("aequalyn-lock-info"), "binary"]
-    else if (style === "dashboard") infoProc.command = ["bash", "-c", "b=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1); echo \"󰁹 ${b:---}%    󰔛 $(uptime -p | sed 's/up //')\""]
-    else if (style === "calendar") infoProc.command = ["bash", "-c", "cal -m | sed -e 's/&/\\&amp;/g'"]
+    else if (style === "binary" || has("binary")) infoProc.command = [root.homeBin("aequalyn-lock-info"), "binary"]
+    else if (style === "dashboard" || has("calendar")) infoProc.command = ["bash", "-c", "cal -m | sed -e 's/&/\\&amp;/g'"]
     else { root.infoText = ""; root.infoText2 = ""; return }
     infoProc.running = false
     infoProc.running = true
@@ -623,39 +618,125 @@ Item {
       readonly property bool shown: modelData.visible !== false
       x: cx * root.width - width / 2
       y: cy * root.height - height / 2
-      width: kind === "field" ? 300 : implicitWidth
-      height: kind === "field" ? 56 : implicitHeight
+      width: kind === "field" ? Math.min(320, root.width - 40)
+            : kind === "clock" ? clockText.implicitWidth
+            : kind === "date" ? dateText.implicitWidth
+            : kind === "user" ? userText.implicitWidth
+            : kind === "media" ? mediaTextItem.implicitWidth
+            : kind === "battery" ? batteryTextItem.implicitWidth
+            : kind === "weather" ? weatherText.implicitWidth
+            : kind === "quote" ? Math.min(700, root.width - 80)
+            : kind === "day" ? dayText.implicitWidth
+            : kind === "calendar" ? 280
+            : kind === "binary" ? binaryCol.implicitWidth
+            : kind === "words" ? Math.min(600, root.width - 80)
+            : 200
+      height: kind === "field" ? 56
+            : kind === "clock" ? clockText.implicitHeight
+            : kind === "date" ? dateText.implicitHeight
+            : kind === "user" ? userText.implicitHeight
+            : kind === "media" ? mediaTextItem.implicitHeight
+            : kind === "battery" ? batteryTextItem.implicitHeight
+            : kind === "weather" ? weatherText.implicitHeight
+            : kind === "quote" ? quoteText.implicitHeight
+            : kind === "day" ? dayText.implicitHeight
+            : kind === "calendar" ? calendarText.implicitHeight
+            : kind === "binary" ? binaryCol.implicitHeight
+            : kind === "words" ? wordsText.implicitHeight
+            : 40
       visible: shown
 
       Text {
+        id: clockText
         visible: customItem.kind === "clock" && root.settingShowClock
+        anchors.centerIn: parent
         text: root.timeText
-        color: root.fg; font.family: root.font; font.pixelSize: 64; font.bold: true
+        color: root.fg; font.family: root.font; font.pixelSize: 72; font.bold: true
       }
       Text {
+        id: dateText
         visible: customItem.kind === "date" && root.settingShowDate
+        anchors.centerIn: parent
         text: root.dateText
-        color: root.muted; font.family: root.font; font.pixelSize: 16
+        color: root.muted; font.family: root.font; font.pixelSize: 18
       }
       Text {
+        id: userText
         visible: customItem.kind === "user" && root.settingShowUser
-        text: root.userName
-        color: root.fg; font.family: root.font; font.pixelSize: 20; font.bold: true
+        anchors.centerIn: parent
+        text: root.userName || "User"
+        color: root.fg; font.family: root.font; font.pixelSize: 22; font.bold: true
       }
       Text {
+        id: mediaTextItem
         visible: customItem.kind === "media" && root.settingShowMedia
-        text: root.mediaText ? "󰎆  " + root.mediaText : ""
-        color: root.muted; font.family: root.font; font.pixelSize: 12
+        anchors.centerIn: parent
+        text: root.mediaText ? "󰎆  " + root.mediaText : "󰎆  Not playing"
+        color: root.muted; font.family: root.font; font.pixelSize: 14
+        elide: Text.ElideRight; width: Math.min(implicitWidth, 500)
       }
       Text {
+        id: batteryTextItem
         visible: customItem.kind === "battery" && root.settingShowBattery
-        text: root.batteryText
-        color: root.muted; font.family: root.font; font.pixelSize: 12
+        anchors.centerIn: parent
+        text: root.batteryText || "󰁹 --%"
+        color: root.muted; font.family: root.font; font.pixelSize: 14
+      }
+      Text {
+        id: weatherText
+        visible: customItem.kind === "weather"
+        anchors.centerIn: parent
+        text: root.infoText || "Weather"
+        color: root.fg; font.family: root.font; font.pixelSize: 20
+      }
+      Text {
+        id: quoteText
+        visible: customItem.kind === "quote"
+        anchors.centerIn: parent
+        width: parent.width
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        text: root.infoText || "Quote"
+        color: root.fg; font.family: root.font; font.pixelSize: 22; font.italic: true
+      }
+      Text {
+        id: dayText
+        visible: customItem.kind === "day"
+        anchors.centerIn: parent
+        text: root.infoText || "Day progress"
+        color: root.fg; font.family: root.font; font.pixelSize: 18
+      }
+      Text {
+        id: calendarText
+        visible: customItem.kind === "calendar"
+        anchors.centerIn: parent
+        text: root.infoText || Qt.formatDate(new Date(), "MMMM yyyy")
+        color: root.fg; font.family: root.font; font.pixelSize: 14
+        horizontalAlignment: Text.AlignHCenter
+      }
+      Column {
+        id: binaryCol
+        visible: customItem.kind === "binary"
+        anchors.centerIn: parent
+        spacing: 4
+        Text { text: root.infoText || "······"; color: root.accent; font.family: root.font; font.pixelSize: 20 }
+        Text { text: root.infoText2 || "······"; color: root.muted; font.family: root.font; font.pixelSize: 20 }
+      }
+      Text {
+        id: wordsText
+        visible: customItem.kind === "words"
+        anchors.centerIn: parent
+        width: parent.width
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.WordWrap
+        text: root.infoText || root.timeText
+        color: root.fg; font.family: root.font; font.pixelSize: 34; font.bold: true
       }
 
       Rectangle {
         visible: customItem.kind === "field"
-        width: 300; height: 56; radius: 12
+        anchors.fill: parent
+        radius: 12
         color: Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.94)
         border.color: root.failureMessage ? root.error : (customInput.activeFocus ? root.accent : root.border)
         border.width: customInput.activeFocus || root.failureMessage ? 2 : 1

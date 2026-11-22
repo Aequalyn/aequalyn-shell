@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import "root:/settings"
 import "root:/plugins/idleInhibitor"
 import "root:/plugins/lock"
@@ -181,13 +182,46 @@ CcPage {
     ]
     readonly property var lockNow: lockStyles.find(x => x.key === AequalynSettings.lockStyle) || lockStyles[0]
 
+    property string cachedWallpaper: ""
+    readonly property string resolvedWallpaper: {
+        if (AequalynSettings.lockWallpaperSource === "solid") return ""
+        if (AequalynSettings.lockWallpaperSource === "theme") return AequalynSettings.wallpaperPath || page.cachedWallpaper || LockService.wallpaperPath || ""
+        return page.cachedWallpaper || AequalynSettings.wallpaperPath || LockService.wallpaperPath || ""
+    }
+    FileView {
+        id: wallpaperCache
+        path: Quickshell.env("HOME") + "/.cache/aequalyn/current-wallpaper"
+        blockLoading: true
+        printErrors: false
+        onTextChanged: {
+            const raw = typeof wallpaperCache.text === "function" ? wallpaperCache.text() : wallpaperCache.text
+            page.cachedWallpaper = String(raw || "").trim()
+        }
+    }
+    Component.onCompleted: {
+        try {
+            const raw = typeof wallpaperCache.text === "function" ? wallpaperCache.text() : wallpaperCache.text
+            page.cachedWallpaper = String(raw || "").trim()
+        } catch (e) {}
+    }
+
+    readonly property var lockPalette: [
+        { type: "clock",    label: "Clock",      icon: "\u{F017}" },
+        { type: "date",     label: "Date",       icon: "\u{F073}" },
+        { type: "user",     label: "User name",  icon: "\u{F007}" },
+        { type: "field",    label: "Password",   icon: "\u{F023}" },
+        { type: "media",    label: "Now playing",icon: "\u{F001}" },
+        { type: "battery",  label: "Battery",    icon: "\u{F240}" },
+        { type: "weather",  label: "Weather",    icon: "\u{F185}" },
+        { type: "quote",    label: "Quote",      icon: "\u{F10D}" },
+        { type: "day",      label: "Day progress",icon: "\u{F251}" },
+        { type: "calendar", label: "Calendar",   icon: "\u{F133}" },
+        { type: "binary",   label: "Binary clock",icon: "\u{F1C0}" },
+        { type: "words",    label: "Words time", icon: "\u{F031}" }
+    ]
+
     readonly property var defaultCustomLayout: [
-        { type: "clock",  x: 0.5, y: 0.28, visible: true },
-        { type: "date",   x: 0.5, y: 0.40, visible: true },
-        { type: "user",   x: 0.5, y: 0.50, visible: true },
-        { type: "field",  x: 0.5, y: 0.62, visible: true },
-        { type: "media",  x: 0.5, y: 0.84, visible: false },
-        { type: "battery",x: 0.5, y: 0.90, visible: false }
+        { type: "field", x: 0.5, y: 0.72, visible: true }
     ]
 
     function readCustomLayout() {
@@ -212,6 +246,22 @@ CcPage {
         if (!found) els.push(Object.assign({ type: type, x: 0.5, y: 0.5, visible: true }, patch))
         page.writeCustomLayout(els)
     }
+
+    function addCustomElement(type) {
+        const els = page.readCustomLayout().map(e => Object.assign({}, e))
+        const ex = els.find(e => e.type === type)
+        if (ex) { ex.visible = true; page.writeCustomLayout(els); return }
+        const defaults = { clock:{x:0.5,y:0.28}, date:{x:0.5,y:0.38}, user:{x:0.5,y:0.48}, field:{x:0.5,y:0.72}, media:{x:0.5,y:0.84}, battery:{x:0.5,y:0.90}, weather:{x:0.5,y:0.18}, quote:{x:0.5,y:0.2}, day:{x:0.5,y:0.18}, calendar:{x:0.5,y:0.35}, binary:{x:0.5,y:0.3}, words:{x:0.3,y:0.4} }
+        const d = defaults[type] || {x:0.5,y:0.5}
+        els.push({ type: type, x: d.x, y: d.y, visible: true })
+        page.writeCustomLayout(els)
+    }
+
+    function removeCustomElement(type) {
+        const els = page.readCustomLayout().map(e => Object.assign({}, e))
+        for (let i = 0; i < els.length; i++) if (els[i].type === type) els[i].visible = false
+        page.writeCustomLayout(els)
+    }
     CcSection {
         title: "How it looks when locked"
         hint: page.lockNow.about + " In your theme's colours, over your wallpaper; it follows when they change."
@@ -227,129 +277,205 @@ CcPage {
     }
     CcSection {
         title: "Lock screen editor"
-        hint: "Pick a wallpaper, place elements on the preview, then save as your custom lock style."
+        hint: "Drag elements from the palette onto the wallpaper preview. Drag placed elements to reposition. Save when ready."
 
         Text { text: "Wallpaper"; color: Cc.theme.textMuted; font.pixelSize: 12; Layout.fillWidth: true; Layout.leftMargin: 12; Layout.topMargin: 4 }
         CcChoice {
             options: [
-                { key: "wallpaper", label: "Current" },
-                { key: "theme",     label: "Theme" },
-                { key: "solid",     label: "Solid" }
+                { key: "wallpaper", label: "Current wallpaper" },
+                { key: "theme",     label: "Theme wallpaper" },
+                { key: "solid",     label: "Solid color" }
             ]
             current: AequalynSettings.lockWallpaperSource
             onChosen: key => { AequalynSettings.lockWallpaperSource = key; AequalynSettings.save() }
         }
 
-        Text { text: "Elements (drag on preview)"; color: Cc.theme.textMuted; font.pixelSize: 12; Layout.fillWidth: true; Layout.leftMargin: 12; Layout.topMargin: 8 }
-        Repeater {
-            model: [
-                { type: "clock", label: "Clock" },
-                { type: "date", label: "Date" },
-                { type: "user", label: "User name" },
-                { type: "field", label: "Password field" },
-                { type: "media", label: "Now playing" },
-                { type: "battery", label: "Battery" }
-            ]
-            delegate: CcToggle {
-                required property var modelData
-                title: modelData.label
-                setting: ""
-                checked: {
-                    const els = page.readCustomLayout()
-                    const e = els.find(x => x.type === modelData.type)
-                    return e ? e.visible !== false : false
-                }
-                onToggled: v => page.setCustomElement(modelData.type, { visible: v })
-            }
-        }
-
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 280
+            Layout.preferredHeight: 560
             Layout.leftMargin: 12
             Layout.rightMargin: 12
+            Layout.topMargin: 8
             radius: 12
             color: Cc.theme.bgSurface
             border.color: Cc.theme.bgBorder
             clip: true
 
-            Item {
-                id: previewRoot
+            RowLayout {
                 anchors.fill: parent
-                property real s: Math.min(width / 1280, height / 720)
+                anchors.margins: 10
+                spacing: 10
 
-                Item {
-                    id: previewStage
-                    width: 1280; height: 720
-                    scale: previewRoot.s
-                    transformOrigin: Item.TopLeft
-                    x: (previewRoot.width - width * scale) / 2
-                    y: (previewRoot.height - height * scale) / 2
-
-                    LockView {
-                        id: previewLock
-                        anchors.fill: parent
-                        theme: AequalynDefaultTheme {}
-                        wallpaperPath: AequalynSettings.lockWallpaperSource === "solid" ? "" : (AequalynSettings.wallpaperPath || "")
-                        userName: Quickshell.env("USER") || ""
-                        use24h: AequalynSettings.use24h
-                        lockStyle: "custom"
-                        customLayout: AequalynSettings.lockCustomLayout
-                        settingShowUser: AequalynSettings.lockShowUser
-                        settingShowClock: AequalynSettings.lockShowClock
-                        settingShowDate: AequalynSettings.lockShowDate
-                        settingShowMedia: AequalynSettings.lockShowMedia
-                        settingShowBattery: AequalynSettings.lockShowBattery
-                        authenticating: false
-                        glanceScanning: false
-                        fingerprintConfigured: false
-                        fingerprintClaimed: false
-                        sessionSecure: false
-                        preview: true
-                    }
-
-                    Repeater {
-                        model: page.readCustomLayout()
-                        delegate: Rectangle {
-                            required property var modelData
-                            required property int index
-                            readonly property string kind: String(modelData.type || "")
-                            visible: modelData.visible !== false
-                            width: kind === "field" ? 300 : (kind === "clock" ? 220 : 180)
-                            height: kind === "field" ? 56 : (kind === "clock" ? 90 : 44)
-                            radius: 8
-                            color: Qt.rgba(1,1,1,0.02)
-                            border.color: Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.75)
-                            border.width: 1
-                            x: Number(modelData.x ?? 0.5) * previewStage.width - width/2
-                            y: Number(modelData.y ?? 0.5) * previewStage.height - height/2
-                            MouseArea {
-                                anchors.fill: parent; cursorShape: Qt.SizeAllCursor
-                                drag.target: parent; drag.axis: Drag.XAndYAxis
-                                onReleased: {
-                                    page.setCustomElement(kind, {
-                                        x: Math.max(0.05, Math.min(0.95, (parent.x + parent.width/2) / previewStage.width)),
-                                        y: Math.max(0.05, Math.min(0.95, (parent.y + parent.height/2) / previewStage.height))
-                                    })
+                // Left palette
+                Rectangle {
+                    Layout.preferredWidth: 150
+                    Layout.fillHeight: true
+                    radius: 10
+                    color: Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.03)
+                    border.color: Cc.theme.bgBorder
+                    ColumnLayout {
+                        anchors.fill: parent; anchors.margins: 8; spacing: 6
+                        Text { text: "Elements"; color: Cc.theme.textMuted; font.pixelSize: 11; font.bold: true; Layout.leftMargin: 4 }
+                        Repeater {
+                            model: page.lockPalette.slice(0, 6)
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true; Layout.preferredHeight: 34; radius: 8
+                                readonly property bool placed: { const e = page.readCustomLayout().find(x => x.type === modelData.type); return !!e && e.visible !== false }
+                                color: placed ? Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.18) : Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.05)
+                                border.color: placed ? Cc.theme.accentPrimary : Cc.theme.bgBorder
+                                Text { anchors.centerIn: parent; text: modelData.label; color: placed ? Cc.theme.accentPrimary : Cc.theme.textSecondary; font.pixelSize: 11; font.family: "JetBrainsMono Nerd Font" }
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: placed ? page.removeCustomElement(modelData.type) : page.addCustomElement(modelData.type)
                                 }
                             }
-                            Text { anchors.centerIn: parent; text: kind; color: Cc.theme.accentPrimary; font.pixelSize: 13; font.family: "JetBrainsMono Nerd Font" }
                         }
+                        Item { Layout.fillHeight: true }
+                    }
+                }
+
+                // Preview center
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    radius: 10
+                    color: "#111"
+                    border.color: Cc.theme.bgBorder
+                    clip: true
+
+                    Item {
+                        id: previewRoot
+                        anchors.fill: parent
+                        property real s: Math.min(width / 1280, height / 720)
+
+                        Item {
+                            id: previewStage
+                            width: 1280; height: 720
+                            scale: previewRoot.s
+                            transformOrigin: Item.TopLeft
+                            x: (previewRoot.width - width * scale) / 2
+                            y: (previewRoot.height - height * scale) / 2
+
+                            LockView {
+                                id: previewLock
+                                anchors.fill: parent
+                                theme: AequalynDefaultTheme {}
+                                wallpaperPath: page.resolvedWallpaper
+                                userName: Quickshell.env("USER") || ""
+                                use24h: AequalynSettings.use24h
+                                lockStyle: "custom"
+                                customLayout: AequalynSettings.lockCustomLayout
+                                settingShowUser: true
+                                settingShowClock: true
+                                settingShowDate: true
+                                settingShowMedia: true
+                                settingShowBattery: true
+                                authenticating: false
+                                glanceScanning: false
+                                fingerprintConfigured: false
+                                fingerprintClaimed: false
+                                sessionSecure: false
+                                preview: true
+                            }
+
+                            Repeater {
+                                model: page.readCustomLayout()
+                                delegate: Rectangle {
+                                    required property var modelData
+                                    required property int index
+                                    readonly property string kind: String(modelData.type || "")
+                                    visible: modelData.visible !== false
+                                    width: kind === "field" ? 320 : (kind === "clock" ? 240 : 200)
+                                    height: kind === "field" ? 64 : (kind === "clock" ? 100 : 50)
+                                    radius: 8
+                                    color: Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.08)
+                                    border.color: dragArea.containsMouse || dragArea.drag.active ? Cc.theme.accentSecondary : Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.75)
+                                    border.width: 1
+                                    x: Number(modelData.x ?? 0.5) * previewStage.width - width/2
+                                    y: Number(modelData.y ?? 0.5) * previewStage.height - height/2
+                                    z: 10
+
+                                    Text {
+                                        anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 4
+                                        text: kind
+                                        color: Cc.theme.accentPrimary
+                                        font.pixelSize: 10; font.family: "JetBrainsMono Nerd Font"
+                                        opacity: 0.9
+                                    }
+                                    MouseArea {
+                                        id: dragArea
+                                        anchors.fill: parent; cursorShape: Qt.SizeAllCursor
+                                        hoverEnabled: true
+                                        drag.target: parent; drag.axis: Drag.XAndYAxis
+                                        drag.minimumX: 0; drag.maximumX: previewStage.width - parent.width
+                                        drag.minimumY: 0; drag.maximumY: previewStage.height - parent.height
+                                        onReleased: {
+                                            page.setCustomElement(kind, {
+                                                x: Math.max(0.03, Math.min(0.97, (parent.x + parent.width/2) / previewStage.width)),
+                                                y: Math.max(0.03, Math.min(0.97, (parent.y + parent.height/2) / previewStage.height))
+                                            })
+                                        }
+                                    }
+                                    // remove button
+                                    Rectangle {
+                                        width: 18; height: 18; radius: 9
+                                        anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 4
+                                        color: Qt.rgba(Cc.theme.accentRed.r, Cc.theme.accentRed.g, Cc.theme.accentRed.b, 0.9)
+                                        visible: kind !== "field"
+                                        Text { anchors.centerIn: parent; text: "×"; color: "white"; font.pixelSize: 12; font.bold: true }
+                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.removeCustomElement(kind) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Right palette
+                Rectangle {
+                    Layout.preferredWidth: 150
+                    Layout.fillHeight: true
+                    radius: 10
+                    color: Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.03)
+                    border.color: Cc.theme.bgBorder
+                    ColumnLayout {
+                        anchors.fill: parent; anchors.margins: 8; spacing: 6
+                        Text { text: "More"; color: Cc.theme.textMuted; font.pixelSize: 11; font.bold: true; Layout.leftMargin: 4 }
+                        Repeater {
+                            model: page.lockPalette.slice(6)
+                            delegate: Rectangle {
+                                required property var modelData
+                                Layout.fillWidth: true; Layout.preferredHeight: 34; radius: 8
+                                readonly property bool placed: { const e = page.readCustomLayout().find(x => x.type === modelData.type); return !!e && e.visible !== false }
+                                color: placed ? Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.18) : Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.05)
+                                border.color: placed ? Cc.theme.accentPrimary : Cc.theme.bgBorder
+                                Text { anchors.centerIn: parent; text: modelData.label; color: placed ? Cc.theme.accentPrimary : Cc.theme.textSecondary; font.pixelSize: 11; font.family: "JetBrainsMono Nerd Font" }
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: placed ? page.removeCustomElement(modelData.type) : page.addCustomElement(modelData.type)
+                                }
+                            }
+                        }
+                        Item { Layout.fillHeight: true }
                     }
                 }
             }
         }
 
-        CcButton {
-            text: "Save as custom lock style"; icon: "\u{F0C7}"
-            onClicked: {
-                if (!AequalynSettings.lockCustomLayout) page.writeCustomLayout(page.defaultCustomLayout)
-                AequalynSettings.setLockStyle("custom")
+        RowLayout {
+            Layout.fillWidth: true; Layout.leftMargin: 12; Layout.rightMargin: 12; spacing: 8
+            CcButton {
+                text: "Save as custom lock style"; icon: "\u{F0C7}"
+                onClicked: {
+                    if (!AequalynSettings.lockCustomLayout) page.writeCustomLayout(page.defaultCustomLayout)
+                    AequalynSettings.setLockStyle("custom")
+                }
             }
-        }
-        CcButton {
-            text: "Reset custom layout"; icon: "\u{F0453}"
-            onClicked: { page.writeCustomLayout(page.defaultCustomLayout); AequalynSettings.save() }
+            CcButton {
+                text: "Reset layout"; icon: "\u{F0453}"
+                onClicked: { page.writeCustomLayout(page.defaultCustomLayout.map(e => Object.assign({}, e))); AequalynSettings.save() }
+            }
         }
     }
     CcSection {
