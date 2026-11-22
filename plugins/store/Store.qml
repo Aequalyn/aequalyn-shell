@@ -496,6 +496,7 @@ Scope {
         const items = root.catalogItems().slice(root.catalogAt, root.catalogAt + root.catalogPerPage);
         const rows = [];
         for (let i = 0; i < items.length; i += 5) rows.push(items.slice(i, i + 5));
+        while (rows.length < 3) rows.push([]);
         return rows;
     }
     function catalogPreview(id) {
@@ -2364,6 +2365,7 @@ Scope {
                                      RowLayout {
                                          visible: root.catalogItems().length > root.catalogPerPage
                                          Layout.fillWidth: true
+                                         Layout.topMargin: 8
                                          spacing: 6
                                          Item { Layout.fillWidth: true }
                                          Text {
