@@ -1248,6 +1248,7 @@ Scope {
     property var aiTools: []
     property string aiError: ""
     property int aiPage: 0
+    property int aiAppPage: 0
     readonly property int aiPerPage: 15
     readonly property int aiAt: Math.min(root.aiPage, Math.max(0, Math.ceil(root.aiTools.length / root.aiPerPage) - 1)) * root.aiPerPage
     function aiRows() {
@@ -2129,9 +2130,9 @@ Scope {
         }
     }
 
-    // one AI tool: its name, state and the actions the Store can take on it.
-    // Installed agents are launchable here too; update and remove stay beside
-    // Open so the whole lifecycle is in the same card.
+    // One AI tool, dressed like every other app tile: quiet fill, icon, name,
+    // two lines of detail, a state pill and compact actions. The lifecycle is
+    // still the tool's own, so update and remove stay with Open and Install.
     component AiCard: Rectangle {
         id: card
         required property var modelData
@@ -2148,35 +2149,60 @@ Scope {
         readonly property color stateTone: installedHere ? root.theme.accentGreen
             : elsewhere ? root.theme.accentPrimary
             : conflict ? root.theme.accentOrange : root.theme.textMuted
+        readonly property bool hovered: aiMa.containsMouse
+        readonly property string iconUrl: root.aiIconUrl(modelData)
+        readonly property string initials: root.appInitials(card.label)
+        readonly property color monogramColor: root.appMonogramColor(card.label)
+        signal opened()
         signal openRequested()
         signal installRequested()
         signal updateRequested()
         signal removeRequested()
-        height: 164
-        radius: 12
-        color: root.theme.bgBase
+        height: 150
+        radius: 6
+        color: hovered ? Cc.alpha(root.theme.textPrimary, 0.10)
+            : Cc.alpha(root.theme.textPrimary, 0.03)
         border.width: 1
-        border.color: root.theme.bgBorder
+        border.color: Cc.alpha(root.theme.textPrimary, 0.08)
+        MouseArea {
+            id: aiMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: card.opened()
+        }
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
-            spacing: 5
+            spacing: 4
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Rectangle {
-                    Layout.preferredWidth: 34
-                    Layout.preferredHeight: 34
-                    radius: 8
-                    color: root.theme.bgSurface
-                    border.width: 1
-                    border.color: root.theme.bgBorder
-                    Text {
-                        anchors.centerIn: parent
-                        text: "\u{F06A9}"
-                        color: root.theme.accentPrimary
-                        font.family: root.mono
-                        font.pixelSize: 18
+                Item {
+                    Layout.preferredWidth: 30; Layout.preferredHeight: 30
+                    Image {
+                        id: aiIcon
+                        anchors.fill: parent
+                        source: card.iconUrl
+                        sourceSize.width: 64; sourceSize.height: 64
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                        smooth: true
+                        visible: status === Image.Ready
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 8
+                        color: card.monogramColor
+                        visible: !aiIcon.visible
+                        Text {
+                            anchors.centerIn: parent
+                            text: card.initials
+                            color: "#ffffff"
+                            font.family: root.sans
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                        }
                     }
                 }
                 ColumnLayout {
@@ -2214,7 +2240,7 @@ Scope {
             Item { Layout.fillHeight: true }
             Btn {
                 Layout.fillWidth: true
-                implicitHeight: 24
+                implicitHeight: 26
                 text: card.installedHere || card.elsewhere ? "Open"
                     : card.conflict ? "In use" : "Install"
                 primary: card.installedHere || card.elsewhere || !card.conflict
@@ -3697,6 +3723,24 @@ Scope {
                                     }
                                 }
 
+                                // AI lives here: desktop apps from the AI catalogue use
+                                // the All Apps cards, and the coding agents keep their
+                                // own lifecycle in the same card shape.
+                                Box {
+                                    visible: root.section === "ai"
+                                    title: "AI apps"
+                                    hint: "Desktop AI apps from the same catalogue as All Apps. The agents below are command-line tools with their own update and remove actions."
+                                    BrowseCards {
+                                        model: root.aiAppResults()
+                                        page: root.aiAppPage
+                                        onGoToPage: value => root.aiAppPage = value
+                                    }
+                                    Text {
+                                        visible: root.aiAppResults().length === 0
+                                        text: "No AI apps in the catalogue yet."
+                                        color: root.theme.textMuted; font.family: root.sans; font.pixelSize: 11
+                                    }
+                                }
                                 // AI tools: the coding agents, in the same 5x3 card grid
                                 Box {
                                     visible: root.section === "ai"
