@@ -2315,12 +2315,12 @@ Scope {
                                                                   font.family: root.mono
                                                                   font.pixelSize: 26
                                                               }
-                                                          }
-                                                          MouseArea {
-                                                              anchors.fill: parent
-                                                              enabled: root.section === "theme"
-                                                              cursorShape: Qt.PointingHandCursor
-                                                              onClicked: root.openReadme(catCard.modelData.id)
+                                                              MouseArea {
+                                                                  anchors.fill: parent
+                                                                  enabled: root.section === "theme"
+                                                                  cursorShape: Qt.PointingHandCursor
+                                                                  onClicked: root.openReadme(catCard.modelData.id)
+                                                              }
                                                           }
                                                           RowLayout {
                                                               spacing: 7
