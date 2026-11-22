@@ -16,7 +16,21 @@ Item {
     property string enteredPassword: ""
     property string failureMessage: ""
     property int failedAttempts: 0
-    property string backgroundPath: AequalynSettings.wallpaperPath
+    property string backgroundPath: AequalynSettings.wallpaperPath !== "" ? AequalynSettings.wallpaperPath : ""
+
+    Process {
+        id: bgProc
+        command: ["sh", "-c", "sed -n 's/^[[:space:]]*path[[:space:]]*=[[:space:]]*//p' \"$HOME/.config/hypr/hyprlock.conf\" | head -n 1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var p = String(text || "").trim()
+                if (p !== "" && root.backgroundPath === "") root.backgroundPath = p
+            }
+        }
+    }
+    Component.onCompleted: {
+        if (root.backgroundPath === "") bgProc.running = true
+    }
 
     readonly property bool locked: lockRequested || sessionLock.locked || sessionLock.secure
 
