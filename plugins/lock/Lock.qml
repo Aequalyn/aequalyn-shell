@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import QtQuick.Effects
 import Quickshell.Services.Pam
 import "root:/settings"
 
@@ -63,9 +64,19 @@ Item {
                 anchors.fill: parent
 
                 Image {
+                    id: bgImage
                     anchors.fill: parent
                     source: root.backgroundPath ? "file://" + root.backgroundPath : ""
                     fillMode: Image.PreserveAspectCrop
+                    visible: false
+                }
+                MultiEffect {
+                    anchors.fill: bgImage
+                    source: bgImage
+                    blurEnabled: true
+                    blur: 1.0
+                    blurMax: 64
+                    blurMultiplier: 1.0
                 }
                 Rectangle { anchors.fill: parent; color: Qt.rgba(0,0,0,0.35) }
 
