@@ -495,8 +495,12 @@ Scope {
     function syncThemeRepo() { if (!repoSync.running) repoSync.running = true; }
     function catalogItems() {
         let items = root.section === "theme" ? root.themeCatalog : root.wallpaperCatalog;
-        if (root.section === "theme" && root.themeLabelFilter !== "All")
-            items = items.filter(i => (i.label || "Built-in") === root.themeLabelFilter);
+        if (root.section === "theme" && root.themeLabelFilter !== "All") {
+            if (root.themeLabelFilter === "Installed")
+                items = items.filter(i => !!i.installed);
+            else
+                items = items.filter(i => (i.label || "Built-in") === root.themeLabelFilter);
+        }
         return items;
     }
     function catalogRows() {
@@ -2423,6 +2427,12 @@ Scope {
                                              primary: root.themeLabelFilter === "Community"
                                              implicitHeight: 26
                                              onClicked: { root.themeLabelFilter = "Community"; root.catalogPage = 0; }
+                                         }
+                                         Btn {
+                                             text: "Installed"
+                                             primary: root.themeLabelFilter === "Installed"
+                                             implicitHeight: 26
+                                             onClicked: { root.themeLabelFilter = "Installed"; root.catalogPage = 0; }
                                          }
                                          Item { Layout.fillWidth: true }
                                      }
