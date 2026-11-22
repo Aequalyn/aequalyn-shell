@@ -4,4 +4,5 @@ SectionHeader 1.0 SectionHeader.qml
 Stepper 1.0 Stepper.qml
 ChoiceRow 1.0 ChoiceRow.qml
 Swatches 1.0 Swatches.qml
+ColorField 1.0 ColorField.qml
 Group 1.0 Group.qml

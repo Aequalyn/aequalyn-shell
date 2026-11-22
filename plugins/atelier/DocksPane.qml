@@ -234,7 +234,7 @@ Flickable {
                     theme: pane.theme; font: pane.font
                     label: "Size"
                     value: pane.dock ? pane.dock.size : 44
-                    from: 16; to: 64; step: 2
+                    from: 1; to: 64; step: 1
                     suffix: " px"
                     onStepped: v => pane.set("size", v)
                 }
@@ -242,7 +242,7 @@ Flickable {
                     theme: pane.theme; font: pane.font
                     label: "Icons"
                     value: pane.dock ? pane.dock.iconScale : 100
-                    from: 50; to: 200; step: 10
+                    from: 50; to: 200; step: 5
                     suffix: "%"
                     onStepped: v => pane.set("iconScale", v)
                 }
@@ -297,7 +297,7 @@ Flickable {
                     labels: Fx.labels
                     value: pane.dock ? pane.dock.hideEffect : ""
                     enabled: pane.dock ? pane.dock.autohide : false
-                    onPicked: v => pane.set("hideEffect", v)
+                    onPicked: v => pane.setLook({ hideEffect: v })
                 }
                 Stepper {
                     visible: !!pane.dock && pane.dock.autohide
@@ -306,7 +306,7 @@ Flickable {
                     value: pane.dock ? pane.dock.hideSpeed : 180
                     from: 60; to: 800; step: 20
                     suffix: " ms"
-                    onStepped: v => pane.set("hideSpeed", v)
+                    onStepped: v => pane.setLook({ hideSpeed: v })
                 }
                 Stepper {
                     visible: !!pane.dock && pane.dock.autohide
@@ -315,7 +315,7 @@ Flickable {
                     value: pane.dock ? pane.dock.showDelay : 0
                     from: 0; to: 1000; step: 50
                     suffix: " ms"
-                    onStepped: v => pane.set("showDelay", v)
+                    onStepped: v => pane.setLook({ showDelay: v })
                 }
                 Stepper {
                     visible: !!pane.dock && pane.dock.autohide
@@ -324,7 +324,7 @@ Flickable {
                     value: pane.dock ? pane.dock.hideDelay : 450
                     from: 0; to: 2000; step: 50
                     suffix: " ms"
-                    onStepped: v => pane.set("hideDelay", v)
+                    onStepped: v => pane.setLook({ hideDelay: v })
                 }
                 Stepper {
                     visible: !!pane.dock && pane.dock.autohide
@@ -333,14 +333,14 @@ Flickable {
                     value: pane.dock ? pane.dock.revealStrip : 3
                     from: 1; to: 12
                     suffix: " px"
-                    onStepped: v => pane.set("revealStrip", v)
+                    onStepped: v => pane.setLook({ revealStrip: v })
                 }
                 Toggle {
                     visible: !!pane.dock && pane.dock.autohide
                     theme: pane.theme; font: pane.font
                     label: "A line where it waits"
                     checked: pane.dock ? pane.dock.edgeHint : true
-                    onToggled: v => pane.set("edgeHint", v)
+                    onToggled: v => pane.setLook({ edgeHint: v })
                 }
                 ChoiceRow {
                     theme: pane.theme; font: pane.font
@@ -348,7 +348,7 @@ Flickable {
                     options: ["off", "dot", "pulse"]
                     labels: ({ off: "Nothing", dot: "Dot", pulse: "Pulse" })
                     value: pane.dock ? pane.dock.attention : ""
-                    onPicked: v => pane.set("attention", v)
+                    onPicked: v => pane.setLook({ attention: v })
                 }
             }
         }
@@ -532,7 +532,7 @@ Flickable {
                     theme: pane.theme; font: pane.font
                     label: "Opacity"
                     value: pane.drawn.opacity || 90
-                    from: 10; to: 100; step: 5
+                    from: 1; to: 100; step: 1
                     suffix: "%"
                     onStepped: v => pane.setLook({ opacity: v })
                 }
@@ -552,6 +552,13 @@ Flickable {
                     value: pane.drawn.customBg || ""
                     onPicked: v => pane.setLook({ customBg: v })
                 }
+                ColorField {
+                    visible: pane.drawn.style === "custom"
+                    theme: pane.theme; font: pane.font
+                    label: "Background hex"
+                    value: pane.drawn.customBg || ""
+                    onPicked: v => pane.setLook({ customBg: v })
+                }
                 Swatches {
                     visible: pane.drawn.style === "custom"
                     theme: pane.theme; font: pane.font
@@ -560,11 +567,25 @@ Flickable {
                     value: pane.drawn.customFg || ""
                     onPicked: v => pane.setLook({ customFg: v })
                 }
+                ColorField {
+                    visible: pane.drawn.style === "custom"
+                    theme: pane.theme; font: pane.font
+                    label: "Text hex"
+                    value: pane.drawn.customFg || ""
+                    onPicked: v => pane.setLook({ customFg: v })
+                }
                 Swatches {
                     visible: pane.drawn.style === "custom"
                     theme: pane.theme; font: pane.font
                     label: "Accent"
                     colors: pane.svc ? pane.svc.swatches.slice(16) : []
+                    value: pane.drawn.accentColor || ""
+                    onPicked: v => pane.setLook({ accentColor: v })
+                }
+                ColorField {
+                    visible: pane.drawn.style === "custom"
+                    theme: pane.theme; font: pane.font
+                    label: "Accent hex"
                     value: pane.drawn.accentColor || ""
                     onPicked: v => pane.setLook({ accentColor: v })
                 }
