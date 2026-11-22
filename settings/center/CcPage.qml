@@ -23,6 +23,7 @@ Item {
     readonly property bool pluginOn: plugin !== "" && AequalynSettings.enabledPlugins.indexOf(plugin) >= 0
     property string sub: ""
     property var tabs: []           // names of the sub pages, if any
+    readonly property var tabOptions: page.tabs.map((title, i) => ({ key: i, label: title }))
     property int tab: 0
     property var fills: []          // the sub pages that fill the page
     default property alias content: body.data
@@ -204,73 +205,14 @@ Item {
             }
         }
 
-        // the sub pages, as underlined tabs
-        Item {
+        // the sub pages, as the same joined buttons the settings use
+        CcSegments {
             visible: page.tabs.length > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: 32
-            implicitHeight: 32
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 1
-                color: Cc.alpha(Cc.theme.textPrimary, 0.10)
-            }
-
-            RowLayout {
-                id: tabsRow
-                anchors.fill: parent
-                spacing: 0
-                // every tab gets the same share of the row, so the count sets its width
-                readonly property real tabW: page.tabs.length > 0 ? width / page.tabs.length : 0
-
-                Repeater {
-                    model: page.tabs
-                    delegate: Item {
-                        required property string modelData
-                        required property int index
-                        readonly property bool on: page.tab === index
-                        Layout.preferredWidth: tabsRow.tabW
-                        Layout.minimumWidth: tabsRow.tabW
-                        Layout.maximumWidth: tabsRow.tabW
-                        Layout.fillHeight: true
-                        Accessible.role: Accessible.PageTab
-                        Accessible.name: modelData
-
-                        Text {
-                            anchors.centerIn: parent
-                            anchors.verticalCenterOffset: -1
-                            width: Math.max(0, parent.width - 8)
-                            text: modelData
-                            elide: Text.ElideRight
-                            horizontalAlignment: Text.AlignHCenter
-                            color: Cc.theme.textPrimary
-                            opacity: parent.on ? 1 : (tabArea.containsMouse ? 0.8 : 0.5)
-                            font.family: Cc.sans
-                            font.pixelSize: 12
-                            font.weight: parent.on ? Font.DemiBold : Font.Normal
-                        }
-                        Rectangle {
-                            visible: parent.on
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: 2
-                            radius: 1
-                            color: Cc.theme.accentPrimary
-                        }
-                        MouseArea {
-                            id: tabArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: { page.tab = index; }
-                        }
-                    }
-                }
-            }
+            options: page.tabOptions
+            current: page.tab
+            role: Accessible.PageTab
+            wrap: false
+            onChosen: i => { page.tab = i; }
         }
     }
 

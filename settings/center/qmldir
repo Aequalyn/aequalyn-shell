@@ -4,6 +4,7 @@ CcSection 1.0 CcSection.qml
 CcSwitch 1.0 CcSwitch.qml
 CcToggle 1.0 CcToggle.qml
 CcChoice 1.0 CcChoice.qml
+CcSegments 1.0 CcSegments.qml
 CcSlider 1.0 CcSlider.qml
 CcRow 1.0 CcRow.qml
 CcButton 1.0 CcButton.qml
