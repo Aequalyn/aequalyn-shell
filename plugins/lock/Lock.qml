@@ -27,6 +27,7 @@ Item {
                 if (p !== "" && root.backgroundPath === "") root.backgroundPath = p
             }
         }
+        onExited: function(code) { console.error("BG PROC EXIT:", code) }
     }
     Component.onCompleted: {
         if (root.backgroundPath === "") bgProc.running = true
@@ -76,23 +77,12 @@ Item {
             color: "black"
             Item {
                 anchors.fill: parent
-
-                Image {
-                    id: bgImage
-                    anchors.fill: parent
-                    source: root.backgroundPath ? "file://" + root.backgroundPath : ""
-                    fillMode: Image.PreserveAspectCrop
-                    visible: false
+                Rectangle { anchors.fill: parent; color: "#1a1b26" }
+                Text {
+                    anchors.centerIn: parent
+                    text: "Locked"
+                    color: "white"; font.pixelSize: 32
                 }
-                MultiEffect {
-                    anchors.fill: bgImage
-                    source: bgImage
-                    blurEnabled: true
-                    blur: 1.0
-                    blurMax: 64
-                    blurMultiplier: 1.0
-                }
-                Rectangle { anchors.fill: parent; color: Qt.rgba(0,0,0,0.35) }
 
                 Column {
                     anchors.centerIn: parent

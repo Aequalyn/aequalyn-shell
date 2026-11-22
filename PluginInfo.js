@@ -28,6 +28,8 @@ var info = {
                       about: "What is playing, on the bar: a live visualizer, the cover and the buttons." },
     appLauncher:    { icon: "\u{F003B}", group: "key",        keys: "Super + D",            page: "apps",
                       about: "Find and open apps." },
+    lock:           { icon: "\u{F033E}", group: "background", keys: "",                     page: "", pack: true,
+                      about: "Aequalyn's own lock screen (Quickshell session lock) with password and Glance PAM." },
     store:          { icon: "\u{F0110}", group: "key",        keys: "Super + Alt + S",      page: "",
                       about: "Plugins, themes, cursors, wallpapers and looks from git, checked before they are kept." },
     programsMenu:   { icon: "\u{F035C}", group: "key",        keys: "Super + Space",        page: "",

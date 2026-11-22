@@ -45,6 +45,7 @@ var list = [
     { id: "rootTest",      label: "Root gate self-test", source: "plugins/rootTest/RootTest.qml", sandbox: true,
       needsRoot: [{ "id": "who-am-i", "label": "Show the user id it runs as", "about": "Runs /usr/bin/id -u as root; the answer should be 0.",
                     "command": ["/usr/bin/id", "-u"] }] },
+    { id: "lock",           label: "Lock screen",    source: "plugins/lock/Lock.qml" },
     { id: "store",          label: "Store",          source: "plugins/store/Store.qml",
       // the Store's package rides the same gate as any plugin's: the
       // approval window names the command, pacman runs with the staged
