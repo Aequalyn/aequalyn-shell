@@ -70,6 +70,8 @@ QtObject {
     property bool showBluetooth: true
     property bool showSettingsButton: true
     property bool showClipscape: true
+    property int glanceRefreshIntervalSec: 30
+    property string glancectlPath: ""
     property bool showAppsMenu: true
     property bool showPower: true
     property bool showScreenRecorder: true
@@ -249,7 +251,7 @@ QtObject {
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
     property var barCenter: ["clock", "media", "title"]
-    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "barbutton", "settingsbutton"]
+    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "glance", "barbutton", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
@@ -311,7 +313,7 @@ QtObject {
     function normalizeBarRegions() {
         const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
-            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "barbutton", "settingsbutton"]
+            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "clipscape", "glance", "barbutton", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
         // instead of silently dropping extras. The bar sections scroll when a
         // region has more plugins than fits on screen.
@@ -473,6 +475,8 @@ QtObject {
                 showBluetooth: root.showBluetooth,
                 showSettingsButton: root.showSettingsButton,
                 showClipscape: root.showClipscape,
+                glanceRefreshIntervalSec: root.glanceRefreshIntervalSec,
+                glancectlPath: root.glancectlPath,
                 showAppsMenu: root.showAppsMenu,
                 showPower: root.showPower,
                 showScreenRecorder: root.showScreenRecorder,
@@ -665,6 +669,8 @@ QtObject {
         root.showBluetooth = pick(a.showBluetooth, root.showBluetooth)
         root.showSettingsButton = pick(a.showSettingsButton, root.showSettingsButton)
         root.showClipscape = pick(a.showClipscape, root.showClipscape)
+        root.glanceRefreshIntervalSec = Math.max(5, Math.min(600, Math.round(Number(pick(a.glanceRefreshIntervalSec, root.glanceRefreshIntervalSec)) || 30)))
+        root.glancectlPath = String(pick(a.glancectlPath, root.glancectlPath))
         root.showAppsMenu = pick(a.showAppsMenu, root.showAppsMenu)
         root.showPower = pick(a.showPower, root.showPower)
         root.showScreenRecorder = pick(a.showScreenRecorder, root.showScreenRecorder)

@@ -37,7 +37,8 @@ var files = {
     temperature:    "Temperature.qml",
     settingsbutton: "SettingsButton.qml",
     barbutton:      "BarButton.qml",
-    clipscape:      "ClipscapeButton.qml"
+    clipscape:      "ClipscapeButton.qml",
+    glance:         "Glance.qml"
 };
 
 // the file for a widget id, or "" for an id the bar doesn't know (a hand-edited settings.json)
@@ -64,6 +65,7 @@ var quick = {
     plume: "right", altscape: "right", caffeine: "right", appsmenu: "right", power: "right",
     network: "left", bluetooth: "left", battery: "left", volume: "right", brightness: "left",
     cpu: "left", temperature: "left", calendar: "left", screenshot: "right", screenrecorder: "right",
-    clipscape: "right"
+    clipscape: "right",
+    glance: "left"
 };
 function quickDefault(id) { return Object.prototype.hasOwnProperty.call(quick, id) ? quick[id] : "none"; }
