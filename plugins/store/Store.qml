@@ -4293,7 +4293,9 @@ Scope {
                                     Layout.fillWidth: true
                                     spacing: 1
                                     Text {
-                                        text: res.isApp ? (res.g ? res.g.name : "") : (res.sr ? res.sr.label : "")
+                                        text: res.isApp ? (res.g ? res.g.name : "")
+                                            : res.isInstall ? (res.io ? res.io.label : "")
+                                            : (res.sr ? res.sr.label : "")
                                         color: res.on ? root.theme.textPrimary : root.theme.textSecondary
                                         font.family: root.sans
                                         font.pixelSize: 13
