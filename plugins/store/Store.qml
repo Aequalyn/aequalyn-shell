@@ -482,6 +482,9 @@ Scope {
     property var themeCatalog: []
     property string themeLabelFilter: "All"
     property int catalogPage: 0
+    property bool readmeOpen: false
+    property string readmeTitle: ""
+    property string readmeText: ""
     readonly property int catalogPerPage: 15
     readonly property int catalogAt: Math.min(catalogPage, Math.max(0, Math.ceil(root.catalogItems().length / root.catalogPerPage) - 1)) * root.catalogPerPage
     property var wallpaperCatalog: []
@@ -583,6 +586,22 @@ Scope {
                 root.wallpaperCatalog = out;
             }
         }
+    }
+
+    Process {
+        id: readmeProc
+        property string title: ""
+        command: ["sh", "-c", "cat \"$1\"", "sh", ""]
+        stdout: StdioCollector {
+            onStreamFinished: { root.readmeText = text; root.readmeOpen = true; }
+        }
+    }
+    function showReadme(id) {
+        root.readmeTitle = id;
+        root.readmeText = "Loading…";
+        root.readmeOpen = true;
+        readmeProc.command = ["sh", "-c", "cat \"$1\"", "sh", root.themeRepoDir + "/themes/" + id + "/README.md"];
+        readmeProc.running = true;
     }
 
     // ---- apps: the curated grid (apps.json) and the four backends ----------------------
@@ -2215,6 +2234,38 @@ Scope {
                                 }
 
                                 Box {
+                                    visible: root.readmeOpen
+                                    title: "README — " + root.readmeTitle
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Item { Layout.fillWidth: true }
+                                        Btn { text: "Close"; onClicked: root.readmeOpen = false }
+                                    }
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 260
+                                        radius: 8
+                                        color: root.theme.bgBase
+                                        border.width: 1
+                                        border.color: root.theme.bgBorder
+                                        Flickable {
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            clip: true
+                                            contentHeight: readmeText.implicitHeight
+                                            Text {
+                                                id: readmeText
+                                                width: parent.width
+                                                text: root.readmeText
+                                                color: root.theme.textPrimary
+                                                font.family: root.mono
+                                                font.pixelSize: 11
+                                                wrapMode: Text.Wrap
+                                            }
+                                        }
+                                    }
+                                }
+                                Box {
                                      visible: root.section === "theme" || root.section === "wallpaper"
                                      title: "From Aequalyn themes"
                                      hint: root.repoSyncing ? "Syncing github.com/Aequalyn/aequalyn-themes…"
@@ -2318,7 +2369,7 @@ Scope {
                                                                   anchors.fill: parent
                                                                   enabled: root.section === "theme"
                                                                   cursorShape: Qt.PointingHandCursor
-                                                                  onClicked: root.openReadme(catCard.modelData.id)
+                                                                  onClicked: root.showReadme(catCard.modelData.id)
                                                               }
                                                           }
                                                           RowLayout {
