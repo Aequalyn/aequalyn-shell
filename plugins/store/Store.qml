@@ -13,7 +13,6 @@
 // runs aequalyn-store, and its report shows live under the page.
 import QtQuick
 import QtQuick.Layouts
-import QtMultimedia
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
@@ -22,6 +21,7 @@ import "root:/settings"
 import "../../settings/center"
 import "root:/settings/center/Pages.js" as Pages
 import "root:/style/backdrop"
+import "../../style/AequalynLooks.js" as Looks
 import "../../Plugins.js" as PluginRegistry
 import "../../PluginInfo.js" as PluginInfo
 
@@ -414,6 +414,145 @@ Scope {
         // the registry's clipscape id and PluginInfo's clipboard key are one plugin
         return PluginInfo.of(id === "clipscape" ? "clipboard" : id);
     }
+    readonly property string wallpaperDir: Quickshell.env("HOME") + "/.local/share/aequalyn/wallpapers"
+    readonly property var builtInCursors: [
+        { id: "plume", label: "Plume", about: "The cursor designer that ships with Aequalyn: draw the pointer, its trail and its halo here.",
+          icon: "\u{F01C0}" }
+    ]
+    readonly property var builtInLooks: Looks.ensembles.map(e => ({
+        id: e.key, label: e.label, about: e.about, icon: "\u{F0E09}"
+    }))
+    function communityEntries(kind) {
+        const glyph = (root.sections.find(s => s.key === kind) || {}).glyph || "\u{F0431}";
+        return root.itemsOf(kind).map(i => Object.assign({}, i, {
+            label: i.label || i.id,
+            about: i.source || "",
+            icon: glyph,
+            installed: true
+        }));
+    }
+    function builtInEntries(kind) {
+        if (kind === "theme") return root.themeCatalog
+            .filter(i => (i.label || "Built-in") !== "Community")
+            .map(i => ({ id: i.id, label: i.name || i.id, about: "A theme shipped with Aequalyn.",
+                         icon: "\u{F03D8}", installed: !!i.installed, preview: i.preview || "",
+                         source: root.themeRepoDir + "/themes/" + i.id }));
+        if (kind === "wallpaper") return root.wallpaperCatalog
+            .map(i => ({ id: i.id, label: i.id, about: "A wallpaper shipped with Aequalyn.",
+                         icon: "\u{F02E9}", installed: !!i.installed,
+                         preview: root.themeRepoDir + "/wallpapers/" + i.id,
+                         source: root.themeRepoDir + "/wallpapers/" + i.id }));
+        if (kind === "cursor") return root.builtInCursors;
+        if (kind === "look") return root.builtInLooks;
+        return [];
+    }
+    function getPrimary(kind, entry, builtIn) {
+        const name = entry.label || entry.id;
+        if (builtIn && kind === "cursor") {
+            root.runSide(["qs", "ipc", "call", "aequalyn", "page", "cursor"]);
+            return;
+        }
+        if (builtIn && kind === "look") {
+            root.runSide(["qs", "ipc", "call", "aequalyn", "openSettings"]);
+            return;
+        }
+        if (builtIn && kind === "theme" && !entry.installed) {
+            root.runJob("Installing " + name, ["install", "theme", entry.source]);
+            return;
+        }
+        if (builtIn && kind === "wallpaper" && !entry.installed) {
+            root.runCmd("Installing " + name,
+                ["sh", "-c", "mkdir -p \"$HOME/.local/share/aequalyn/wallpapers\" && cp -f \"$1\" \"$HOME/.local/share/aequalyn/wallpapers/\" && echo OK",
+                 "sh", entry.source]);
+            return;
+        }
+        if (kind === "theme") root.runSide(["qs", "ipc", "call", "theme", "set", entry.id]);
+        else if (kind === "cursor") root.runSide(["sh", "-c", 'hyprctl setcursor "$1" 24 && gsettings set org.gnome.desktop.interface cursor-theme "$1"', "sh", entry.id]);
+        else if (kind === "wallpaper") root.runSide(["aequalyn-wallpaper", "set", root.wallpaperDir + "/" + entry.id]);
+        else if (kind === "look") root.runJob("Wearing " + name, ["apply-look", entry.id]);
+    }
+    function communityHint(kind) {
+        if (kind === "") return "";
+        const one = root.kindWords[kind] ? root.kindWords[kind].one : kind;
+        return root.communityEntries(kind).length === 0
+            ? "No community " + one + " from the Store yet. Add one with the form below."
+            : "Installed from git, with update and remove on each tile.";
+    }
+    function builtInHint(kind) {
+        if (kind === "cursor") return "The cursor designer ships with Aequalyn. Open it here and wear what you make.";
+        if (kind === "look") return "These ensembles ship with the shell. Open Control Center to wear one, then fine tune it.";
+        return "These ship with Aequalyn. Install or apply them here; the published catalogue syncs when you open this page.";
+    }
+    function isVideoName(name) { return /\.(mp4|webm|mkv|mov)$/i.test(String(name || "")); }
+    function pluginPreview(entry, builtIn) {
+        let info = {};
+        let base = "";
+        if (builtIn) {
+            info = root.pluginInfoOf(entry, true);
+            const reg = PluginRegistry.list.find(p => p.id === entry.id);
+            if (reg && reg.source) base = Qt.resolvedUrl("../../" + reg.source).toString().replace(/\/[^/]+$/, "");
+        } else {
+            const user = UserPlugins.byId(entry.id);
+            info = user && user.info ? user.info : {};
+            if (user && user.source) base = user.source.replace(/\/[^/]+$/, "");
+        }
+        const raw = info.preview || info.image || info.screenshot || "";
+        if (raw) {
+            if (raw.indexOf("://") >= 0 || raw.charAt(0) === "/") return raw;
+            return base ? base + "/" + raw : raw;
+        }
+        return base ? base + "/preview.png" : "";
+    }
+    function previewFor(kind, entry, builtIn) {
+        if (entry.preview) return entry.preview;
+        if (kind === "theme") {
+            const known = root.themeCatalog.find(t => t.id === entry.id);
+            if (known && known.preview) return known.preview;
+            return entry.source ? entry.source + "/preview.jpg" : "";
+        }
+        if (kind === "wallpaper") return builtIn ? entry.source : (root.wallpaperDir + "/" + entry.id);
+        if (kind === "plugin") return root.pluginPreview(entry, builtIn);
+        return "";
+    }
+    // A first frame is enough for a card: one ffmpeg process at a time fills
+    // a small cache, instead of dozens of live Video players in the grids.
+    property var videoThumbs: ({})
+    property var videoThumbQueue: []
+    property bool videoThumbRunning: false
+    function videoThumbPath(path) {
+        let h = 0;
+        for (let i = 0; i < path.length; i++) h = (h * 31 + path.charCodeAt(i)) | 0;
+        return Quickshell.env("HOME") + "/.cache/aequalyn/store-previews/" + Math.abs(h).toString(36) + ".jpg";
+    }
+    function queueVideoThumb(path) {
+        if (!path || root.videoThumbs[path] || root.videoThumbQueue.indexOf(path) >= 0) return;
+        root.videoThumbQueue.push(path);
+        root.runNextVideoThumb();
+    }
+    function runNextVideoThumb() {
+        if (root.videoThumbRunning || root.videoThumbQueue.length === 0) return;
+        const path = root.videoThumbQueue.shift();
+        root.videoThumbRunning = true;
+        videoThumbProc.path = path;
+        videoThumbProc.command = ["sh", "-c",
+            "mkdir -p \"$(dirname \"$2\")\"; [ -s \"$2\" ] || ffmpeg -y -loglevel error -i \"$1\" -frames:v 1 \"$2\"",
+            "sh", path, root.videoThumbPath(path)];
+        videoThumbProc.running = true;
+    }
+    Process {
+        id: videoThumbProc
+        property string path: ""
+        onExited: code => {
+            if (code === 0 && videoThumbProc.path !== "") {
+                const next = Object.assign({}, root.videoThumbs);
+                next[videoThumbProc.path] = root.videoThumbPath(videoThumbProc.path);
+                root.videoThumbs = next;
+            }
+            root.videoThumbRunning = false;
+            root.runNextVideoThumb();
+        }
+    }
+
     // one place that keeps the two left lists and the page in step, so an IPC
     // request or a card on Home lands on the right category as well
     function categoryOf(section) {
@@ -480,44 +619,13 @@ Scope {
     // ---- themes & wallpapers published in Aequalyn/aequalyn-themes ---------------------
     readonly property string themeRepoDir: Quickshell.env("HOME") + "/.cache/aequalyn/aequalyn-themes"
     property var themeCatalog: []
-    property string themeLabelFilter: "All"
-    property int catalogPage: 0
-    property var themePage: null
-    property var themeDetail: null
-    property bool themeDetailBusy: false
-    property bool readmeOpen: false
-    property string readmeTitle: ""
-    property string readmeText: ""
-    readonly property int catalogPerPage: 15
-    readonly property int catalogAt: Math.min(catalogPage, Math.max(0, Math.ceil(root.catalogItems().length / root.catalogPerPage) - 1)) * root.catalogPerPage
     property var wallpaperCatalog: []
     property bool repoSyncing: false
-    function syncThemeRepo() { if (!repoSync.running) repoSync.running = true; }
-    function catalogItems() {
-        let items = root.section === "theme" ? root.themeCatalog : root.wallpaperCatalog;
-        if (root.section === "theme" && root.themeLabelFilter !== "All") {
-            if (root.themeLabelFilter === "Installed")
-                items = items.filter(i => !!i.installed);
-            else
-                items = items.filter(i => (i.label || "Built-in") === root.themeLabelFilter);
-        }
-        return items;
-    }
-    function catalogRows() {
-        const items = root.catalogItems().slice(root.catalogAt, root.catalogAt + root.catalogPerPage);
-        const rows = [];
-        for (let i = 0; i < items.length; i += 5) rows.push(items.slice(i, i + 5));
-        while (rows.length < 3) rows.push([]);
-        return rows;
-    }
-    function catalogPreview(id) {
-        if (root.section === "theme") return "file://" + root.themeRepoDir + "/themes/" + id + "/preview.jpg";
-        return "file://" + root.themeRepoDir + "/wallpapers/" + id;
-    }
-    function isVideoName(name) { return /\.(mp4|webm|mkv|mov)$/i.test(String(name || "")); }
-    function openReadme(id) {
-        const path = root.themeRepoDir + "/themes/" + id + "/README.md";
-        Quickshell.execDetached(["xdg-open", path]);
+    function syncThemeRepo() {
+        // show the local catalogue at once, even if git pull has no network
+        if (root.section === "theme" && root.themeCatalog.length === 0 && !themeCatalogProc.running) themeCatalogProc.running = true;
+        if (root.section === "wallpaper" && root.wallpaperCatalog.length === 0 && !wallpaperCatalogProc.running) wallpaperCatalogProc.running = true;
+        if (!repoSync.running) repoSync.running = true;
     }
     Process {
         id: marketProc
@@ -540,23 +648,27 @@ Scope {
             + "else git clone -q https://github.com/Aequalyn/aequalyn-themes \"$d\"; fi"]
         onRunningChanged: root.repoSyncing = running
         onExited: code => {
-            if (code === 0) {
-                if (!themeCatalogProc.running) themeCatalogProc.running = true;
-                if (!wallpaperCatalogProc.running) wallpaperCatalogProc.running = true;
-            }
+            // a failed pull still leaves the last synced catalogue on disk, so
+            // read it either way: an offline Store must not look empty
+            if (!themeCatalogProc.running) themeCatalogProc.running = true;
+            if (!wallpaperCatalogProc.running) wallpaperCatalogProc.running = true;
         }
     }
     Process {
         id: themeCatalogProc
         command: ["sh", "-c",
             "d=\"" + root.themeRepoDir + "\"; "
+            + "listed=$(aequalyn-themes list --json 2>/dev/null | jq -r '.[].id' 2>/dev/null || true); "
             + "for t in \"$d\"/themes/*/theme.json; do "
             + "  [ -f \"$t\" ] || continue; "
             + "  id=$(basename \"$(dirname \"$t\")\"); "
             + "  name=$(jq -r '.name // \"'\"$id\"'\"' \"$t\" 2>/dev/null || echo \"$id\"); "
-            + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ]; then inst=1; else inst=0; fi; "
+            + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ] || printf '%s\\n' \"$listed\" | grep -qx \"$id\"; then inst=1; else inst=0; fi; "
             + "  if [ \"$id\" = \"spectral\" ]; then lab=Community; else lab=Built-in; fi; "
-            + "  printf '%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$lab\"; "
+            + "  dir=$(dirname \"$t\"); "
+            + "  preview=$(find \"$dir/backgrounds\" -maxdepth 1 -type f 2>/dev/null | sort | head -1); "
+            + "  [ -n \"$preview\" ] || preview=\"$dir/preview.jpg\"; "
+            + "  printf '%s\\t%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$lab\" \"$preview\"; "
             + "done"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -565,7 +677,7 @@ Scope {
                     if (line.trim() === "") continue;
                     const p = line.split("\t");
                     out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1",
-                               label: p[3] || "Built-in" });
+                               label: p[3] || "Built-in", preview: p[4] || "" });
                 }
                 root.themeCatalog = out;
             }
@@ -593,56 +705,6 @@ Scope {
                 root.wallpaperCatalog = out;
             }
         }
-    }
-
-    Process {
-        id: readmeProc
-        property string title: ""
-        command: ["sh", "-c", "cat \"$1\"", "sh", ""]
-        stdout: StdioCollector {
-            onStreamFinished: { root.readmeText = text; root.readmeOpen = true; }
-        }
-    }
-    function showReadme(id) {
-        root.readmeTitle = id;
-        root.readmeText = "Loading…";
-        root.readmeOpen = true;
-        readmeProc.command = ["sh", "-c", "cat \"$1\"", "sh", root.themeRepoDir + "/themes/" + id + "/README.md"];
-        readmeProc.running = true;
-    }
-
-    Process {
-        id: themeDetailProc
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.themeDetailBusy = false;
-                try { root.themeDetail = JSON.parse(text); }
-                catch (e) { root.themeDetail = null; }
-            }
-        }
-    }
-    function openTheme(id) {
-        root.themePage = id;
-        root.themeDetail = null;
-        root.themeDetailBusy = true;
-        const script = "import json,os; d=os.path.expanduser('" + root.themeRepoDir + "')+'/themes/'+os.sys.argv[1]; "
-            + "t=json.load(open(d+'/theme.json')); "
-            + "readme=''; "
-            + "rp=d+'/README.md'; "
-            + "readme=open(rp).read() if os.path.exists(rp) else ''; "
-            + "bgs=sorted(os.listdir(d+'/backgrounds')) if os.path.isdir(d+'/backgrounds') else []; "
-            + "first=d+'/backgrounds/'+bgs[0] if bgs else d+'/preview.jpg'; "
-            + "print(json.dumps({'id':os.sys.argv[1],'name':t.get('name',os.sys.argv[1]),"
-            + "'about':t.get('about',''),'variant':t.get('variant',''),'family':t.get('family',''),"
-            + "'author':t.get('author',''),'colors':t.get('colors',[]),'palette':t.get('palette',{}),"
-            + "'readme':readme,'first':first,'installed':os.path.isdir(os.path.expanduser('~/.config/aequalyn/themes/'+os.sys.argv[1]))}))"
-        themeDetailProc.command = ["python3", "-c", script, id];
-        themeDetailProc.running = true;
-    }
-    function backFromTheme() {
-        root.themePage = null;
-        root.themeDetail = null;
-        root.themeDetailBusy = false;
     }
 
     // ---- apps: the curated grid (apps.json) and the four backends ----------------------
@@ -1687,6 +1749,47 @@ Scope {
         }
     }
 
+    // the preview area shared by every Get card: a still image, or a cached
+    // first frame for video, with the glyph until one is ready
+    component CardPreview: Rectangle {
+        id: pv
+        required property string preview
+        required property string icon
+        readonly property bool remote: /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(pv.preview)
+        readonly property string source: {
+            if (pv.preview === "") return "";
+            if (root.isVideoName(pv.preview)) return root.videoThumbs[pv.preview] || "";
+            return pv.remote ? pv.preview : ("file://" + pv.preview);
+        }
+        Layout.fillWidth: true
+        Layout.preferredHeight: 72
+        radius: 8
+        color: root.theme.bgSurface
+        border.width: 1
+        border.color: root.theme.bgBorder
+        clip: true
+        Image {
+            id: still
+            anchors.fill: parent
+            visible: pv.source !== "" && status !== Image.Error
+            source: pv.source
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            smooth: true
+        }
+        Text {
+            anchors.centerIn: parent
+            visible: pv.source === "" || still.status === Image.Error
+            text: pv.icon
+            color: root.theme.accentPrimary
+            font.family: root.mono
+            font.pixelSize: 26
+        }
+        Component.onCompleted: {
+            if (root.isVideoName(pv.preview)) root.queueVideoThumb(pv.preview);
+        }
+    }
+
     // one plugin tile, used for both the built-in and the community grids
     component PluginCard: Rectangle {
         id: card
@@ -1694,37 +1797,26 @@ Scope {
         required property bool builtIn
         readonly property var info: root.pluginInfoOf(card.modelData, card.builtIn)
         readonly property bool on: (AequalynSettings.enabledPlugins || []).indexOf(card.modelData.id) >= 0
-        height: 112
+        height: 208
         Layout.fillWidth: true
         Layout.preferredWidth: 180
         Layout.minimumWidth: 120
-        Layout.preferredHeight: 112
+        Layout.preferredHeight: 208
         radius: 12
         color: root.theme.bgBase
         border.width: 1
         border.color: card.on ? root.theme.accentPrimary : root.theme.bgBorder
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 9
-            spacing: 4
+            anchors.margins: 8
+            spacing: 5
+            CardPreview {
+                preview: String(root.previewFor("plugin", card.modelData, card.builtIn) || "")
+                icon: card.info.icon || "\u{F0431}"
+            }
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 7
-                Rectangle {
-                    Layout.preferredWidth: 26
-                    Layout.preferredHeight: 26
-                    radius: 7
-                    color: root.theme.bgSurface
-                    border.width: 1
-                    border.color: root.theme.bgBorder
-                    Text {
-                        anchors.centerIn: parent
-                        text: card.info.icon || "\u{F0431}"
-                        color: root.theme.accentPrimary
-                        font.family: root.mono
-                        font.pixelSize: 14
-                    }
-                }
                 Text {
                     Layout.fillWidth: true
                     text: card.modelData.label || card.modelData.id
@@ -1752,39 +1844,46 @@ Scope {
                 elide: Text.ElideRight
             }
             Item { Layout.fillHeight: true }
-            RowLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 5
-                Btn {
+                RowLayout {
                     Layout.fillWidth: true
-                    implicitHeight: 24
-                    text: card.on ? "Turn off" : "Turn on"
-                    onClicked: AequalynSettings.togglePlugin(card.modelData.id, !card.on)
+                    spacing: 5
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: card.on ? "Turn off" : "Turn on"
+                        primary: true
+                        onClicked: AequalynSettings.togglePlugin(card.modelData.id, !card.on)
+                    }
+                    Btn {
+                        visible: card.builtIn
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Details"
+                        onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "pluginPage", card.modelData.id])
+                    }
                 }
-                Btn {
-                    visible: card.builtIn
-                    Layout.fillWidth: true
-                    implicitHeight: 24
-                    text: "Details"
-                    primary: true
-                    onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "pluginPage", card.modelData.id])
-                }
-                Btn {
+                RowLayout {
                     visible: !card.builtIn
                     Layout.fillWidth: true
-                    implicitHeight: 24
-                    text: "Update"
-                    enabled: !root.busy
-                    onClicked: root.runJob("Updating " + card.modelData.id, ["update", "plugin", card.modelData.id])
-                }
-                Btn {
-                    visible: !card.builtIn
-                    Layout.fillWidth: true
-                    implicitHeight: 24
-                    text: "Remove"
-                    danger: true
-                    enabled: !root.busy
-                    onClicked: root.runJob("Removing " + card.modelData.id, ["remove", "plugin", card.modelData.id])
+                    spacing: 5
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Update"
+                        enabled: !root.busy
+                        onClicked: root.runJob("Updating " + card.modelData.id, ["update", "plugin", card.modelData.id])
+                    }
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Remove"
+                        danger: true
+                        enabled: !root.busy
+                        onClicked: root.runJob("Removing " + card.modelData.id, ["remove", "plugin", card.modelData.id])
+                    }
                 }
             }
         }
@@ -1819,7 +1918,7 @@ Scope {
                     id: pluginRow
                     required property var modelData
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 112
+                    Layout.preferredHeight: 216
                     spacing: 8
                     Repeater {
                         model: pluginRow.modelData
@@ -1832,7 +1931,7 @@ Scope {
                         delegate: Item {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 180
-                            Layout.preferredHeight: 112
+                            Layout.preferredHeight: 208
                         }
                     }
                 }
@@ -1858,6 +1957,200 @@ Scope {
                     glyph: "›"
                     enabled: grid.at + 15 < grid.count
                     onClicked: grid.page = grid.at / 15 + 1
+                }
+            }
+        }
+    }
+
+    // one tile for the other Get kinds, with the same preview slot and the
+    // same calm two-row action layout as a plugin card
+    component GetCard: Rectangle {
+        id: gcard
+        required property var modelData
+        required property bool builtIn
+        required property string kind
+        readonly property var entry: gcard.modelData
+        readonly property string label: gcard.entry.label || gcard.entry.name || gcard.entry.id
+        readonly property string about: gcard.entry.about || gcard.entry.source || ""
+        readonly property string icon: gcard.entry.icon || (root.sections.find(s => s.key === gcard.kind) || {}).glyph || "\u{F0431}"
+        readonly property bool installed: !!gcard.entry.installed
+        readonly property string preview: String(root.previewFor(gcard.kind, gcard.entry, gcard.builtIn) || "")
+        readonly property string actionText: {
+            if (gcard.builtIn) {
+                if (gcard.kind === "cursor") return "Open Plume";
+                if (gcard.kind === "look") return "Open Control Center";
+                if (gcard.kind === "theme") return gcard.installed ? "Apply" : "Install";
+                if (gcard.kind === "wallpaper") return gcard.installed ? "Set" : "Install";
+            }
+            if (gcard.kind === "theme") return "Apply";
+            if (gcard.kind === "cursor") return "Wear";
+            if (gcard.kind === "wallpaper") return "Set";
+            if (gcard.kind === "look") return "Wear all";
+            return "Open";
+        }
+        height: 208
+        Layout.fillWidth: true
+        Layout.preferredWidth: 180
+        Layout.minimumWidth: 120
+        Layout.preferredHeight: 208
+        radius: 12
+        color: root.theme.bgBase
+        border.width: 1
+        border.color: root.theme.bgBorder
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 5
+            CardPreview {
+                preview: gcard.preview
+                icon: gcard.icon
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 7
+                Text {
+                    Layout.fillWidth: true
+                    text: gcard.label
+                    color: root.theme.textPrimary
+                    font.family: root.sans
+                    font.pixelSize: 12
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+                Rectangle {
+                    Layout.preferredWidth: 6
+                    Layout.preferredHeight: 6
+                    radius: 3
+                    color: gcard.installed ? root.theme.accentGreen : root.theme.textMuted
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                text: gcard.about
+                color: root.theme.textSecondary
+                font.family: root.sans
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+            }
+            Item { Layout.fillHeight: true }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 5
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: gcard.actionText
+                        primary: true
+                        enabled: !root.busy
+                        onClicked: root.getPrimary(gcard.kind, gcard.entry, gcard.builtIn)
+                    }
+                    Btn {
+                        visible: gcard.builtIn && gcard.installed && (gcard.kind === "theme" || gcard.kind === "wallpaper")
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Page"
+                        onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "page", gcard.kind === "theme" ? "theme" : "wallpaper"])
+                    }
+                }
+                RowLayout {
+                    visible: !gcard.builtIn
+                    Layout.fillWidth: true
+                    spacing: 5
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Update"
+                        enabled: !root.busy
+                        onClicked: root.runJob("Updating " + gcard.entry.id, ["update", gcard.kind, gcard.entry.id])
+                    }
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Remove"
+                        danger: true
+                        enabled: !root.busy
+                        onClicked: root.runJob("Removing " + gcard.entry.id, ["remove", gcard.kind, gcard.entry.id])
+                    }
+                }
+            }
+        }
+    }
+
+    // the same 5x3 grid, with Get-kind cards in place of plugin cards
+    component GetGrid: Box {
+        id: getGrid
+        property string kind: ""
+        property string entriesTitle: ""
+        property string entriesHint: ""
+        property var entries: []
+        property bool builtIn: true
+        property int page: 0
+        readonly property int count: getGrid.entries.length
+        readonly property int at: root.pluginAt(getGrid.count, getGrid.page)
+        title: getGrid.entriesTitle
+        hint: getGrid.entriesHint
+        visible: getGrid.kind !== "" && root.section === getGrid.kind
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Text {
+                visible: getGrid.count === 0
+                text: "Nothing here yet."
+                color: root.theme.textMuted
+                font.family: root.sans
+                font.pixelSize: 11
+            }
+            Repeater {
+                model: getGrid.count > 0 ? root.pluginRows(getGrid.entries, getGrid.page) : []
+                delegate: RowLayout {
+                    id: getRow
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 216
+                    spacing: 8
+                    Repeater {
+                        model: getRow.modelData
+                        delegate: GetCard {
+                            kind: getGrid.kind
+                            builtIn: getGrid.builtIn
+                        }
+                    }
+                    Repeater {
+                        model: 5 - getRow.modelData.length
+                        delegate: Item {
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 208
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                visible: getGrid.count > 15
+                spacing: 6
+                Item { Layout.fillWidth: true }
+                Text {
+                    text: getGrid.count + " items"
+                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                }
+                StepBtn {
+                    glyph: "‹"
+                    enabled: getGrid.at > 0
+                    onClicked: getGrid.page = getGrid.at / 15 - 1
+                }
+                Text {
+                    text: (getGrid.at + 1) + "–" + Math.min(getGrid.at + 15, getGrid.count) + " of " + getGrid.count
+                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                }
+                StepBtn {
+                    glyph: "›"
+                    enabled: getGrid.at + 15 < getGrid.count
+                    onClicked: getGrid.page = getGrid.at / 15 + 1
                 }
             }
         }
@@ -2252,17 +2545,6 @@ Scope {
                                     }
                                 }
 
-                                // the other kinds keep their installed list above the form
-                                Box {
-                                    visible: !!root.kindWords[root.section] && root.section !== "plugin" && root.section !== "theme"
-                                    title: "Installed"
-                                    hint: root.kindWords[root.section] && root.itemsOf(root.section).length === 0
-                                          ? "No " + root.kindWords[root.section].one + " from the Store yet." : ""
-                                    Repeater {
-                                        model: root.kindWords[root.section] && root.section !== "plugin" ? root.itemsOf(root.section) : []
-                                        delegate: ItemRow {}
-                                    }
-                                }
                                 // community first, then the git form, then the shell's own
                                 // plugins; each grid is fifteen tiles: five across, three rows
                                 PluginGrid {
@@ -2274,343 +2556,31 @@ Scope {
                                     builtIn: false
                                 }
 
-                                Box {
-                                    visible: root.readmeOpen
-                                    title: "README — " + root.readmeTitle
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Item { Layout.fillWidth: true }
-                                        Btn { text: "Close"; onClicked: root.readmeOpen = false }
-                                    }
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 260
-                                        radius: 8
-                                        color: root.theme.bgBase
-                                        border.width: 1
-                                        border.color: root.theme.bgBorder
-                                        Flickable {
-                                            anchors.fill: parent
-                                            anchors.margins: 8
-                                            clip: true
-                                            contentHeight: readmeText.implicitHeight
-                                            Text {
-                                                id: readmeText
-                                                width: parent.width
-                                                text: root.readmeText
-                                                color: root.theme.textPrimary
-                                                font.family: root.mono
-                                                font.pixelSize: 11
-                                                wrapMode: Text.Wrap
-                                            }
-                                        }
-                                    }
+                                GetGrid {
+                                    kind: root.categoryOf(root.section) === "get" && root.section !== "plugin" ? root.section : ""
+                                    entriesTitle: "Community"
+                                    entriesHint: root.communityHint(root.section)
+                                    entries: root.communityEntries(root.section)
+                                    builtIn: false
                                 }
-                                Box {
-                                    visible: root.section === "theme" && root.themePage !== null
-                                    title: root.themeDetail ? (root.themeDetail.name || root.themePage) : root.themePage
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Item { Layout.fillWidth: true }
-                                        Btn { text: "Back"; onClicked: root.backFromTheme() }
-                                    }
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 12
-                                        Rectangle {
-                                            Layout.preferredWidth: 320
-                                            Layout.preferredHeight: 180
-                                            radius: 8
-                                            color: root.theme.bgSurface
-                                            border.width: 1
-                                            border.color: root.theme.bgBorder
-                                            clip: true
-                                            Image {
-                                                anchors.fill: parent
-                                                visible: !root.isVideoName(root.themePage)
-                                                source: root.themeDetail ? "file://" + root.themeDetail.first : ""
-                                                fillMode: Image.PreserveAspectCrop
-                                                asynchronous: true
-                                                smooth: true
-                                            }
-                                            Video {
-                                                anchors.fill: parent
-                                                visible: root.isVideoName(root.themePage)
-                                                source: root.themeDetail ? "file://" + root.themeDetail.first : ""
-                                                fillMode: VideoOutput.PreserveAspectCrop
-                                                autoPlay: false
-                                            }
-                                        }
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 6
-                                            Text { text: root.themeDetail ? (root.themeDetail.about || "") : "Loading…"
-                                                   color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                                            Text { text: "Colors"
-                                                   visible: root.themeDetail && (root.themeDetail.colors || []).length > 0
-                                                   color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold }
-                                            Flow {
-                                                Layout.fillWidth: true
-                                                spacing: 6
-                                                Repeater {
-                                                    model: root.themeDetail ? (root.themeDetail.colors || []) : []
-                                                    delegate: Rectangle {
-                                                        required property string modelData
-                                                        width: 28; height: 28; radius: 6
-                                                        color: modelData
-                                                        border.width: 1
-                                                        border.color: root.theme.bgBorder
-                                                    }
-                                                }
-                                            }
-                                            Pill { visible: root.themeDetail && !!root.themeDetail.installed; text: "Installed"; tone: root.theme.accentGreen }
-                                            Btn {
-                                                text: (root.themeDetail && root.themeDetail.installed) ? "Reinstall" : "Install"
-                                                primary: !(root.themeDetail && root.themeDetail.installed)
-                                                enabled: !root.busy && !!root.themeDetail
-                                                onClicked: root.runJob("Installing " + root.themePage,
-                                                            ["install", "theme", root.themeRepoDir + "/themes/" + root.themePage])
-                                            }
-                                        }
-                                    }
-                                    Rectangle {
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 220
-                                        radius: 8
-                                        color: root.theme.bgBase
-                                        border.width: 1
-                                        border.color: root.theme.bgBorder
-                                        Flickable {
-                                            anchors.fill: parent
-                                            anchors.margins: 8
-                                            clip: true
-                                            contentHeight: readmeDetail.implicitHeight
-                                            Text {
-                                                id: readmeDetail
-                                                width: parent.width
-                                                text: root.themeDetail ? (root.themeDetail.readme || "") : ""
-                                                color: root.theme.textPrimary
-                                                font.family: root.mono
-                                                font.pixelSize: 11
-                                                wrapMode: Text.Wrap
-                                            }
-                                        }
-                                    }
+
+                                InstallBox {
+                                    visible: !!root.kindWords[root.section]
+                                    kind: root.kindWords[root.section] ? root.section : "plugin"
                                 }
-                                Box {
-                                    visible: (root.section === "theme" && root.themePage === null) || root.section === "wallpaper"
-                                     title: "From Aequalyn themes"
-                                     hint: root.repoSyncing ? "Syncing github.com/Aequalyn/aequalyn-themes…"
-                                           : root.section === "theme"
-                                             ? (root.themeCatalog.length === 0 ? "No themes found yet. Press Sync to fetch them."
-                                                 : "Themes published in github.com/Aequalyn/aequalyn-themes. Install runs the same checks.")
-                                             : (root.wallpaperCatalog.length === 0 ? "No wallpapers found yet. Press Sync to fetch them."
-                                                 : "Wallpapers published in github.com/Aequalyn/aequalyn-themes.")
-                                     RowLayout {
-                                         visible: root.section === "theme"
-                                         Layout.fillWidth: true
-                                         spacing: 6
-                                         Btn {
-                                             text: "All"
-                                             primary: root.themeLabelFilter === "All"
-                                             implicitHeight: 26
-                                             onClicked: { root.themeLabelFilter = "All"; root.catalogPage = 0; }
-                                         }
-                                         Btn {
-                                             text: "Built-in"
-                                             primary: root.themeLabelFilter === "Built-in"
-                                             implicitHeight: 26
-                                             onClicked: { root.themeLabelFilter = "Built-in"; root.catalogPage = 0; }
-                                         }
-                                         Btn {
-                                             text: "Community"
-                                             primary: root.themeLabelFilter === "Community"
-                                             implicitHeight: 26
-                                             onClicked: { root.themeLabelFilter = "Community"; root.catalogPage = 0; }
-                                         }
-                                         Btn {
-                                             text: "Installed"
-                                             primary: root.themeLabelFilter === "Installed"
-                                             implicitHeight: 26
-                                             onClicked: { root.themeLabelFilter = "Installed"; root.catalogPage = 0; }
-                                         }
-                                         Item { Layout.fillWidth: true }
-                                     }
-                                     RowLayout {
-                                         Layout.fillWidth: true
-                                         Item { Layout.fillWidth: true }
-                                         Btn {
-                                             text: root.repoSyncing ? "Syncing…" : "Sync from GitHub"
-                                             enabled: !root.repoSyncing && !root.busy
-                                             onClicked: root.syncThemeRepo()
-                                         }
-                                     }
-                                     Repeater {
-                                          model: root.catalogRows()
-                                          delegate: RowLayout {
-                                              id: catRow
-                                              required property var modelData
-                                              Layout.fillWidth: true
-                                              Layout.preferredHeight: 200
-                                              spacing: 10
-                                              Repeater {
-                                                  model: catRow.modelData
-                                                  delegate: Rectangle {
-                                                      id: catCard
-                                                      required property var modelData
-                                                      readonly property bool isVideo: root.isVideoName(catCard.modelData.id)
-                                                      Layout.fillWidth: true
-                                                      Layout.preferredWidth: 180
-                                                      Layout.minimumWidth: 120
-                                                      height: 170
-                                                      radius: 12
-                                                      color: root.theme.bgBase
-                                                      border.width: 1
-                                                      border.color: root.theme.bgBorder
-                                                      ColumnLayout {
-                                                          anchors.fill: parent
-                                                          anchors.margins: 9
-                                                          spacing: 4
-                                                          Rectangle {
-                                                              Layout.fillWidth: true
-                                                              Layout.preferredHeight: 90
-                                                              radius: 8
-                                                              color: root.theme.bgSurface
-                                                              border.width: 1
-                                                              border.color: root.theme.bgBorder
-                                                              clip: true
-                                                              Image {
-                                                                  anchors.fill: parent
-                                                                  visible: !catCard.isVideo
-                                                                  source: root.catalogPreview(catCard.modelData.id)
-                                                                  fillMode: Image.PreserveAspectCrop
-                                                                  asynchronous: true
-                                                                  smooth: true
-                                                                  onStatusChanged: if (status === Image.Error) visible = false
-                                                              }
-                                                              Video {
-                                                                  anchors.fill: parent
-                                                                  visible: catCard.isVideo
-                                                                  source: root.catalogPreview(catCard.modelData.id)
-                                                                  fillMode: VideoOutput.PreserveAspectCrop
-                                                                  autoPlay: false
-                                                              }
-                                                              Text {
-                                                                  anchors.centerIn: parent
-                                                                  visible: catCard.isVideo
-                                                                  text: "\u{F03D8}"
-                                                                  color: root.theme.textMuted
-                                                                  font.family: root.mono
-                                                                  font.pixelSize: 26
-                                                              }
-                                                              MouseArea {
-                                                                  anchors.fill: parent
-                                                                  enabled: root.section === "theme"
-                                                                  cursorShape: Qt.PointingHandCursor
-                                                                  onClicked: root.openTheme(catCard.modelData.id)
-                                                              }
-                                                          }
-                                                          RowLayout {
-                                                              spacing: 7
-                                                              ColumnLayout {
-                                                                  spacing: 1
-                                                                  Layout.fillWidth: true
-                                                                  Text {
-                                                                      text: root.section === "theme" ? (catCard.modelData.name || catCard.modelData.id) : catCard.modelData.id
-                                                                      color: root.theme.textPrimary
-                                                                      font.family: root.sans
-                                                                      font.pixelSize: 12
-                                                                      font.weight: Font.DemiBold
-                                                                      elide: Text.ElideRight
-                                                                      Layout.fillWidth: true
-                                                                  }
-                                                                  Pill {
-                                                                      visible: root.section === "theme" && !!catCard.modelData.label
-                                                                      text: catCard.modelData.label || "Built-in"
-                                                                      tone: (catCard.modelData.label === "Community") ? root.theme.accentPrimary : root.theme.textMuted
-                                                                  }
-                                                                  Pill {
-                                                                      visible: !!catCard.modelData.installed
-                                                                      text: "Installed"
-                                                                      tone: root.theme.accentGreen
-                                                                  }
-                                                              }
-                                                              Rectangle {
-                                                                  Layout.preferredWidth: 6
-                                                                  Layout.preferredHeight: 6
-                                                                  radius: 3
-                                                                  color: catCard.modelData.installed ? root.theme.accentGreen : root.theme.textMuted
-                                                              }
-                                                          }
-                                                          Item { Layout.fillHeight: true }
-                                                          Btn {
-                                                              Layout.fillWidth: true
-                                                              implicitHeight: 24
-                                                              text: catCard.modelData.installed ? "Reinstall" : "Install"
-                                                              primary: !catCard.modelData.installed
-                                                              enabled: !root.busy
-                                                              onClicked: {
-                                                                  if (root.section === "theme") {
-                                                                      root.runJob("Installing " + (catCard.modelData.name || catCard.modelData.id),
-                                                                                  ["install", "theme", root.themeRepoDir + "/themes/" + catCard.modelData.id]);
-                                                                  } else {
-                                                                      const src = root.themeRepoDir + "/wallpapers/" + catCard.modelData.id;
-                                                                      root.runCmd("Installing " + catCard.modelData.id,
-                                                                                  ["sh", "-c",
-                                                                                   "mkdir -p \"$HOME/.local/share/aequalyn/wallpapers\" && cp -f \"$1\" \"$HOME/.local/share/aequalyn/wallpapers/\" && echo OK",
-                                                                                   "sh", src]);
-                                                                  }
-                                                              }
-                                                          }
-                                                      }
-                                                  }
-                                              }
-                                              Repeater {
-                                                  model: 5 - catRow.modelData.length
-                                                  delegate: Item {
-                                                      Layout.fillWidth: true
-                                                      Layout.preferredWidth: 203
-                                                      height: 170
-                                                  }
-                                              }
-                                          }
-                                      }
-
-                                     RowLayout {
-                                         visible: root.catalogItems().length > root.catalogPerPage
-                                         Layout.fillWidth: true
-                                         Layout.topMargin: 8
-                                         spacing: 6
-                                         Item { Layout.fillWidth: true }
-                                         Text {
-                                             text: root.catalogItems().length + " items"
-                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                         }
-                                         StepBtn {
-                                             glyph: "‹"
-                                             enabled: root.catalogAt > 0
-                                             onClicked: root.catalogPage = root.catalogAt / root.catalogPerPage - 1
-                                         }
-                                         Text {
-                                             text: (root.catalogAt + 1) + "–" + Math.min(root.catalogAt + root.catalogPerPage, root.catalogItems().length)
-                                                   + " of " + root.catalogItems().length
-                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                         }
-                                         StepBtn {
-                                             glyph: "›"
-                                             enabled: root.catalogAt + root.catalogPerPage < root.catalogItems().length
-                                             onClicked: root.catalogPage = root.catalogAt / root.catalogPerPage + 1
-                                         }
-                                     }
-
-                                 }
-
-InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
 
                                 PluginGrid {
                                     entriesTitle: "Built-in"
                                     entriesHint: "These ship with Aequalyn. Turn them on or open their page here; nothing to download."
                                     entries: root.builtInPlugins
+                                    builtIn: true
+                                }
+
+                                GetGrid {
+                                    kind: root.categoryOf(root.section) === "get" && root.section !== "plugin" ? root.section : ""
+                                    entriesTitle: "Built-in"
+                                    entriesHint: root.builtInHint(root.section)
+                                    entries: root.builtInEntries(root.section)
                                     builtIn: true
                                 }
 
