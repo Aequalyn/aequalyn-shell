@@ -1,11 +1,13 @@
 // The Store: plugins, themes, cursors, wallpaper packs and looks from git, every one
 // checked before it is kept (bin/aequalyn-store does the work; this is its window);
-// the way to search apps in Arch, the AUR, Flathub and Snap; web apps and AI tools
+// the app browser, grouped with the same categories Super + I uses; web apps and
+// AI tools
 // (aequalyn-webapp and aequalyn-ai-tool do the work, the same live report shows it);
 // and the way AppImages come in: checked without anything inside them ever running,
 // moved to ~/Applications with a menu entry of their own. Super + Alt + S, or
 // `qs ipc call store open` (`section <name>` opens it on a section,
-// `install <kind> <git-url>` installs, `appimage <path>` brings one over).
+// `install <kind> <git-url>` installs, `package`/`remove` act on one plain id,
+// `appimage <path>` brings one over).
 //
 // Dressed as the control center: the same palette (the live one the shell binds into
 // every plugin), the same two fonts (words in a plain sans, numbers, paths and icons
@@ -1447,7 +1449,8 @@ Scope {
         function open(): void { root.open = true; root.refresh(); }
         function close(): void { root.open = false; }
         function toggle(): void { root.open = !root.open; if (root.open) root.refresh(); }
-        // open on a section: home, plugin, theme, cursor, wallpaper, look, apps, appimage, market, updates
+        // open on a section: home, plugin, theme, cursor, wallpaper, look,
+        // apps, web, ai, appimage, market, updates
         function section(name: string): string {
             const section = name;
             if (!root.sections.some(s => s.key === section)) return "no section " + section;
@@ -1471,6 +1474,29 @@ Scope {
             if (!root.kindWords[kind]) return "no kind " + kind;
             root.openSection(kind); root.open = true;
             root.runJob("Installing " + source, ["install", kind, source]);
+            return "ok";
+        }
+        // one package, by source name: the same validated path a Store card uses.
+        // Arch goes through the approval gate; the others run in a terminal.
+        function package(source: string, name: string): string {
+            const via = ({ arch: "Arch", aur: "AUR", flatpak: "Flatpak", snap: "Snap" })[String(source).toLowerCase()];
+            if (!via) return "no source " + source;
+            if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(name)) return "bad package " + name;
+            const a = {};
+            if (via === "Arch") a.pacman = name;
+            else if (via === "AUR") a.aur = name;
+            else if (via === "Flatpak") a.flatpak = name;
+            else a.snap = name;
+            root.installApp(a, via);
+            return "ok";
+        }
+        // the other half of a curated choice: remove the same plain package id
+        // through the same gated/terminal path the Installed page uses
+        function remove(source: string, name: string): string {
+            const via = ({ arch: "Arch", aur: "AUR", flatpak: "Flatpak", snap: "Snap" })[String(source).toLowerCase()];
+            if (!via) return "no source " + source;
+            if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(name)) return "bad package " + name;
+            root.appAction({ source: via, id: name }, "remove");
             return "ok";
         }
     }
@@ -4117,8 +4143,11 @@ Scope {
                             required property var modelData
                             required property int index
                             readonly property bool isApp: res.modelData.kind === "app"
+                            readonly property bool isInstall: res.modelData.kind === "install"
+                            readonly property var io: res.isInstall ? res.modelData.option : null
+                            readonly property var removeCmd: res.io ? InstallOptions.uninstall(res.io) : []
                             readonly property var g: res.isApp ? res.modelData.group : null
-                            readonly property var sr: res.isApp ? null : res.modelData.result
+                            readonly property var sr: res.isApp || res.isInstall ? null : res.modelData.result
                             readonly property var e: res.sr ? res.sr.entry : null
                             readonly property bool editable: !!res.e && !!res.e.setting
                             readonly property bool have: res.isApp && !!res.g.installed
@@ -4151,7 +4180,7 @@ Scope {
                                     visible: !res.isApp
                                     Layout.preferredWidth: 28
                                     horizontalAlignment: Text.AlignHCenter
-                                    text: res.sr ? res.sr.icon : ""
+                                    text: res.isInstall ? (res.io ? res.io.icon : "") : (res.sr ? res.sr.icon : "")
                                     color: root.theme.accentPrimary
                                     font.family: root.mono
                                     font.pixelSize: 16
@@ -4172,6 +4201,8 @@ Scope {
                                         text: res.isApp
                                             ? (res.g ? res.g.sources.map(s => s.source === "Flatpak" ? "Flathub" : s.source).join(", ") : "")
                                                 + (res.g && res.g.about ? "  ·  " + res.g.about : "")
+                                            : res.isInstall
+                                            ? (res.io ? InstallOptions.categoryLabel(res.io.category) + " · " + res.io.source : "")
                                             : (res.sr ? res.sr.where : "")
                                         color: root.theme.textMuted
                                         font.family: root.mono
@@ -4187,11 +4218,23 @@ Scope {
                                     tone: root.theme.accentGreen
                                 }
                                 Btn {
-                                    visible: res.isApp && !res.have && !!res.via
+                                    visible: res.isInstall && res.removeCmd.length > 0
+                                    z: 2
+                                    text: "Remove"
+                                    danger: true
+                                    enabled: !root.busy
+                                    onClicked: root.installRemove(res.io)
+                                }
+                                Btn {
+                                    visible: (res.isApp && !res.have && !!res.via) || res.isInstall
                                     z: 2
                                     text: "Install"
                                     primary: true
-                                    onClicked: root.installFound(res.via)
+                                    enabled: !res.isInstall || !root.busy
+                                    onClicked: {
+                                        if (res.isInstall) root.installActivate(res.io);
+                                        else root.installFound(res.via);
+                                    }
                                 }
                                 CcSwitch {
                                     visible: res.editable && res.e && res.e.kind === "toggle"
@@ -4216,7 +4259,7 @@ Scope {
                                     StepBtn { glyph: "›"; onClicked: { if (res.e) root.adjustSetting(res.e, 1); } }
                                 }
                                 Text {
-                                    visible: !res.isApp && !res.editable
+                                    visible: !res.isApp && !res.isInstall && !res.editable
                                     text: "Open  ›"
                                     color: res.on ? root.theme.accentPrimary : root.theme.textMuted
                                     font.family: root.mono
