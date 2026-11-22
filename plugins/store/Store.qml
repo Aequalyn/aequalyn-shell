@@ -931,14 +931,6 @@ Scope {
     property int popPage: 0
     readonly property var popShown: root.apps
     readonly property int popAt: Math.min(root.popPage, Math.max(0, Math.ceil(root.popShown.length / 15) - 1)) * 15
-    // the page's apps, as rows of five, the page always holding its three rows
-    function popRows() {
-        const shown = root.popShown.slice(root.popAt, root.popAt + 15);
-        const rows = [];
-        for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
-        while (rows.length < 3) rows.push([]);
-        return rows;
-    }
     property var backends: ({ yay: false, flatpak: false, snap: false })
     property var installedPkgs: ({ pacman: [], flatpak: [], snap: [] })
     // explicitly installed packages from every backend; many are CLI tools, so
@@ -1617,15 +1609,400 @@ Scope {
         id: sb
         property string glyph: ""
         signal clicked()
-        Layout.preferredWidth: 26
-        Layout.preferredHeight: 26
-        radius: 7
-        color: sbMa.containsMouse ? root.theme.bgHover : root.theme.bgSurface
-        border.width: 1
-        border.color: root.theme.bgBorder
+        Layout.preferredWidth: 24
+        Layout.preferredHeight: 24
+        radius: 6
+        color: Cc.alpha(root.theme.textPrimary, sbMa.containsMouse ? 0.12 : 0.06)
+        border.width: 0
         Accessible.role: Accessible.Button
         Text { anchors.centerIn: parent; text: sb.glyph; color: root.theme.textSecondary; font.family: root.mono; font.pixelSize: 14 }
         MouseArea { id: sbMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: sb.clicked() }
+    }
+
+    // One app tile, shared by All Apps and every category page. It keeps the
+    // All Apps look: quiet fill, icon, name, source, and actions in the tile.
+    component BrowseCard: Rectangle {
+        id: bcard
+        required property var modelData
+        readonly property bool have: root.foundInstalled(modelData)
+        readonly property bool hovered: bcardMa.containsMouse
+        readonly property bool installedHere: !!modelData.installed
+        readonly property bool ready: modelData.source === "Arch"
+            || (modelData.source === "AUR" && root.backends.yay)
+            || (modelData.source === "Flatpak" && root.backends.flatpak)
+            || (modelData.source === "Snap" && root.backends.snap)
+        readonly property string iconUrl: root.appIconUrl(modelData.icon, modelData.name || modelData.id)
+        readonly property string initials: root.appInitials(modelData.name || modelData.id)
+        readonly property color monogramColor: root.appMonogramColor(modelData.name || modelData.id)
+        signal opened()
+        Layout.fillWidth: true
+        Layout.preferredWidth: 203
+        height: 150
+        radius: 6
+        color: hovered ? Cc.alpha(root.theme.textPrimary, 0.10)
+            : Cc.alpha(root.theme.textPrimary, 0.03)
+        border.width: 1
+        border.color: Cc.alpha(root.theme.textPrimary, 0.08)
+        MouseArea {
+            id: bcardMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: bcard.opened()
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 6
+            RowLayout {
+                spacing: 8
+                Item {
+                    Layout.preferredWidth: 30; Layout.preferredHeight: 30
+                    Image {
+                        id: bicon
+                        anchors.fill: parent
+                        source: bcard.iconUrl
+                        sourceSize.width: 64; sourceSize.height: 64
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                        visible: status === Image.Ready
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 8
+                        color: bcard.monogramColor
+                        visible: !bicon.visible
+                        Text {
+                            anchors.centerIn: parent
+                            text: bcard.initials
+                            color: "#ffffff"
+                            font.family: root.sans
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                        }
+                    }
+                }
+                ColumnLayout {
+                    spacing: 1
+                    Layout.fillWidth: true
+                    Text {
+                        text: bcard.modelData.name
+                        color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold
+                        elide: Text.ElideRight; Layout.fillWidth: true
+                    }
+                    Text {
+                        text: bcard.modelData.source === "Flatpak" ? "Flathub" : bcard.modelData.source
+                        color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 10
+                        elide: Text.ElideRight; Layout.fillWidth: true
+                    }
+                }
+            }
+            Text {
+                text: bcard.modelData.about
+                color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11
+                wrapMode: Text.WordWrap; elide: Text.ElideRight
+                maximumLineCount: 2; Layout.fillWidth: true
+            }
+            Item { Layout.fillHeight: true }
+            ColumnLayout {
+                visible: bcard.installedHere
+                Layout.fillWidth: true
+                spacing: 4
+                Pill { text: "Installed"; tone: root.theme.accentGreen }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 26
+                        text: "Update"
+                        primary: true
+                        enabled: !root.anyBusy()
+                        onClicked: root.appAction(bcard.modelData, "update")
+                    }
+                    Btn {
+                        Layout.fillWidth: true
+                        implicitHeight: 26
+                        text: "Remove"
+                        danger: true
+                        enabled: !root.anyBusy()
+                        onClicked: root.appAction(bcard.modelData, "remove")
+                    }
+                }
+            }
+            RowLayout {
+                visible: !bcard.installedHere
+                Layout.fillWidth: true
+                spacing: 6
+                Pill { visible: bcard.have; text: "Installed"; tone: root.theme.accentGreen }
+                Item { Layout.fillWidth: true }
+                Btn {
+                    visible: !bcard.have
+                    implicitHeight: 26
+                    text: bcard.ready ? "Install" : "Needs " + (bcard.modelData.source === "AUR" ? "the AUR" : bcard.modelData.source === "Flatpak" ? "Flathub" : "Snap")
+                    primary: bcard.ready
+                    enabled: bcard.ready && !root.anyBusy()
+                    onClicked: root.installFound(bcard.modelData)
+                }
+            }
+        }
+    }
+
+    // The same 5x3 grid and page controls wherever apps are listed. Category
+    // pages own their page number; All Apps follows its own search paging.
+    component BrowseCards: ColumnLayout {
+        id: grid
+        property var model: []
+        property int page: 0
+        signal goToPage(int value)
+        readonly property int count: (grid.model || []).length
+        readonly property int step: 15
+        readonly property int at: Math.min(Math.max(0, grid.page),
+            Math.max(0, Math.ceil(grid.count / grid.step) - 1)) * grid.step
+        readonly property var rows: {
+            const shown = (grid.model || []).slice(grid.at, grid.at + grid.step);
+            const out = [];
+            for (let i = 0; i < shown.length; i += 5) out.push(shown.slice(i, i + 5));
+            while (out.length < 3) out.push([]);
+            return out;
+        }
+        Layout.fillWidth: true
+        spacing: 10
+        Repeater {
+            model: grid.rows
+            delegate: RowLayout {
+                id: cardRow
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.preferredHeight: 150
+                spacing: 10
+                Repeater {
+                    model: cardRow.modelData
+                    delegate: BrowseCard {
+                        onOpened: {
+                            const g = root.groupFor(modelData);
+                            if (g) root.openApp(g);
+                        }
+                    }
+                }
+                Repeater {
+                    model: 5 - cardRow.modelData.length
+                    delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
+                }
+            }
+        }
+        RowLayout {
+            visible: grid.count > grid.step
+            spacing: 6
+            Item { Layout.fillWidth: true }
+            Text {
+                text: grid.count + (grid.count === 1 ? " app" : " apps")
+                color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+            }
+            StepBtn {
+                glyph: "\u2039"
+                enabled: grid.at > 0
+                onClicked: grid.goToPage(grid.at / grid.step - 1)
+            }
+            Text {
+                text: (grid.at + 1) + "–" + Math.min(grid.at + grid.step, grid.count) + " of " + grid.count
+                color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+            }
+            StepBtn {
+                glyph: "\u203A"
+                enabled: grid.at + grid.step < grid.count
+                onClicked: grid.goToPage(grid.at / grid.step + 1)
+            }
+        }
+    }
+
+    // The Popular apps tile, shared with category pages. Four source buttons sit
+    // in the card; a click on the card itself opens that app's own page.
+    component AppTile: Rectangle {
+        id: tile
+        required property var modelData
+        readonly property string via: root.installedVia(modelData)
+        readonly property bool hovered: tileMa.containsMouse
+        readonly property string iconUrl: root.appIconUrl(modelData.icon, modelData.name || modelData.id)
+        readonly property string initials: root.appInitials(modelData.name || modelData.id)
+        readonly property color monogramColor: root.appMonogramColor(modelData.name || modelData.id)
+        signal opened()
+        Layout.fillWidth: true
+        Layout.preferredWidth: 203
+        height: 164
+        radius: 6
+        color: hovered ? Cc.alpha(root.theme.textPrimary, 0.10)
+            : Cc.alpha(root.theme.textPrimary, 0.03)
+        border.width: 1
+        border.color: Cc.alpha(root.theme.textPrimary, 0.08)
+        MouseArea {
+            id: tileMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tile.opened()
+        }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 6
+            RowLayout {
+                spacing: 10
+                Item {
+                    Layout.preferredWidth: 34; Layout.preferredHeight: 34
+                    Image {
+                        id: tileIcon
+                        anchors.centerIn: parent
+                        width: 34; height: 34
+                        source: tile.iconUrl
+                        sourceSize.width: 64; sourceSize.height: 64
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                        smooth: true
+                        visible: tile.iconUrl !== "" && status === Image.Ready
+                    }
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 34; height: 34
+                        radius: 8
+                        color: tile.monogramColor
+                        visible: !tileIcon.visible
+                        Text {
+                            anchors.centerIn: parent
+                            text: tile.initials
+                            color: "#ffffff"
+                            font.family: root.sans
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                        }
+                    }
+                }
+                ColumnLayout {
+                    spacing: 1
+                    Layout.fillWidth: true
+                    Text {
+                        text: tile.modelData.name
+                        color: root.theme.textPrimary; font.family: root.sans
+                        font.pixelSize: 13; font.weight: Font.DemiBold
+                        elide: Text.ElideRight; Layout.fillWidth: true
+                    }
+                    Pill { visible: tile.via !== ""; text: "Installed · " + tile.via; tone: root.theme.accentGreen }
+                }
+            }
+            Text {
+                text: tile.modelData.about || ""
+                color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11
+                wrapMode: Text.WordWrap; elide: Text.ElideRight
+                maximumLineCount: 2; Layout.fillWidth: true
+            }
+            Item { Layout.fillHeight: true }
+            GridLayout {
+                Layout.fillWidth: true
+                columns: 2
+                rows: 2
+                flow: GridLayout.LeftToRight
+                columnSpacing: 4
+                rowSpacing: 4
+                Repeater {
+                    model: [
+                        { via: "Arch", has: !!tile.modelData.pacman, ready: true },
+                        { via: "AUR", has: !!tile.modelData.aur, ready: root.backends.yay === true },
+                        { via: "Flatpak", has: !!tile.modelData.flatpak, ready: root.backends.flatpak === true },
+                        { via: "Snap", has: !!tile.modelData.snap, ready: root.backends.snap === true }
+                    ]
+                    delegate: Btn {
+                        required property var modelData
+                        text: modelData.via
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 0
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: 24
+                        primary: modelData.has && modelData.ready && tile.via === ""
+                        enabled: modelData.has && modelData.ready && !root.anyBusy()
+                        onClicked: root.installFound({
+                            source: modelData.via,
+                            id: modelData.via === "Arch" ? tile.modelData.pacman
+                                : modelData.via === "AUR" ? tile.modelData.aur
+                                : modelData.via === "Flatpak" ? tile.modelData.flatpak
+                                : tile.modelData.snap
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+    // Five tiles to a row, fifteen to a page, with the same page controls the
+    // rest of the Store uses. `limit` caps a category at 30 apps across two
+    // pages; Popular apps keep their whole catalog.
+    component SourceCards: ColumnLayout {
+        id: sourceGrid
+        property var model: []
+        property int page: 0
+        // 0 means no cap: the Popular grid keeps paging through every app.
+        property int limit: 0
+        signal goToPage(int value)
+        readonly property var items: sourceGrid.limit > 0
+            ? (sourceGrid.model || []).slice(0, sourceGrid.limit) : (sourceGrid.model || [])
+        readonly property int count: sourceGrid.items.length
+        readonly property int step: 15
+        readonly property int at: Math.min(Math.max(0, sourceGrid.page),
+            Math.max(0, Math.ceil(sourceGrid.count / sourceGrid.step) - 1)) * sourceGrid.step
+        readonly property var rows: {
+            const shown = sourceGrid.items.slice(sourceGrid.at, sourceGrid.at + sourceGrid.step);
+            const out = [];
+            for (let i = 0; i < shown.length; i += 5) out.push(shown.slice(i, i + 5));
+            while (out.length < 3) out.push([]);
+            return out;
+        }
+        Layout.fillWidth: true
+        spacing: 10
+        Repeater {
+            model: sourceGrid.rows
+            delegate: RowLayout {
+                id: sourceRow
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.preferredHeight: 164
+                spacing: 10
+                Repeater {
+                    model: sourceRow.modelData
+                    delegate: AppTile {
+                        onOpened: {
+                            const g = root.groupFor(modelData);
+                            if (g) root.openApp(g);
+                        }
+                    }
+                }
+                Repeater {
+                    model: 5 - sourceRow.modelData.length
+                    delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
+                }
+            }
+        }
+        RowLayout {
+            visible: sourceGrid.count > sourceGrid.step
+            spacing: 6
+            Item { Layout.fillWidth: true }
+            Text {
+                text: sourceGrid.count + (sourceGrid.count === 1 ? " app" : " apps")
+                color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+            }
+            StepBtn {
+                glyph: "\u2039"
+                enabled: sourceGrid.at > 0
+                onClicked: sourceGrid.goToPage(sourceGrid.at / sourceGrid.step - 1)
+            }
+            Text {
+                text: (sourceGrid.at + 1) + "–" + Math.min(sourceGrid.at + sourceGrid.step, sourceGrid.count) + " of " + sourceGrid.count
+                color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+            }
+            StepBtn {
+                glyph: "\u203A"
+                enabled: sourceGrid.at + sourceGrid.step < sourceGrid.count
+                onClicked: sourceGrid.goToPage(sourceGrid.at / sourceGrid.step + 1)
+            }
+        }
     }
 
     // one card: an imported AppImage or a web app -- its icon, its name, and what
@@ -2889,168 +3266,10 @@ Scope {
                                         text: "Could not reach: " + Object.keys(root.foundErrors).join(", ") + ". Search again in a moment."
                                         color: root.theme.accentOrange; font.family: root.sans; font.pixelSize: 11
                                     }
-                                    // five to a row, three rows to a page, ghost slots
-                                    // keeping every page's shape -- the same view as the rest
-                                    Repeater {
-                                        model: root.section === "apps" ? root.foundRows() : []
-                                        delegate: RowLayout {
-                                            id: foundRow
-                                            required property var modelData
-                                            Layout.fillWidth: true
-                                            // an all-ghost row keeps the card height, so the page
-                                            // holds its 5x3 shape even when nothing is in it
-                                            Layout.preferredHeight: 150
-                                            spacing: 10
-                                            Repeater {
-                                                model: foundRow.modelData
-                                                delegate: Rectangle {
-                                                    id: fcard
-                                                    required property var modelData
-                                                    readonly property bool have: root.foundInstalled(modelData)
-                                                    readonly property bool hovered: cardMa.containsMouse
-                                                    readonly property bool installedHere: !!modelData.installed
-                                                    readonly property bool ready: modelData.source === "Arch" || (modelData.source === "AUR" && root.backends.yay)
-                                                        || (modelData.source === "Flatpak" && root.backends.flatpak) || (modelData.source === "Snap" && root.backends.snap)
-                                                    Layout.fillWidth: true
-                                                    Layout.preferredWidth: 203
-                                                    height: 150
-                                                    radius: 12
-                                                    color: hovered ? root.theme.bgHover : root.theme.bgBase
-                                                    border.width: 1
-                                                    border.color: root.theme.bgBorder
-                                                    MouseArea {
-                                                        id: cardMa
-                                                        anchors.fill: parent
-                                                        hoverEnabled: true
-                                                        cursorShape: Qt.PointingHandCursor
-                                                        onClicked: {
-                                                            const g = root.groupFor(fcard.modelData);
-                                                            if (g) root.openApp(g);
-                                                        }
-                                                    }
-                                                    ColumnLayout {
-                                                        anchors.fill: parent
-                                                        anchors.margins: 10
-                                                        spacing: 6
-                                                        RowLayout {
-                                                            spacing: 8
-                                                            Item {
-                                                                Layout.preferredWidth: 30; Layout.preferredHeight: 30
-                                                                Image {
-                                                                    id: ficon
-                                                                    anchors.fill: parent
-                                                                    source: fcard.modelData.icon || ""
-                                                                    sourceSize.width: 64; sourceSize.height: 64
-                                                                    fillMode: Image.PreserveAspectFit
-                                                                    asynchronous: true
-                                                                    visible: status === Image.Ready
-                                                                }
-                                                                Text {
-                                                                    anchors.centerIn: parent
-                                                                    visible: ficon.status !== Image.Ready
-                                                                    text: "\u{F03D6}"
-                                                                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 20
-                                                                }
-                                                            }
-                                                            ColumnLayout {
-                                                                spacing: 1
-                                                                Layout.fillWidth: true
-                                                                Text {
-                                                                    text: fcard.modelData.name
-                                                                    color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold
-                                                                    elide: Text.ElideRight; Layout.fillWidth: true
-                                                                }
-                                                                Text {
-                                                                    text: fcard.modelData.source === "Flatpak" ? "Flathub" : fcard.modelData.source
-                                                                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 10
-                                                                    elide: Text.ElideRight; Layout.fillWidth: true
-                                                                }
-                                                            }
-                                                        }
-                                                        Text {
-                                                            text: fcard.modelData.about
-                                                            color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11
-                                                            wrapMode: Text.WordWrap; elide: Text.ElideRight
-                                                            maximumLineCount: 2; Layout.fillWidth: true
-                                                        }
-                                                        Item { Layout.fillHeight: true }
-                                                        // Installed cards keep the badge and both actions inside the
-                                                        // 203px card: badge above, two half-width buttons below
-                                                        ColumnLayout {
-                                                            visible: fcard.installedHere
-                                                            Layout.fillWidth: true
-                                                            spacing: 4
-                                                            Pill { text: "Installed"; tone: root.theme.accentGreen }
-                                                            RowLayout {
-                                                                Layout.fillWidth: true
-                                                                spacing: 6
-                                                                Btn {
-                                                                    Layout.fillWidth: true
-                                                                    implicitHeight: 26
-                                                                    text: "Update"
-                                                                    primary: true
-                                                                    enabled: !root.anyBusy()
-                                                                    onClicked: root.appAction(fcard.modelData, "update")
-                                                                }
-                                                                Btn {
-                                                                    Layout.fillWidth: true
-                                                                    implicitHeight: 26
-                                                                    text: "Remove"
-                                                                    danger: true
-                                                                    enabled: !root.anyBusy()
-                                                                    onClicked: root.appAction(fcard.modelData, "remove")
-                                                                }
-                                                            }
-                                                        }
-                                                        RowLayout {
-                                                            visible: !fcard.installedHere
-                                                            Layout.fillWidth: true
-                                                            spacing: 6
-                                                            Pill { visible: fcard.have; text: "Installed"; tone: root.theme.accentGreen }
-                                                            Item { Layout.fillWidth: true }
-                                                            Btn {
-                                                                visible: !fcard.have
-                                                                implicitHeight: 26
-                                                                text: fcard.ready ? "Install" : "Needs " + (fcard.modelData.source === "AUR" ? "the AUR" : fcard.modelData.source === "Flatpak" ? "Flathub" : "Snap")
-                                                                primary: fcard.ready
-                                                                enabled: fcard.ready && !root.anyBusy()
-                                                                onClicked: root.installFound(fcard.modelData)
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            Repeater {
-                                                model: 5 - foundRow.modelData.length
-                                                delegate: Item { Layout.fillWidth: true; Layout.preferredWidth: 203 }
-                                            }
-                                        }
-                                    }
-                                    // a page of results at a time, ‹ and › to walk them
-                                    RowLayout {
-                                        visible: root.foundShown.length > root.foundStep
-                                        spacing: 6
-                                        Item { Layout.fillWidth: true }
-                                        Text {
-                                            visible: root.foundShown.length > 0
-                                            text: root.foundShown.length + (root.foundShown.length === 1 ? " app" : " apps")
-                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                        }
-                                        StepBtn {
-                                            glyph: "‹"
-                                            enabled: root.foundAt > 0
-                                            onClicked: root.foundAt -= root.foundStep
-                                        }
-                                        Text {
-                                            text: (root.foundAt + 1) + "–" + Math.min(root.foundAt + root.foundStep, root.foundShown.length)
-                                                  + " of " + root.foundShown.length
-                                            color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
-                                        }
-                                        StepBtn {
-                                            glyph: "›"
-                                            enabled: root.foundAt + root.foundStep < root.foundShown.length
-                                            onClicked: root.foundAt += root.foundStep
-                                        }
+                                    BrowseCards {
+                                        model: root.foundShown
+                                        page: Math.floor(root.foundAt / root.foundStep)
+                                        onGoToPage: value => root.foundAt = value * root.foundStep
                                     }
                                     Btn {
                                         visible: root.foundPage > 0 && root.foundPage < root.flathubPages && (root.foundSource === "All" || root.foundSource === "Flatpak")
