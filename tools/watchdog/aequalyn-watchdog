@@ -282,9 +282,34 @@ def children_of(pid: int) -> list[int]:
         return []
 
 
-def tree_processes(pid: int, cap: int = 512) -> list[tuple[int, list[str]]]:
+def proc_session(pid: int) -> int | None:
+    """The session id (SID) of a process, from /proc/<pid>/stat. A process
+    launched with setsid() (a detached terminal, the user's own console)
+    gets a NEW session, distinct from the shell's, so this is how the tripwire
+    tells a person's terminal apart from the shell's own in-process children:
+    only processes sharing the supervised unit's session are supervised."""
+    try:
+        with open(f"/proc/{pid}/stat", encoding="utf-8") as f:
+            s = f.read()
+        i, j = s.find("("), s.rfind(")")
+        if i < 0 or j < i:
+            return None
+        rest = s[j + 1:].split()
+        # rest: state ppid pgrp session tty_nr ...
+        return int(rest[3])
+    except (OSError, ValueError, IndexError):
+        return None
+
+def tree_processes(pid: int, cap: int = 512, root_session: int | None = None) -> list[tuple[int, list[str]]]:
     """The pid and argv of a process and every descendant (a plugin's
-    `sh -c` helpers included). Reads /proc only; nothing is spawned."""
+    `sh -c` helpers included). Reads /proc only; nothing is spawned.
+
+    When root_session is given, only processes in that session are returned:
+    a child that called setsid() (a detached terminal -- the user's own
+    console) and its whole subtree are pruned, because they stepped out of
+    the supervised tree by design. None means "no filter" (back-compat)."""
+    if root_session is None:
+        root_session = proc_session(pid)
     out: list[tuple[int, list[str]]] = []
     seen: set[int] = set()
     stack = [pid]
@@ -293,12 +318,13 @@ def tree_processes(pid: int, cap: int = 512) -> list[tuple[int, list[str]]]:
         if p in seen:
             continue
         seen.add(p)
+        if root_session is not None and proc_session(p) != root_session:
+            continue
         argv = read_cmdline(p)
         if argv is not None:
             out.append((p, argv))
         stack.extend(children_of(p))
     return out
-
 
 def kill_tree(pid: int) -> None:
     """SIGKILL a process and everything under it, deepest first."""
@@ -529,15 +555,22 @@ def ensure_host_dir(plugin_id: str) -> Path:
 
 # ----------------------------------------------------------------- ram -----
 
-def tree_rss_kb(pid: int) -> int:
+def tree_rss_kb(pid: int, root_session: int | None = None) -> int:
     """RSS of a process and all its descendants, in KB (a plugin's `sh -c`
-    helpers count against it). Reads /proc only; nothing is spawned."""
+    helpers count against it). Reads /proc only; nothing is spawned.
+
+    Detached consoles (setsid) are pruned when root_session is given, so a
+    terminal the user opened does not count against the shell's budget."""
+    if root_session is None:
+        root_session = proc_session(pid)
     total, seen, stack = 0, set(), [pid]
     while stack:
         p = stack.pop()
         if p in seen:
             continue
         seen.add(p)
+        if root_session is not None and proc_session(p) != root_session:
+            continue
         try:
             with open(f"/proc/{p}/status", encoding="utf-8") as f:
                 for line in f:
@@ -549,7 +582,6 @@ def tree_rss_kb(pid: int) -> int:
         except (OSError, ValueError):
             continue
     return total
-
 
 def proc_alive(pid: int) -> bool:
     try:
@@ -941,7 +973,7 @@ class Supervisor:
             pid = unit.current_pid
             if not pid:
                 continue
-            unit.ram_kb = tree_rss_kb(pid)
+            unit.ram_kb = tree_rss_kb(pid, proc_session(pid))
             budget = self.budget_mb(unit) * 1024
             if unit.ram_kb > budget:
                 unit.ram_over += 1
@@ -1297,7 +1329,7 @@ class Supervisor:
             pid = unit.current_pid
             if not pid:
                 continue
-            for epid, eargv in tree_processes(pid):
+            for epid, eargv in tree_processes(pid, root_session=proc_session(pid)):
                 if not looks_like_escalation(eargv):
                     continue
                 cmd = " ".join(eargv)[:300]
