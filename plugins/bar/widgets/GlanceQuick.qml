@@ -220,8 +220,19 @@ QuickPopup {
                 font.pixelSize: 12
             }
 
+            Text {
+                Layout.fillWidth: true
+                visible: q.backend && q.backend.status && q.backend.status.pam && q.backend.status.pam.sudo === true
+                text: "sudo face auth enabled"
+                color: Quick.theme.accentGreen
+                font.family: Quick.sans
+                font.pixelSize: 12
+                font.weight: Font.Medium
+            }
+
             QuickWide {
                 visible: q.backend && q.backend.binaryOk
+                         && !(q.backend.status && q.backend.status.pam && q.backend.status.pam.sudo === true)
                 glyph: "\u{F02EC}"
                 label: "Enable sudo face auth"
                 onClicked: {
