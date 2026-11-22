@@ -67,7 +67,7 @@ QuickPopup {
                 font.pixelSize: 11
             }
         }
-        QuickRound { glyph: "\u{F033E}"; tip: "Lock"; onClicked: { panel.close(); Quickshell.execDetached(["loginctl", "lock-session"]); } }
+        QuickRound { glyph: "\u{F033E}"; tip: "Lock"; onClicked: { panel.close(); Quickshell.execDetached(["aequalyn-lock", "lock"]); } }
         QuickRound { glyph: "\u{F0425}"; tip: "Power"; onClicked: { panel.close(); panel.bar.openPowerMenu(); } }
         QuickRound { glyph: "\u{F0493}"; tip: "Control center"; onClicked: panel.page("home") }
     }

@@ -21,7 +21,7 @@ Scope {
     property int selectedIndex: 0
 
     readonly property var actions: [
-        { label: "Lock screen", icon: "󰌾", cmd: ["loginctl", "lock-session"] },
+        { label: "Lock screen", icon: "󰌾", cmd: ["aequalyn-lock", "lock"] },
         { label: "Log out",     icon: "󰍃", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
         { label: "Reboot",      icon: "󰜉", cmd: ["systemctl", "reboot"] },
         { label: "Shutdown",    icon: "󰐥", cmd: ["systemctl", "poweroff"] }

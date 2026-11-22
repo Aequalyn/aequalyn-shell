@@ -1,0 +1,5 @@
+#%PAM-1.0
+# Fingerprint stack for the Aequalyn Quickshell session lock.
+# Installed only when fprintd is available and the user has enrolled a print.
+auth       required                    pam_fprintd.so
+account    include                     system-local-login
