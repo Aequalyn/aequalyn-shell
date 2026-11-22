@@ -44,7 +44,10 @@ var info = {
                       about: "Aequalyn FM: tabs, bookmarks, preview, network drives and every app's Open/Save dialog." },
     keybinds:       { icon: "\u{F030C}", group: "background", keys: "Super + Alt + K",      page: "keybinds",
                       about: "Change every shortcut: press your own keys for what Aequalyn does." },
-    clipboard:      { icon: "\u{F014F}", group: "key",        keys: "Super + Ctrl + V",     page: "",
+    clipboard:      { icon: "\u{F014F}", group: "key",        keys: "Super + Ctrl + V",     page: "clipboard",
+                       about: "Everything you copied, text and images." },
+    // the registry loads this one as clipscape; its settings page is still "clipboard"
+    clipscape:      { icon: "\u{F014F}", group: "key",        keys: "Super + Ctrl + V",     page: "clipboard",
                       about: "Everything you copied, text and images." },
     powerMenu:      { icon: "\u{F0425}", group: "key",        keys: "Super + Shift + M",    page: "sleep",
                       about: "Lock, log out, restart, shut down." },

@@ -20,7 +20,9 @@ Item {
     property string plugin: ""
     readonly property var pluginInfo: PluginInfo.of(plugin)
     readonly property var pluginEntry: plugin !== "" ? (PluginRegistry.list.find(p => p.id === plugin) || null) : null
-    readonly property bool pluginOn: plugin !== "" && AequalynSettings.enabledPlugins.indexOf(plugin) >= 0
+    // older settings still carry the clipboard's former id; both names mean this plugin
+    readonly property bool pluginOn: plugin !== "" && (AequalynSettings.enabledPlugins.indexOf(plugin) >= 0 ||
+        (plugin === "clipscape" && AequalynSettings.enabledPlugins.indexOf("clipboard") >= 0))
     property string sub: ""
     property var tabs: []           // names of the sub pages, if any
     readonly property var tabOptions: page.tabs.map((title, i) => ({ key: i, label: title }))
@@ -200,7 +202,11 @@ Item {
                 }
                 CcSwitch {
                     checked: page.pluginOn
-                    onToggled: v => AequalynSettings.togglePlugin(page.plugin, v)
+                    onToggled: v => {
+                        if (page.plugin === "clipscape" && v)
+                            AequalynSettings.enabledPlugins = AequalynSettings.enabledPlugins.filter(x => x !== "clipboard")
+                        AequalynSettings.togglePlugin(page.plugin, v)
+                    }
                 }
             }
         }
