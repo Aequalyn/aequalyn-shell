@@ -475,6 +475,25 @@ Scope {
     property var market: []
     property bool marketLoaded: false
     function loadMarket() { if (!marketProc.running) marketProc.running = true; }
+
+    // ---- themes & wallpapers published in Aequalyn/aequalyn-themes ---------------------
+    readonly property string themeRepoDir: Quickshell.env("HOME") + "/.cache/aequalyn/aequalyn-themes"
+    property var themeCatalog: []
+    property var wallpaperCatalog: []
+    property bool repoSyncing: false
+    function syncThemeRepo() { if (!repoSync.running) repoSync.running = true; }
+    function catalogItems() { return root.section === "theme" ? root.themeCatalog : root.wallpaperCatalog; }
+    function catalogRows() {
+        const items = root.catalogItems();
+        const rows = [];
+        for (let i = 0; i < items.length; i += 5) rows.push(items.slice(i, i + 5));
+        return rows;
+    }
+    function catalogPreview(id) {
+        if (root.section === "theme") return "file://" + root.themeRepoDir + "/themes/" + id + "/preview.jpg";
+        return "file://" + root.themeRepoDir + "/wallpapers/" + id;
+    }
+    function isVideoName(name) { return /\.(mp4|webm|mkv|mov)$/i.test(String(name || "")); }
     Process {
         id: marketProc
         command: ["aequalyn-store", "market", "--json"]
@@ -482,6 +501,69 @@ Scope {
             onStreamFinished: {
                 try { root.market = JSON.parse(text); root.marketLoaded = true; }
                 catch (e) { root.market = []; root.marketLoaded = false; }
+            }
+        }
+    }
+
+    // sync the published themes/wallpapers repo, then read its contents
+    Process {
+        id: repoSync
+        command: ["sh", "-c",
+            "d=\"" + root.themeRepoDir + "\"; "
+            + "mkdir -p \"$(dirname \"$d\")\"; "
+            + "if [ -d \"$d/.git\" ]; then git -C \"$d\" pull -q; "
+            + "else git clone -q https://github.com/Aequalyn/aequalyn-themes \"$d\"; fi"]
+        onRunningChanged: root.repoSyncing = running
+        onExited: code => {
+            if (code === 0) {
+                if (!themeCatalogProc.running) themeCatalogProc.running = true;
+                if (!wallpaperCatalogProc.running) wallpaperCatalogProc.running = true;
+            }
+        }
+    }
+    Process {
+        id: themeCatalogProc
+        command: ["sh", "-c",
+            "d=\"" + root.themeRepoDir + "\"; "
+            + "for t in \"$d\"/themes/*/theme.json; do "
+            + "  [ -f \"$t\" ] || continue; "
+            + "  id=$(basename \"$(dirname \"$t\")\"); "
+            + "  name=$(jq -r '.name // \"'\"$id\"'\"' \"$t\" 2>/dev/null || echo \"$id\"); "
+            + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ]; then inst=1; else inst=0; fi; "
+            + "  printf '%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\"; "
+            + "done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = [];
+                for (const line of text.split("\n")) {
+                    if (line.trim() === "") continue;
+                    const p = line.split("\t");
+                    out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1" });
+                }
+                root.themeCatalog = out;
+            }
+        }
+    }
+    Process {
+        id: wallpaperCatalogProc
+        command: ["sh", "-c",
+            "d=\"" + root.themeRepoDir + "\"/wallpapers; "
+            + "for f in \"$d\"/*; do "
+            + "  [ -f \"$f\" ] || continue; "
+            + "  case \"$f\" in *.jpg|*.jpeg|*.png|*.webp|*.gif|*.mp4|*.webm|*.mkv|*.mov) ;; *) continue ;; esac; "
+            + "  base=$(basename \"$f\"); "
+            + "  if [ -f \"$HOME/.local/share/aequalyn/wallpapers/$base\" ]; then inst=1; else inst=0; fi; "
+            + "  printf '%s\\t%s\\n' \"$base\" \"$inst\"; "
+            + "done"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = [];
+                for (const line of text.split("\n")) {
+                    if (line.trim() === "") continue;
+                    const p = line.split("\t");
+                    out.push({ id: p[0], installed: p[1] === "1" });
+                }
+                root.wallpaperCatalog = out;
             }
         }
     }
@@ -733,6 +815,7 @@ Scope {
         if (open && section === "web") loadWebapps();
         if (open && section === "ai") loadAi();
         if (open && section === "appimage") checkHandler();
+        if (open && (section === "theme" || section === "wallpaper")) root.syncThemeRepo();
     }
 
     // ---- web apps: websites in their own window ----------------------------------------
@@ -970,6 +1053,7 @@ Scope {
         if (section === "web") loadWebapps();
         if (section === "ai") loadAi();
         if (section === "appimage") checkHandler();
+        if (section === "theme" || section === "wallpaper") root.syncThemeRepo();
         pageIn.restart();
     }
 
@@ -1007,6 +1091,8 @@ Scope {
             if (root.section === "web") root.loadWebapps();
             if (root.section === "ai") root.loadAi();
             if (root.section === "appimage") root.checkHandler();
+            if (root.section === "theme" && !themeCatalogProc.running) themeCatalogProc.running = true;
+            if (root.section === "wallpaper" && !wallpaperCatalogProc.running) wallpaperCatalogProc.running = true;
             // a fresh import lands on the last page: show it where it arrives
             if (root.section === "appimage" && root.jobArgs[0] === "import-appimage") root.importedPage = 99;
         }
@@ -2111,7 +2197,132 @@ Scope {
                                     builtIn: false
                                 }
 
-                                InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
+                                Box {
+                                     visible: root.section === "theme" || root.section === "wallpaper"
+                                     title: "From Aequalyn themes"
+                                     hint: root.repoSyncing ? "Syncing github.com/Aequalyn/aequalyn-themes…"
+                                           : root.section === "theme"
+                                             ? (root.themeCatalog.length === 0 ? "No themes found yet. Press Sync to fetch them."
+                                                 : "Themes published in github.com/Aequalyn/aequalyn-themes. Install runs the same checks.")
+                                             : (root.wallpaperCatalog.length === 0 ? "No wallpapers found yet. Press Sync to fetch them."
+                                                 : "Wallpapers published in github.com/Aequalyn/aequalyn-themes.")
+                                     RowLayout {
+                                         Layout.fillWidth: true
+                                         Item { Layout.fillWidth: true }
+                                         Btn {
+                                             text: root.repoSyncing ? "Syncing…" : "Sync from GitHub"
+                                             enabled: !root.repoSyncing && !root.busy
+                                             onClicked: root.syncThemeRepo()
+                                         }
+                                     }
+                                     Repeater {
+                                          model: root.catalogRows()
+                                          delegate: RowLayout {
+                                              id: catRow
+                                              required property var modelData
+                                              Layout.fillWidth: true
+                                              Layout.preferredHeight: 200
+                                              spacing: 10
+                                              Repeater {
+                                                  model: catRow.modelData
+                                                  delegate: Rectangle {
+                                                      id: catCard
+                                                      required property var modelData
+                                                      readonly property bool isVideo: root.isVideoName(catCard.modelData.id)
+                                                      Layout.fillWidth: true
+                                                      Layout.preferredWidth: 203
+                                                      height: 200
+                                                      radius: 12
+                                                      color: root.theme.bgBase
+                                                      border.width: 1
+                                                      border.color: root.theme.bgBorder
+                                                      ColumnLayout {
+                                                          anchors.fill: parent
+                                                          anchors.margins: 10
+                                                          spacing: 6
+                                                          Item {
+                                                              Layout.fillWidth: true
+                                                              Layout.preferredHeight: 110
+                                                              Rectangle {
+                                                                  anchors.fill: parent
+                                                                  radius: 8
+                                                                  color: root.theme.bgSurface
+                                                                  border.width: 1
+                                                                  border.color: root.theme.bgBorder
+                                                                  clip: true
+                                                                  Image {
+                                                                      id: catImg
+                                                                      anchors.fill: parent
+                                                                      visible: !catCard.isVideo
+                                                                      source: root.catalogPreview(catCard.modelData.id)
+                                                                      fillMode: Image.PreserveAspectCrop
+                                                                      asynchronous: true
+                                                                      smooth: true
+                                                                      onStatusChanged: if (status === Image.Error) visible = false
+                                                                  }
+                                                                  Text {
+                                                                      anchors.centerIn: parent
+                                                                      visible: catCard.isVideo || catImg.status !== Image.Ready
+                                                                      text: "\u{F03D8}"
+                                                                      color: root.theme.textMuted
+                                                                      font.family: root.mono
+                                                                      font.pixelSize: 26
+                                                                  }
+                                                              }
+                                                          }
+                                                          Text {
+                                                              text: root.section === "theme" ? (catCard.modelData.name || catCard.modelData.id) : catCard.modelData.id
+                                                              color: root.theme.textPrimary
+                                                              font.family: root.sans
+                                                              font.pixelSize: 12
+                                                              font.weight: Font.DemiBold
+                                                              horizontalAlignment: Text.AlignHCenter
+                                                              elide: Text.ElideMiddle
+                                                              Layout.fillWidth: true
+                                                          }
+                                                          Pill {
+                                                              visible: !!catCard.modelData.installed
+                                                              text: "Installed"
+                                                              tone: root.theme.accentGreen
+                                                              Layout.alignment: Qt.AlignHCenter
+                                                          }
+                                                          Item { Layout.fillHeight: true }
+                                                          Btn {
+                                                              Layout.fillWidth: true
+                                                              implicitHeight: 28
+                                                              text: catCard.modelData.installed ? "Reinstall" : "Install"
+                                                              primary: !catCard.modelData.installed
+                                                              enabled: !root.busy
+                                                              onClicked: {
+                                                                  if (root.section === "theme") {
+                                                                      root.runJob("Installing " + (catCard.modelData.name || catCard.modelData.id),
+                                                                                  ["install", "theme", root.themeRepoDir + "/themes/" + catCard.modelData.id]);
+                                                                  } else {
+                                                                      const src = root.themeRepoDir + "/wallpapers/" + catCard.modelData.id;
+                                                                      root.runCmd("Installing " + catCard.modelData.id,
+                                                                                  ["sh", "-c",
+                                                                                   "mkdir -p \"$HOME/.local/share/aequalyn/wallpapers\" && cp -f \"$1\" \"$HOME/.local/share/aequalyn/wallpapers/\" && echo OK",
+                                                                                   "sh", src]);
+                                                                  }
+                                                              }
+                                                          }
+                                                      }
+                                                  }
+                                              }
+                                              Repeater {
+                                                  model: 5 - catRow.modelData.length
+                                                  delegate: Item {
+                                                      Layout.fillWidth: true
+                                                      Layout.preferredWidth: 203
+                                                      height: 200
+                                                  }
+                                              }
+                                          }
+                                      }
+
+                                 }
+
+InstallBox { visible: !!root.kindWords[root.section]; kind: root.kindWords[root.section] ? root.section : "plugin" }
 
                                 PluginGrid {
                                     entriesTitle: "Built-in"
