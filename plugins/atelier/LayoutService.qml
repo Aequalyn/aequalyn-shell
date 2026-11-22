@@ -50,7 +50,7 @@ Singleton {
         let c = (status.cycle || []).slice();
         if (c.length === 0) c = catalogue.map(l => l.id);
         const at = c.indexOf(id);
-        if (at >= 0) { if (c.length <= 2) return; c.splice(at, 1); }
+        if (at >= 0) { if (c.length <= 1) return; c.splice(at, 1); }
         else {
             // keep catalogue order
             c.push(id);
