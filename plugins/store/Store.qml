@@ -3461,18 +3461,26 @@ Scope {
                                                     Image {
                                                         id: wicon
                                                         anchors.fill: parent
-                                                        visible: !!wrow.modelData.iconFile && status === Image.Ready
-                                                        source: wrow.modelData.iconFile ? "file://" + wrow.modelData.iconFile : ""
+                                                        visible: status === Image.Ready
+                                                        source: wrow.iconUrl
                                                         sourceSize.width: 64; sourceSize.height: 64
                                                         fillMode: Image.PreserveAspectFit
                                                         asynchronous: true
                                                         smooth: true
                                                     }
-                                                    Text {
-                                                        anchors.centerIn: parent
+                                                    Rectangle {
+                                                        anchors.fill: parent
+                                                        radius: 8
+                                                        color: wrow.monogramColor
                                                         visible: !wicon.visible
-                                                        text: "\u{F0595}"
-                                                        color: root.theme.accentPrimary; font.family: root.mono; font.pixelSize: 16
+                                                        Text {
+                                                            anchors.centerIn: parent
+                                                            text: wrow.initials
+                                                            color: "#ffffff"
+                                                            font.family: root.sans
+                                                            font.pixelSize: 11
+                                                            font.weight: Font.DemiBold
+                                                        }
                                                     }
                                                 }
                                                 ColumnLayout {
