@@ -482,6 +482,9 @@ Scope {
     property var themeCatalog: []
     property string themeLabelFilter: "All"
     property int catalogPage: 0
+    property var themePage: null
+    property var themeDetail: null
+    property bool themeDetailBusy: false
     property bool readmeOpen: false
     property string readmeTitle: ""
     property string readmeText: ""
@@ -602,6 +605,40 @@ Scope {
         root.readmeOpen = true;
         readmeProc.command = ["sh", "-c", "cat \"$1\"", "sh", root.themeRepoDir + "/themes/" + id + "/README.md"];
         readmeProc.running = true;
+    }
+
+    Process {
+        id: themeDetailProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.themeDetailBusy = false;
+                try { root.themeDetail = JSON.parse(text); }
+                catch (e) { root.themeDetail = null; }
+            }
+        }
+    }
+    function openTheme(id) {
+        root.themePage = id;
+        root.themeDetail = null;
+        root.themeDetailBusy = true;
+        const script = "import json,os; d=os.path.expanduser('" + root.themeRepoDir + "')+'/themes/'+os.sys.argv[1]; "
+            + "t=json.load(open(d+'/theme.json')); "
+            + "readme=''; "
+            + "rp=d+'/README.md'; "
+            + "readme=open(rp).read() if os.path.exists(rp) else ''; "
+            + "bgs=sorted(os.listdir(d+'/backgrounds')) if os.path.isdir(d+'/backgrounds') else []; "
+            + "first=d+'/backgrounds/'+bgs[0] if bgs else d+'/preview.jpg'; "
+            + "print(json.dumps({'id':os.sys.argv[1],'name':t.get('name',os.sys.argv[1]),"
+            + "'about':t.get('about',''),'variant':t.get('variant',''),'family':t.get('family',''),"
+            + "'author':t.get('author',''),'colors':t.get('colors',[]),'palette':t.get('palette',{}),"
+            + "'readme':readme,'first':first,'installed':os.path.isdir(os.path.expanduser('~/.config/aequalyn/themes/'+os.sys.argv[1]))}))"
+        themeDetailProc.command = ["python3", "-c", script, id];
+        themeDetailProc.running = true;
+    }
+    function backFromTheme() {
+        root.themePage = null;
+        root.themeDetail = null;
+        root.themeDetailBusy = false;
     }
 
     // ---- apps: the curated grid (apps.json) and the four backends ----------------------
@@ -2266,7 +2303,98 @@ Scope {
                                     }
                                 }
                                 Box {
-                                     visible: root.section === "theme" || root.section === "wallpaper"
+                                    visible: root.section === "theme" && root.themePage !== null
+                                    title: root.themeDetail ? (root.themeDetail.name || root.themePage) : root.themePage
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Item { Layout.fillWidth: true }
+                                        Btn { text: "Back"; onClicked: root.backFromTheme() }
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 12
+                                        Rectangle {
+                                            Layout.preferredWidth: 320
+                                            Layout.preferredHeight: 180
+                                            radius: 8
+                                            color: root.theme.bgSurface
+                                            border.width: 1
+                                            border.color: root.theme.bgBorder
+                                            clip: true
+                                            Image {
+                                                anchors.fill: parent
+                                                visible: !root.isVideoName(root.themePage)
+                                                source: root.themeDetail ? "file://" + root.themeDetail.first : ""
+                                                fillMode: Image.PreserveAspectCrop
+                                                asynchronous: true
+                                                smooth: true
+                                            }
+                                            Video {
+                                                anchors.fill: parent
+                                                visible: root.isVideoName(root.themePage)
+                                                source: root.themeDetail ? "file://" + root.themeDetail.first : ""
+                                                fillMode: VideoOutput.PreserveAspectCrop
+                                                autoPlay: false
+                                            }
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 6
+                                            Text { text: root.themeDetail ? (root.themeDetail.about || "") : "Loading…"
+                                                   color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 12; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                            Text { text: "Colors"
+                                                   visible: root.themeDetail && (root.themeDetail.colors || []).length > 0
+                                                   color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold }
+                                            Flow {
+                                                Layout.fillWidth: true
+                                                spacing: 6
+                                                Repeater {
+                                                    model: root.themeDetail ? (root.themeDetail.colors || []) : []
+                                                    delegate: Rectangle {
+                                                        required property string modelData
+                                                        width: 28; height: 28; radius: 6
+                                                        color: modelData
+                                                        border.width: 1
+                                                        border.color: root.theme.bgBorder
+                                                    }
+                                                }
+                                            }
+                                            Pill { visible: root.themeDetail && !!root.themeDetail.installed; text: "Installed"; tone: root.theme.accentGreen }
+                                            Btn {
+                                                text: (root.themeDetail && root.themeDetail.installed) ? "Reinstall" : "Install"
+                                                primary: !(root.themeDetail && root.themeDetail.installed)
+                                                enabled: !root.busy && !!root.themeDetail
+                                                onClicked: root.runJob("Installing " + root.themePage,
+                                                            ["install", "theme", root.themeRepoDir + "/themes/" + root.themePage])
+                                            }
+                                        }
+                                    }
+                                    Rectangle {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 220
+                                        radius: 8
+                                        color: root.theme.bgBase
+                                        border.width: 1
+                                        border.color: root.theme.bgBorder
+                                        Flickable {
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            clip: true
+                                            contentHeight: readmeDetail.implicitHeight
+                                            Text {
+                                                id: readmeDetail
+                                                width: parent.width
+                                                text: root.themeDetail ? (root.themeDetail.readme || "") : ""
+                                                color: root.theme.textPrimary
+                                                font.family: root.mono
+                                                font.pixelSize: 11
+                                                wrapMode: Text.Wrap
+                                            }
+                                        }
+                                    }
+                                }
+                                Box {
+                                    visible: (root.section === "theme" && root.themePage === null) || root.section === "wallpaper"
                                      title: "From Aequalyn themes"
                                      hint: root.repoSyncing ? "Syncing github.com/Aequalyn/aequalyn-themes…"
                                            : root.section === "theme"
@@ -2369,7 +2497,7 @@ Scope {
                                                                   anchors.fill: parent
                                                                   enabled: root.section === "theme"
                                                                   cursorShape: Qt.PointingHandCursor
-                                                                  onClicked: root.showReadme(catCard.modelData.id)
+                                                                  onClicked: root.openTheme(catCard.modelData.id)
                                                               }
                                                           }
                                                           RowLayout {
