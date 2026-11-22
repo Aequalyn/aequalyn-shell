@@ -176,9 +176,42 @@ CcPage {
         { key: "weather", label: "Weather", about: "The time and the sky where you are, looked up every half hour." },
         { key: "quote", label: "Quote", about: "A short line to read, a different one each day, over a deep blur." },
         { key: "avatar", label: "Avatar", about: "Your picture (~/.face) large in a ring of your two accents, your name under it." },
-        { key: "battery", label: "Battery", about: "The time, the battery as a bar of blocks, and how long it has been on." }
+        { key: "battery", label: "Battery", about: "The time, the battery as a bar of blocks, and how long it has been on." },
+        { key: "custom", label: "Custom", about: "Your own layout: place elements where you want them and save." }
     ]
     readonly property var lockNow: lockStyles.find(x => x.key === AequalynSettings.lockStyle) || lockStyles[0]
+
+    readonly property var defaultCustomLayout: [
+        { type: "clock",  x: 0.5, y: 0.28, visible: true },
+        { type: "date",   x: 0.5, y: 0.40, visible: true },
+        { type: "user",   x: 0.5, y: 0.50, visible: true },
+        { type: "field",  x: 0.5, y: 0.62, visible: true },
+        { type: "media",  x: 0.5, y: 0.84, visible: false },
+        { type: "battery",x: 0.5, y: 0.90, visible: false }
+    ]
+
+    function readCustomLayout() {
+        try {
+            const o = JSON.parse(AequalynSettings.lockCustomLayout || "{}")
+            if (Array.isArray(o.elements) && o.elements.length) return o.elements
+        } catch (e) {}
+        return page.defaultCustomLayout.map(e => Object.assign({}, e))
+    }
+
+    function writeCustomLayout(elements) {
+        AequalynSettings.lockCustomLayout = JSON.stringify({ elements: elements })
+        AequalynSettings.save()
+    }
+
+    function setCustomElement(type, patch) {
+        const els = page.readCustomLayout().map(e => Object.assign({}, e))
+        let found = false
+        for (let i = 0; i < els.length; i++) {
+            if (els[i].type === type) { els[i] = Object.assign(els[i], patch); found = true }
+        }
+        if (!found) els.push(Object.assign({ type: type, x: 0.5, y: 0.5, visible: true }, patch))
+        page.writeCustomLayout(els)
+    }
     CcSection {
         title: "How it looks when locked"
         hint: page.lockNow.about + " In your theme's colours, over your wallpaper; it follows when they change."
@@ -194,16 +227,9 @@ CcPage {
     }
     CcSection {
         title: "Lock screen editor"
-        hint: "Customize what the Quickshell lock screen shows."
+        hint: "Pick a wallpaper, place elements on the preview, then save as your custom lock style."
 
-        Text {
-            text: "Wallpaper"
-            color: Cc.theme.textMuted
-            font.pixelSize: 12
-            Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.topMargin: 4
-        }
+        Text { text: "Wallpaper"; color: Cc.theme.textMuted; font.pixelSize: 12; Layout.fillWidth: true; Layout.leftMargin: 12; Layout.topMargin: 4 }
         CcChoice {
             options: [
                 { key: "wallpaper", label: "Current" },
@@ -214,42 +240,32 @@ CcPage {
             onChosen: key => { AequalynSettings.lockWallpaperSource = key; AequalynSettings.save() }
         }
 
-        Text {
-            text: "Password field"
-            color: Cc.theme.textMuted
-            font.pixelSize: 12
-            Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.topMargin: 4
-        }
-        CcChoice {
-            options: [
-                { key: "center", label: "Center" },
-                { key: "bottom", label: "Bottom" },
-                { key: "left",   label: "Left" }
+        Text { text: "Elements (drag on preview)"; color: Cc.theme.textMuted; font.pixelSize: 12; Layout.fillWidth: true; Layout.leftMargin: 12; Layout.topMargin: 8 }
+        Repeater {
+            model: [
+                { type: "clock", label: "Clock" },
+                { type: "date", label: "Date" },
+                { type: "user", label: "User name" },
+                { type: "field", label: "Password field" },
+                { type: "media", label: "Now playing" },
+                { type: "battery", label: "Battery" }
             ]
-            current: AequalynSettings.lockFieldPosition
-            onChosen: key => { AequalynSettings.lockFieldPosition = key; AequalynSettings.save() }
-        }
-
-        CcToggle { setting: "lockShowClock"; title: "Show clock" }
-        CcToggle { setting: "lockShowDate";  title: "Show date" }
-        CcToggle { setting: "lockShowUser";  title: "Show user name" }
-        CcToggle { setting: "lockShowMedia"; title: "Show now playing" }
-        CcToggle { setting: "lockShowBattery"; title: "Show battery" }
-
-        Text {
-            text: "Live preview — drag clock or password field"
-            color: Cc.theme.textMuted
-            font.pixelSize: 12
-            Layout.fillWidth: true
-            Layout.leftMargin: 12
-            Layout.topMargin: 8
+            delegate: CcToggle {
+                required property var modelData
+                title: modelData.label
+                setting: ""
+                checked: {
+                    const els = page.readCustomLayout()
+                    const e = els.find(x => x.type === modelData.type)
+                    return e ? e.visible !== false : false
+                }
+                onToggled: v => page.setCustomElement(modelData.type, { visible: v })
+            }
         }
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 260
+            Layout.preferredHeight: 280
             Layout.leftMargin: 12
             Layout.rightMargin: 12
             radius: 12
@@ -260,9 +276,7 @@ CcPage {
             Item {
                 id: previewRoot
                 anchors.fill: parent
-                property real sx: width / 1280
-                property real sy: height / 720
-                property real s: Math.min(sx, sy)
+                property real s: Math.min(width / 1280, height / 720)
 
                 Item {
                     id: previewStage
@@ -279,17 +293,13 @@ CcPage {
                         wallpaperPath: AequalynSettings.lockWallpaperSource === "solid" ? "" : (AequalynSettings.wallpaperPath || "")
                         userName: Quickshell.env("USER") || ""
                         use24h: AequalynSettings.use24h
-                        lockStyle: AequalynSettings.lockStyle
-                        fieldPosition: AequalynSettings.lockFieldPosition
+                        lockStyle: "custom"
+                        customLayout: AequalynSettings.lockCustomLayout
                         settingShowUser: AequalynSettings.lockShowUser
                         settingShowClock: AequalynSettings.lockShowClock
                         settingShowDate: AequalynSettings.lockShowDate
                         settingShowMedia: AequalynSettings.lockShowMedia
                         settingShowBattery: AequalynSettings.lockShowBattery
-                        customClockX: AequalynSettings.lockClockX
-                        customClockY: AequalynSettings.lockClockY
-                        customFieldX: AequalynSettings.lockFieldX
-                        customFieldY: AequalynSettings.lockFieldY
                         authenticating: false
                         glanceScanning: false
                         fingerprintConfigured: false
@@ -298,60 +308,48 @@ CcPage {
                         preview: true
                     }
 
-                    // drag handle: clock
-                    Rectangle {
-                        id: clockHandle
-                        width: 220; height: 90; radius: 10
-                        color: Qt.rgba(1,1,1,0.02)
-                        border.color: Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.7)
-                        border.width: 1
-                        visible: AequalynSettings.lockShowClock
-                        x: (AequalynSettings.lockClockX >= 0 ? AequalynSettings.lockClockX : 0.5) * previewStage.width - width/2
-                        y: (AequalynSettings.lockClockY >= 0 ? AequalynSettings.lockClockY : 0.35) * previewStage.height - height/2
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.SizeAllCursor
-                            drag.target: parent; drag.axis: Drag.XAndYAxis
-                            onReleased: {
-                                AequalynSettings.lockClockX = Math.max(0.05, Math.min(0.95, (parent.x + parent.width/2) / previewStage.width))
-                                AequalynSettings.lockClockY = Math.max(0.05, Math.min(0.95, (parent.y + parent.height/2) / previewStage.height))
-                                AequalynSettings.save()
+                    Repeater {
+                        model: page.readCustomLayout()
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            readonly property string kind: String(modelData.type || "")
+                            visible: modelData.visible !== false
+                            width: kind === "field" ? 300 : (kind === "clock" ? 220 : 180)
+                            height: kind === "field" ? 56 : (kind === "clock" ? 90 : 44)
+                            radius: 8
+                            color: Qt.rgba(1,1,1,0.02)
+                            border.color: Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.75)
+                            border.width: 1
+                            x: Number(modelData.x ?? 0.5) * previewStage.width - width/2
+                            y: Number(modelData.y ?? 0.5) * previewStage.height - height/2
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.SizeAllCursor
+                                drag.target: parent; drag.axis: Drag.XAndYAxis
+                                onReleased: {
+                                    page.setCustomElement(kind, {
+                                        x: Math.max(0.05, Math.min(0.95, (parent.x + parent.width/2) / previewStage.width)),
+                                        y: Math.max(0.05, Math.min(0.95, (parent.y + parent.height/2) / previewStage.height))
+                                    })
+                                }
                             }
+                            Text { anchors.centerIn: parent; text: kind; color: Cc.theme.accentPrimary; font.pixelSize: 13; font.family: "JetBrainsMono Nerd Font" }
                         }
-                        Text { anchors.centerIn: parent; text: "Clock"; color: Cc.theme.accentPrimary; font.pixelSize: 14; font.family: "JetBrainsMono Nerd Font" }
-                    }
-
-                    // drag handle: field
-                    Rectangle {
-                        id: fieldHandle
-                        width: 300; height: 56; radius: 10
-                        color: Qt.rgba(1,1,1,0.02)
-                        border.color: Qt.rgba(Cc.theme.accentSecondary.r, Cc.theme.accentSecondary.g, Cc.theme.accentSecondary.b, 0.7)
-                        border.width: 1
-                        x: (AequalynSettings.lockFieldX >= 0 ? AequalynSettings.lockFieldX : 0.5) * previewStage.width - width/2
-                        y: (AequalynSettings.lockFieldY >= 0 ? AequalynSettings.lockFieldY : 0.68) * previewStage.height - height/2
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.SizeAllCursor
-                            drag.target: parent; drag.axis: Drag.XAndYAxis
-                            onReleased: {
-                                AequalynSettings.lockFieldX = Math.max(0.05, Math.min(0.95, (parent.x + parent.width/2) / previewStage.width))
-                                AequalynSettings.lockFieldY = Math.max(0.05, Math.min(0.95, (parent.y + parent.height/2) / previewStage.height))
-                                AequalynSettings.save()
-                            }
-                        }
-                        Text { anchors.centerIn: parent; text: "Password"; color: Cc.theme.accentSecondary; font.pixelSize: 14; font.family: "JetBrainsMono Nerd Font" }
                     }
                 }
             }
         }
 
         CcButton {
-            text: "Reset element positions"
-            icon: "\u{F0453}"
+            text: "Save as custom lock style"; icon: "\u{F0C7}"
             onClicked: {
-                AequalynSettings.lockClockX = -1; AequalynSettings.lockClockY = -1
-                AequalynSettings.lockFieldX = -1; AequalynSettings.lockFieldY = -1
-                AequalynSettings.save()
+                if (!AequalynSettings.lockCustomLayout) page.writeCustomLayout(page.defaultCustomLayout)
+                AequalynSettings.setLockStyle("custom")
             }
+        }
+        CcButton {
+            text: "Reset custom layout"; icon: "\u{F0453}"
+            onClicked: { page.writeCustomLayout(page.defaultCustomLayout); AequalynSettings.save() }
         }
     }
     CcSection {

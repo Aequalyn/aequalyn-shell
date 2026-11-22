@@ -27,6 +27,7 @@ Singleton {
   property real lockClockY: -1
   property real lockFieldX: -1
   property real lockFieldY: -1
+  property string lockCustomLayout: ""
   readonly property string effectiveWallpaperPath: {
     if (root.lockWallpaperSource === "solid") return ""
     if (root.lockWallpaperSource === "theme") return root.appliedWallpaperPath || root.wallpaperPath
@@ -361,6 +362,7 @@ Singleton {
         customClockY: root.lockClockY
         customFieldX: root.lockFieldX
         customFieldY: root.lockFieldY
+        customLayout: root.lockCustomLayout
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
         authenticating: root.authenticating

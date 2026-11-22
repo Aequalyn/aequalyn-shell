@@ -26,6 +26,7 @@ Item {
     LockService.lockClockY = AequalynSettings.lockClockY
     LockService.lockFieldX = AequalynSettings.lockFieldX
     LockService.lockFieldY = AequalynSettings.lockFieldY
+    LockService.lockCustomLayout = AequalynSettings.lockCustomLayout
   }
 
   onThemeChanged: syncSettings()
@@ -46,6 +47,7 @@ Item {
     function onLockClockYChanged() { root.syncSettings() }
     function onLockFieldXChanged() { root.syncSettings() }
     function onLockFieldYChanged() { root.syncSettings() }
+    function onLockCustomLayoutChanged() { root.syncSettings() }
   }
 
   Component.onCompleted: syncSettings()

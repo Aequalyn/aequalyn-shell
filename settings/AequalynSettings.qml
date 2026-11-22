@@ -424,6 +424,7 @@ QtObject {
     property real lockClockY: -1
     property real lockFieldX: -1
     property real lockFieldY: -1
+    property string lockCustomLayout: ""
 
     function setLockStyle(name) {
         if (!/^[a-z0-9-]+$/.test(String(name))) return
@@ -558,7 +559,8 @@ QtObject {
                 lockClockX: root.lockClockX,
                 lockClockY: root.lockClockY,
                 lockFieldX: root.lockFieldX,
-                lockFieldY: root.lockFieldY
+                lockFieldY: root.lockFieldY,
+                lockCustomLayout: root.lockCustomLayout
             }
         })
         return data
@@ -817,6 +819,7 @@ QtObject {
         root.lockClockY = pick(p.lockClockY, root.lockClockY)
         root.lockFieldX = pick(p.lockFieldX, root.lockFieldX)
         root.lockFieldY = pick(p.lockFieldY, root.lockFieldY)
+        root.lockCustomLayout = typeof p.lockCustomLayout === "string" ? p.lockCustomLayout : root.lockCustomLayout
         root.screenOffEnabled = pick(p.screenOffEnabled, root.screenOffEnabled)
         root.screenOffMinutes = pick(p.screenOffMinutes, root.screenOffMinutes)
         root.suspendEnabled = pick(p.suspendEnabled, root.suspendEnabled)

@@ -25,6 +25,7 @@ Item {
   property real customFieldX: -1
   property real customFieldY: -1
   property bool preview: false
+  property string customLayout: ""
   property string failureMessage: ""
   property int failedAttempts: 0
   property bool authenticating: false
@@ -49,8 +50,24 @@ Item {
 
   readonly property string style: {
     const s = String(root.lockStyle || "classic")
-    const known = ["classic","clean","mono","corner","pill","split","stack","dot","frame","glass","line","terminal","neon","poster","orbit","dashboard","zen","vertical","duo","card","nowplaying","binary","words","day","calendar","weather","quote","avatar","battery"]
+    const known = ["classic","clean","mono","corner","pill","split","stack","dot","frame","glass","line","terminal","neon","poster","orbit","dashboard","zen","vertical","duo","card","nowplaying","binary","words","day","calendar","weather","quote","avatar","battery","custom"]
     return known.indexOf(s) >= 0 ? s : "classic"
+  }
+  readonly property var defaultCustomItems: [
+    { type: "clock", x: 0.5, y: 0.28, visible: true },
+    { type: "date", x: 0.5, y: 0.40, visible: true },
+    { type: "user", x: 0.5, y: 0.50, visible: true },
+    { type: "field", x: 0.5, y: 0.62, visible: true },
+    { type: "media", x: 0.5, y: 0.84, visible: false },
+    { type: "battery", x: 0.5, y: 0.90, visible: false }
+  ]
+  readonly property var customItems: {
+    if (root.style !== "custom") return []
+    try {
+      const o = JSON.parse(root.customLayout || "{}")
+      if (Array.isArray(o.elements) && o.elements.length) return o.elements
+    } catch (e) {}
+    return root.defaultCustomItems
   }
 
   readonly property bool isSolid: ["mono","dot","line","terminal","battery","binary","neon"].indexOf(style) >= 0
@@ -162,9 +179,9 @@ Item {
   }
 
   // ---- style helpers -------------------------------------------------------
-  readonly property bool styleWantsClock: style !== "dot"
-  readonly property bool styleWantsDate: ["dot","mono","line","terminal","binary","stack","duo","pill","poster","words","quote","day","battery","avatar","card","nowplaying","vertical"].indexOf(style) < 0 || ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon"].indexOf(style) >= 0
-  readonly property bool styleWantsUser: ["classic","avatar","card","split","terminal","dot"].indexOf(style) >= 0
+  readonly property bool styleWantsClock: style !== "dot" && style !== "custom"
+  readonly property bool styleWantsDate: style !== "custom" && (["dot","mono","line","terminal","binary","stack","duo","pill","poster","words","quote","day","battery","avatar","card","nowplaying","vertical"].indexOf(style) < 0 || ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon"].indexOf(style) >= 0)
+  readonly property bool styleWantsUser: style !== "custom" && ["classic","avatar","card","split","terminal","dot"].indexOf(style) >= 0
   readonly property bool showClock: root.settingShowClock && styleWantsClock
   readonly property bool showDate: root.settingShowDate && styleWantsDate
   readonly property bool showUser: root.settingShowUser && styleWantsUser
@@ -487,6 +504,7 @@ Item {
 
   Rectangle {
     id: field
+    visible: root.style !== "custom"
     width: root.fieldPill ? 250 : (root.style === "terminal" ? 420 : (root.style === "line" ? 300 : Math.min(root.style === "dashboard" || root.style === "nowplaying" || root.style === "frame" || root.style === "glass" || root.style === "orbit" || root.style === "split" ? 280 : 260, parent.width - 64)))
     height: root.style === "terminal" ? 36 : (root.style === "line" ? 44 : (root.style === "pill" ? 46 : 44))
     radius: root.style === "terminal" || root.style === "line" ? 0 : (root.style === "pill" ? 23 : (["clean","nowplaying","weather","day","quote","avatar","poster","dot"].indexOf(root.style) >= 0 ? 22 : 10))
@@ -561,7 +579,7 @@ Item {
   }
 
   Text {
-    visible: root.style !== "dot" && root.style !== "line"
+    visible: root.style !== "custom" && root.style !== "dot" && root.style !== "line"
     anchors.horizontalCenter: field.horizontalCenter
     anchors.top: field.bottom; anchors.topMargin: 16
     text: root.failureMessage
@@ -590,6 +608,89 @@ Item {
     text: root.batteryText
     color: root.muted
     font.family: root.font; font.pixelSize: 11
+  }
+
+  // ---- custom layout renderer ---------------------------------------------
+  Repeater {
+    model: root.style === "custom" ? root.customItems : []
+    delegate: Item {
+      id: customItem
+      required property var modelData
+      required property int index
+      readonly property string kind: String(modelData.type || "")
+      readonly property real cx: Number(modelData.x ?? 0.5)
+      readonly property real cy: Number(modelData.y ?? 0.5)
+      readonly property bool shown: modelData.visible !== false
+      x: cx * root.width - width / 2
+      y: cy * root.height - height / 2
+      width: kind === "field" ? 300 : implicitWidth
+      height: kind === "field" ? 56 : implicitHeight
+      visible: shown
+
+      Text {
+        visible: customItem.kind === "clock" && root.settingShowClock
+        text: root.timeText
+        color: root.fg; font.family: root.font; font.pixelSize: 64; font.bold: true
+      }
+      Text {
+        visible: customItem.kind === "date" && root.settingShowDate
+        text: root.dateText
+        color: root.muted; font.family: root.font; font.pixelSize: 16
+      }
+      Text {
+        visible: customItem.kind === "user" && root.settingShowUser
+        text: root.userName
+        color: root.fg; font.family: root.font; font.pixelSize: 20; font.bold: true
+      }
+      Text {
+        visible: customItem.kind === "media" && root.settingShowMedia
+        text: root.mediaText ? "󰎆  " + root.mediaText : ""
+        color: root.muted; font.family: root.font; font.pixelSize: 12
+      }
+      Text {
+        visible: customItem.kind === "battery" && root.settingShowBattery
+        text: root.batteryText
+        color: root.muted; font.family: root.font; font.pixelSize: 12
+      }
+
+      Rectangle {
+        visible: customItem.kind === "field"
+        width: 300; height: 56; radius: 12
+        color: Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.94)
+        border.color: root.failureMessage ? root.error : (customInput.activeFocus ? root.accent : root.border)
+        border.width: customInput.activeFocus || root.failureMessage ? 2 : 1
+        TextInput {
+          id: customInput
+          anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 44
+          verticalAlignment: TextInput.AlignVCenter
+          echoMode: TextInput.Password; passwordCharacter: "•"
+          focus: !root.preview
+          color: root.fg; font.family: root.font; font.pixelSize: 16
+          onAccepted: { const v = text; text = ""; if (v) root.submitPassword(v) }
+          onTextEdited: root.clearFailure()
+          Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Space && text === "") { root.triggerGlance(); event.accepted = true }
+          }
+        }
+        Text {
+          anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter
+          text: root.fingerprintConfigured ? "󰏖" : "󰌾"
+          color: root.fingerprintConfigured ? (root.fingerprintClaimed ? root.accent : root.muted) : root.muted
+          font.family: root.font; font.pixelSize: 18
+        }
+      }
+    }
+  }
+
+  Text {
+    visible: root.style === "custom"
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom; anchors.bottomMargin: 52
+    text: root.failureMessage
+      ? root.failureMessage + (root.failedAttempts > 1 ? " (" + root.failedAttempts + ")" : "")
+      : (root.glanceScanning ? "Scanning face…" : (root.authenticating ? "Checking…" : "Password, then Enter · Space for face unlock"))
+    color: root.failureMessage ? root.error : root.muted
+    font.family: root.font; font.pixelSize: 12
   }
 
   Text {
