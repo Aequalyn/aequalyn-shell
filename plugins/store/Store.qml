@@ -3316,6 +3316,25 @@ Scope {
                                         }
                                         Btn { text: root.searching ? "Searching…" : "Search"; primary: true; enabled: !root.searching; onClicked: root.searchApps(appSearch.text.trim(), false) }
                                     }
+                                    // Super + I's groups, right in the app list: All first,
+                                    // then the curated categories, then anything unmapped
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Repeater {
+                                            model: [{ key: "all", label: "All" }].concat(root.appCategories)
+                                            delegate: Btn {
+                                                required property var modelData
+                                                text: modelData.label + "  " + root.appCategoryCount(modelData.key)
+                                                primary: root.appCategory === modelData.key
+                                                implicitHeight: 26
+                                                onClicked: {
+                                                    root.appCategory = modelData.key;
+                                                    root.foundAt = 0;
+                                                }
+                                            }
+                                        }
+                                    }
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 6
