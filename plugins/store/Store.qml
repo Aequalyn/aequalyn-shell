@@ -2250,7 +2250,7 @@ Scope {
 
                                 // the other kinds keep their installed list above the form
                                 Box {
-                                    visible: !!root.kindWords[root.section] && root.section !== "plugin"
+                                    visible: !!root.kindWords[root.section] && root.section !== "plugin" && root.section !== "theme"
                                     title: "Installed"
                                     hint: root.kindWords[root.section] && root.itemsOf(root.section).length === 0
                                           ? "No " + root.kindWords[root.section].one + " from the Store yet." : ""
