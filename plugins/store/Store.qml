@@ -505,6 +505,10 @@ Scope {
         return "file://" + root.themeRepoDir + "/wallpapers/" + id;
     }
     function isVideoName(name) { return /\.(mp4|webm|mkv|mov)$/i.test(String(name || "")); }
+    function openReadme(id) {
+        const path = root.themeRepoDir + "/themes/" + id + "/README.md";
+        Quickshell.execDetached(["xdg-open", path]);
+    }
     Process {
         id: marketProc
         command: ["aequalyn-store", "market", "--json"]
@@ -2269,7 +2273,7 @@ Scope {
                                                       Layout.fillWidth: true
                                                       Layout.preferredWidth: 180
                                                       Layout.minimumWidth: 120
-                                                      height: 112
+                                                      height: 170
                                                       radius: 12
                                                       color: root.theme.bgBase
                                                       border.width: 1
@@ -2278,34 +2282,48 @@ Scope {
                                                           anchors.fill: parent
                                                           anchors.margins: 9
                                                           spacing: 4
+                                                          Rectangle {
+                                                              Layout.fillWidth: true
+                                                              Layout.preferredHeight: 90
+                                                              radius: 8
+                                                              color: root.theme.bgSurface
+                                                              border.width: 1
+                                                              border.color: root.theme.bgBorder
+                                                              clip: true
+                                                              Image {
+                                                                  anchors.fill: parent
+                                                                  visible: !catCard.isVideo
+                                                                  source: root.catalogPreview(catCard.modelData.id)
+                                                                  fillMode: Image.PreserveAspectCrop
+                                                                  asynchronous: true
+                                                                  smooth: true
+                                                                  onStatusChanged: if (status === Image.Error) visible = false
+                                                              }
+                                                              Video {
+                                                                  anchors.fill: parent
+                                                                  visible: catCard.isVideo
+                                                                  source: root.catalogPreview(catCard.modelData.id)
+                                                                  fillMode: VideoOutput.PreserveAspectCrop
+                                                                  autoPlay: false
+                                                                  loops: MediaPlayer.NoLooping
+                                                              }
+                                                              Text {
+                                                                  anchors.centerIn: parent
+                                                                  visible: catCard.isVideo
+                                                                  text: "\u{F03D8}"
+                                                                  color: root.theme.textMuted
+                                                                  font.family: root.mono
+                                                                  font.pixelSize: 26
+                                                              }
+                                                          }
+                                                          MouseArea {
+                                                              anchors.fill: parent
+                                                              enabled: root.section === "theme"
+                                                              cursorShape: Qt.PointingHandCursor
+                                                              onClicked: root.openReadme(catCard.modelData.id)
+                                                          }
                                                           RowLayout {
                                                               spacing: 7
-                                                              Rectangle {
-                                                                  Layout.preferredWidth: 56
-                                                                  Layout.preferredHeight: 56
-                                                                  radius: 8
-                                                                  color: root.theme.bgSurface
-                                                                  border.width: 1
-                                                                  border.color: root.theme.bgBorder
-                                                                  clip: true
-                                                                  Image {
-                                                                      anchors.fill: parent
-                                                                      visible: !catCard.isVideo
-                                                                      source: root.catalogPreview(catCard.modelData.id)
-                                                                      fillMode: Image.PreserveAspectCrop
-                                                                      asynchronous: true
-                                                                      smooth: true
-                                                                      onStatusChanged: if (status === Image.Error) visible = false
-                                                                  }
-                                                                  Video {
-                                                                      anchors.fill: parent
-                                                                      visible: catCard.isVideo
-                                                                      source: root.catalogPreview(catCard.modelData.id)
-                                                                      fillMode: VideoOutput.PreserveAspectCrop
-                                                                      autoPlay: false
-                                                                      loops: MediaPlayer.NoLooping
-                                                                  }
-                                                              }
                                                               ColumnLayout {
                                                                   spacing: 1
                                                                   Layout.fillWidth: true
@@ -2364,7 +2382,7 @@ Scope {
                                                   delegate: Item {
                                                       Layout.fillWidth: true
                                                       Layout.preferredWidth: 203
-                                                      height: 200
+                                                      height: 170
                                                   }
                                               }
                                           }
