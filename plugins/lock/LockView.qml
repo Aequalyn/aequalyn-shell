@@ -108,6 +108,7 @@ Item {
   function homeBin(name) { return (Quickshell.env("HOME") || "") + "/.local/bin/" + name }
 
   onStyleChanged: refreshInfo()
+  onCustomLayoutChanged: if (root.style === "custom") refreshInfo()
   Component.onCompleted: { refreshInfo(); if (!root.preview) input.forceActiveFocus() }
 
   Process {
@@ -138,10 +139,10 @@ Item {
     command: ["bash", "-c", "b=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1); [ -n \"$b\" ] && echo \"󰁹 ${b}%\""]
     stdout: StdioCollector { onStreamFinished: root.batteryText = String(text || "").trim() }
   }
-  Timer { interval: 1000; repeat: true; running: true; onTriggered: { clockText.text = Qt.formatTime(new Date(), root.timeFormat); if (root.style === "binary") root.refreshInfo() } }
-  Timer { interval: 60000; repeat: true; running: ["weather","words","quote","day","battery","dashboard","calendar","nowplaying"].indexOf(root.style) >= 0; onTriggered: root.refreshInfo() }
-  Timer { interval: 10000; repeat: true; running: root.settingShowMedia; triggeredOnStart: true; onTriggered: { mediaProc.running = false; mediaProc.running = true } }
-  Timer { interval: 30000; repeat: true; running: root.settingShowBattery; triggeredOnStart: true; onTriggered: { batteryProc.running = false; batteryProc.running = true } }
+  Timer { interval: 1000; repeat: true; running: true; onTriggered: { clockText.text = Qt.formatTime(new Date(), root.timeFormat); if (root.style === "binary" || (root.style === "custom" && root.customItems.some(e => e.type === "binary" && e.visible !== false))) root.refreshInfo() } }
+  Timer { interval: 60000; repeat: true; running: root.style === "custom" || ["weather","words","quote","day","battery","dashboard","calendar","nowplaying"].indexOf(root.style) >= 0; onTriggered: root.refreshInfo() }
+  Timer { interval: 10000; repeat: true; running: root.settingShowMedia || (root.style === "custom" && root.customItems.some(e => e.type === "media" && e.visible !== false)); triggeredOnStart: true; onTriggered: { mediaProc.running = false; mediaProc.running = true } }
+  Timer { interval: 30000; repeat: true; running: root.settingShowBattery || (root.style === "custom" && root.customItems.some(e => e.type === "battery" && e.visible !== false)); triggeredOnStart: true; onTriggered: { batteryProc.running = false; batteryProc.running = true } }
 
   Image {
     id: wallpaper
@@ -648,28 +649,28 @@ Item {
 
       Text {
         id: clockText
-        visible: customItem.kind === "clock" && root.settingShowClock
+        visible: customItem.kind === "clock"
         anchors.centerIn: parent
         text: root.timeText
         color: root.fg; font.family: root.font; font.pixelSize: 72; font.bold: true
       }
       Text {
         id: dateText
-        visible: customItem.kind === "date" && root.settingShowDate
+        visible: customItem.kind === "date"
         anchors.centerIn: parent
         text: root.dateText
         color: root.muted; font.family: root.font; font.pixelSize: 18
       }
       Text {
         id: userText
-        visible: customItem.kind === "user" && root.settingShowUser
+        visible: customItem.kind === "user"
         anchors.centerIn: parent
         text: root.userName || "User"
         color: root.fg; font.family: root.font; font.pixelSize: 22; font.bold: true
       }
       Text {
         id: mediaTextItem
-        visible: customItem.kind === "media" && root.settingShowMedia
+        visible: customItem.kind === "media"
         anchors.centerIn: parent
         text: root.mediaText ? "󰎆  " + root.mediaText : "󰎆  Not playing"
         color: root.muted; font.family: root.font; font.pixelSize: 14
@@ -677,7 +678,7 @@ Item {
       }
       Text {
         id: batteryTextItem
-        visible: customItem.kind === "battery" && root.settingShowBattery
+        visible: customItem.kind === "battery"
         anchors.centerIn: parent
         text: root.batteryText || "󰁹 --%"
         color: root.muted; font.family: root.font; font.pixelSize: 14
