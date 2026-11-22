@@ -44,16 +44,16 @@ var settings = {
     flatSide:    { options: ["none", "edge", "windows"], fallback: "none" },
     surface:     { options: surfaces.options, fallback: "filled" },
     fill:        { options: ["solid", "gradient", "glass"], fallback: "gradient" },
-    gradientTo:  { options: ["accent", "palette", "spectrum", "lighter", "darker"], fallback: "spectrum" },
+    gradientTo:  { options: ["accent", "palette", "border", "spectrum", "lighter", "darker"], fallback: "spectrum" },
     gradientAcross: { bool: true, fallback: false },
     pattern:     { options: ["none", "stripes", "dots", "grid"], fallback: "none" },
     depth:       { options: ["flat", "raised", "sunken"], fallback: "flat" },
     lines:       { options: lines.options, fallback: "solid" },
-    border:      { options: ["subtle", "text", "accent"], fallback: "subtle" },
+    border:      { options: ["subtle", "text", "accent", "border"], fallback: "subtle" },
     borderWidth: { range: [1, 4], fallback: 1 },
     railSide:    { options: ["windows", "edge", "both"], fallback: "windows" },
     outlineGradient: { bool: true, fallback: true },
-    outlineGradientTo: { options: ["lighter", "accent", "palette", "spectrum"], fallback: "spectrum" },
+    outlineGradientTo: { options: ["lighter", "accent", "palette", "border", "spectrum"], fallback: "spectrum" },
     ornaments:   { options: ornaments.options, fallback: "none" },
     shadow:      { options: ["none", "soft", "strong"], fallback: "soft" },
     shadowColor: { options: ["dark", "accent"], fallback: "dark" }
@@ -139,6 +139,11 @@ function paletteOf(pal, mine) {
     if (src.length === 0) return mix(mine, [255, 255, 255], 0.45);
     return rgb(src[src.length > 1 ? 1 : 0]);
 }
+// the window border's own colors, for "Window borders" gradients and lines
+function bordersOf(pal, mine) {
+    const out = (pal && Array.isArray(pal.borders) ? pal.borders : []).filter(c => /^#[0-9a-fA-F]{6}$/.test(c)).map(c => rgb(c));
+    return out.length > 0 ? out : spectrumOf(pal, mine);
+}
 
 // ---- where the dock is -----------------------------------------------------------------
 
@@ -173,36 +178,45 @@ function params(d, pal, w, h, margin, opts) {
     var o = opts || {};
     var edge = o.edge || "bottom";
     var opacity = typeof d.opacity === "number" ? d.opacity : 90;
-    var base = rgb(pal.bg), fg = rgb(pal.fg), mine = rgb(o.tone || pal.ac);
+    var mine = rgb(o.tone || pal.ac);
+    var tint = Math.min(0.6, (typeof d.barTint === "number" ? d.barTint : 0) / 100
+        + (d.paletteUse === "fill" ? 0.22 : 0) + (o.tinted === true ? 0.18 : 0));
+    var base = tint > 0 ? mix(rgb(pal.bg), mine, tint) : rgb(pal.bg);
+    var fg = rgb(pal.fg);
     var S = Surfaces.byKey[d.surface] || Surfaces.byKey.filled;
     var k = typeof S.fill === "number" ? S.fill : 1;
     if (d.fill === "glass") k *= 0.55;
     var alpha = k * opacity / 100;
-    var ramp = spectrumOf(pal, mine);
+    var ramp = spectrumOf(pal, mine), borders = bordersOf(pal, mine);
     var target = d.gradientTo === "lighter" ? mix(base, [255, 255, 255], 0.2)
                : d.gradientTo === "darker" ? mix(base, [0, 0, 0], 0.35)
                : d.gradientTo === "palette" ? mix(base, paletteOf(pal, mine), 0.45)
+               : d.gradientTo === "border" ? mix(base, borders[borders.length - 1], 0.35)
                : d.gradientTo === "spectrum" ? mix(base, ramp[ramp.length - 1], 0.45)
                : mix(base, mine, 0.45);
     // Theme colors: the fill runs through several of them, each tinted into the dock's color
     var gradientOn = d.fill === "gradient" && S.noGradient !== true;
-    var fillStops = gradientOn && d.gradientTo === "spectrum"
-        ? ramp.map(function (c) { return css(mix(base, c, 0.45), alpha); }) : [];
+    var fillStops = gradientOn && (d.gradientTo === "spectrum" || d.gradientTo === "border")
+        ? (d.gradientTo === "border" ? borders : ramp).map(function (c) { return css(mix(base, c, 0.45), alpha); }) : [];
     var Ln = Lines.byKey[d.lines] || Lines.byKey.none;
     var lw = 0, lineBase = mine, lineAlpha = 0.85;
     if (Ln.usesColor !== false) {
         lw = d.borderWidth;
         if (d.border === "text") { lineBase = fg; lineAlpha = 0.55; }
         else if (d.border === "subtle") { lineBase = fg; lineAlpha = 0.16; }
+        else if (d.border === "border") { lineBase = borders[0]; lineAlpha = 0.85; }
     }
     var lineColor = Ln.usesColor !== false ? css(lineBase, lineAlpha) : "";
     var grad = d.outlineGradient === true;
     var fadeTo = d.outlineGradientTo;
     var lineGrad = [], markGrad = [];
-    if (grad && fadeTo === "spectrum") {
-        // lines and accents run through the theme's colors
-        if (lw > 0) lineGrad = [css(lineBase, lineAlpha)].concat(ramp.map(function (c) { return css(c, 0.95); }));
-        markGrad = [css(mine, 0.9)].concat(ramp.map(function (c) { return css(c, 0.9); }));
+    if (lw > 0 && d.border === "border" && borders.length > 1 && !grad)
+        lineGrad = borders.map(function (c) { return css(c, 0.9); });
+    else if (grad && (fadeTo === "spectrum" || fadeTo === "border")) {
+        // lines and accents run through the theme's colors, or its window border colors
+        var colors = fadeTo === "border" ? borders : ramp;
+        if (lw > 0) lineGrad = [css(lineBase, lineAlpha)].concat(colors.map(function (c) { return css(c, 0.95); }));
+        markGrad = [css(mine, 0.9)].concat(colors.map(function (c) { return css(c, 0.9); }));
     } else if (grad) {
         // the second color: a lighter shade (the default), the accent, or the theme's next color
         var lineEnd = fadeTo === "accent" ? css(mine, 0.95)
@@ -213,6 +227,8 @@ function params(d, pal, w, h, margin, opts) {
         if (lw > 0) lineGrad = [css(lineBase, lineAlpha), lineEnd];
         markGrad = [css(mine, 0.9), markEnd];
     }
+    var lineAngle = d.outlineGradientDir === "across" ? 90
+                  : d.outlineGradientDir === "diagonal" ? 45 : 0;
 
     var blur = 0, shadow = "";
     // the painted shadow/glow blur can be turned off by the caller: when the
@@ -257,8 +273,11 @@ function params(d, pal, w, h, margin, opts) {
         gradAcross: d.gradientAcross === true,
         glass: d.fill === "glass" && S.noGradient !== true,
         glassColor: lightBase ? css([255, 255, 255], 0.8) : css(fg, 0.22),
-        line: lineColor, lineWidth: lw, lineGrad: lineGrad, markGrad: markGrad, lineAngle: 0,
-        mark: css(mine, 0.9), markWidth: Math.max(1, d.borderWidth), bracket: 7,
+        line: lineColor, lineWidth: lw, lineGrad: lineGrad, markGrad: markGrad, lineAngle: lineAngle,
+        mark: css(mine, 0.9), markWidth: Math.max(1, d.borderWidth),
+        bracket: typeof d.bracket === "number" ? d.bracket : 7,
+        cap: o.floating === true && d.accentCap && d.accentCap !== "none" ? d.accentCap : "",
+        capColor: css(mine, 0.9),
         second: css(mix(base, mine, 0.28), alpha),
         splitColor: css(mix(base, mine, 0.5), alpha),
         frameColors: [css(mix(mine, [255, 255, 255], 0.55)), css(mine), css(mix(mine, [0, 0, 0], 0.45)), css(mix(mine, [255, 255, 255], 0.3))],
@@ -269,7 +288,8 @@ function params(d, pal, w, h, margin, opts) {
         frost: css(lightBase ? [255, 255, 255] : mix(base, [255, 255, 255], 0.35), lightBase ? 0.55 : 0.32 * opacity / 100),
         key: css(lightBase ? mix(base, [0, 0, 0], 0.4) : mix(base, mine, 0.55), Math.max(alpha, 0.6)),
         railSide: d.railSide,
-        shadow: shadow, shadowBlur: blur, shadowShift: 0
+        shadow: shadow, shadowBlur: blur,
+        shadowShift: d.shadowDir === "windows" ? (o.edgeAtStart ? 3 : -3) : 0
     };
 }
 

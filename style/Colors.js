@@ -11,7 +11,7 @@ function hex(c) {
     return "#" + h(c.r) + h(c.g) + h(c.b);
 }
 
-var mono = { bg: "#161616", fg: "#e0e0e0", ac: "#ffffff", hot: "#ff6b5e", spectrum: [] };
+var mono = { bg: "#161616", fg: "#e0e0e0", ac: "#ffffff", hot: "#ff6b5e", spectrum: [], borders: [] };
 
 function fromTheme(t) {
     if (!t || !t.bgBase) return mono;
@@ -23,15 +23,23 @@ function fromTheme(t) {
         var c = hex(list[i]);
         if (spectrum.indexOf(c) < 0) spectrum.push(c);
     }
-    return { bg: hex(t.bgBase), fg: hex(t.textPrimary), ac: hex(t.accentPrimary), hot: hex(t.accentRed), spectrum: spectrum };
+    var borders = t.borderColors && t.borderColors.length ? Array.from(t.borderColors).map(hex) : [];
+    return { bg: hex(t.bgBase), fg: hex(t.textPrimary), ac: hex(t.accentPrimary), hot: hex(t.accentRed),
+             spectrum: spectrum, borders: borders };
 }
 
-// a style's color mode on top of the theme: theme, custom, monochrome
+// a style's color mode on top of the theme: theme, borders, custom, monochrome
 function forMode(t, mode, d) {
     var base = fromTheme(t);
     if (mode === "monochrome") return mono;
+    if (mode === "borders") {
+        var b = base.borders.length > 0 ? base.borders : base.spectrum;
+        return { bg: base.bg, fg: base.fg, ac: b.length > 0 ? b[0] : base.ac, hot: base.hot,
+                 spectrum: b, borders: b };
+    }
     if (mode === "custom" && d)
-        return { bg: d.customBg || base.bg, fg: d.customFg || base.fg, ac: d.accentColor || base.ac, hot: base.hot, spectrum: [] };
+        return { bg: d.customBg || base.bg, fg: d.customFg || base.fg, ac: d.accentColor || base.ac,
+                 hot: base.hot, spectrum: [], borders: [] };
     return base;
 }
 

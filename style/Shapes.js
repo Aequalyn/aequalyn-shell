@@ -73,7 +73,7 @@ function curlRoom(cfg, w) {
 // notch or Slanted: there the end's real outline is measured (Style.endRoom, the same
 // measure the docks use) across the band the widgets sit in, 24px tall.
 function islandPad(cfg, w) {
-    const base = clamp(cfg.padding, 0, 40) + Math.max(endPad(cfg.ends, w), curlRoom(cfg, w));
+    const base = clamp(cfg.padding, 0, 24) + Math.max(endPad(cfg.ends, w), curlRoom(cfg, w));
     const band = Math.max(0, (w - 24) / 2);
     let cut = 0;
     for (const p of ["right", "both"])
@@ -132,7 +132,7 @@ function sectionMargin(cfg, normal, barSize) {
     const side = clamp(cfg.sideGap, 0, 200);
     // widget pills reach past their first and last widget
     if (cfg.shape === "widgets") return side + pillRoom(cfg, barSize > 0 ? barSize : 26) + 2;
-    let extra = clamp(cfg.padding, 0, 40);
+    let extra = clamp(cfg.padding, 0, 24);
     const thick = barSize > 0 ? barSize : 26;
     extra += Math.max(endPad(cfg.ends, thick), curlRoom(cfg, thick));
     // pointed and slanted ends, and curls, need a little more room
@@ -146,7 +146,7 @@ function sectionMargin(cfg, normal, barSize) {
 function radiusFor(cfg, w) {
     if (cfg.ends === "capsule") return w / 2;
     if (cfg.ends !== "rounded") return 0;
-    return Math.min(clamp(cfg.radius, 0, 40), w / 2);
+    return Math.min(clamp(cfg.radius, 0, 24), w / 2);
 }
 
 // across the bar: where the shapes start and how thick they are.
@@ -242,7 +242,7 @@ function layout(view, slotsIn, cfg) {
         // floating off the edge, it keeps the same distance from the ends, with round corners
         const fg = Math.min(floatGapFor(cfg), view.length / 4);
         result.shapes.push({ a: fg, len: view.length - 2 * fg, c: 0, w: view.thickness,
-                             r: fg > 0 ? Math.min(clamp(cfg.radius, 0, 40), view.thickness / 2) : 0, role: "base",
+                             r: fg > 0 ? Math.min(clamp(cfg.radius, 0, 24), view.thickness / 2) : 0, role: "base",
                              region: "all", index: count++, attached: false });
     } else if (cfg.shape === "pill") {
         if (cfg.pillFit && slots.length > 0)
