@@ -14,7 +14,7 @@ aequalyn-session-start ── aequalyn-watchdog (this repo's tool, in PATH)
 
 * The **shell** is supervised, not sandboxed: if it crashes, hangs or
   outgrows its RAM budget, the watchdog restarts it (it was ~600 MiB in
-  normal use; the default ceiling is 900 MiB). It is never turned off --
+  normal use; the default ceiling is 2048 MiB). It is never turned off --
   it is the desktop.
 * Marked **plugins** run out of process, each as its own QuickShell
   instance through `tools/watchdog/host/shell.qml`. A plugin that fails
@@ -183,7 +183,7 @@ overrides any of it (create the file; it is read at `start`):
 
 ```json
 {
-  "shellRamMb": 900,
+  "shellRamMb": 2048,
   "pluginRamMb": 256,
   "pluginRamMbById": { "weather": 512 },
   "heartbeatSeconds": 20,

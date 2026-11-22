@@ -104,7 +104,7 @@ plugin — never the shell, never the other plugins.
 | | |
 | --- | --- |
 | **Sandboxed** | Plugins marked `sandbox: true` in `Plugins.js` (`batteryGuard`, `breaks`, `diskWatch`, `nightLight`) and Store plugins whose manifest group is `background`: each runs as its own Quickshell instance with its own RAM budget, heartbeat and IPC. A crash, hang or leak restarts it; three failures in ten minutes turn it off, with a notification saying why. |
-| **Watched, not sandboxed** | The bar, docks, panels and every visual plugin share the shell's process (their pixels are painted on its windows). A plugin that keeps failing to load -- after a moment's grace, so an update swapping the config tree never turns anything off by mistake -- is disabled with a notification; the shell itself is supervised: crash restart, freeze detection by heartbeat, a 900 MiB memory ceiling. |
+| **Watched, not sandboxed** | The bar, docks, panels and every visual plugin share the shell's process (their pixels are painted on its windows). A plugin that keeps failing to load -- after a moment's grace, so an update swapping the config tree never turns anything off by mistake -- is disabled with a notification; the shell itself is supervised: crash restart, freeze detection by heartbeat, a 2048 MiB memory ceiling. |
 
 ```sh
 aequalyn-watchdog status                     # shell + sandboxed plugins: pid, RAM, failures

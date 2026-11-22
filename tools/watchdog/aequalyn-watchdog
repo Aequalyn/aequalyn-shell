@@ -92,7 +92,7 @@ HOST_LINKS = ["plugins", "settings", "style", "assets", "theme-switcher", "defau
 HOST_ROOT_FILES = sorted(p.name for p in (CONFIG_DIR).glob("*.js"))
 
 DEFAULTS = {
-    "shellRamMb": 900,          # the shell as a whole (it was ~600 MB in use)
+    "shellRamMb": 2048,          # the shell as a whole (it was ~600 MB in use)
     "pluginRamMb": 256,         # per sandboxed plugin process: a bare host
                                 # instance idles at ~150 MiB RSS (resident
                                 # shared Qt pages count per process), so the
