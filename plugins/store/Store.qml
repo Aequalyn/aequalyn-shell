@@ -2044,11 +2044,14 @@ Scope {
         readonly property bool isWeb: modelData.slug !== undefined
         readonly property string iconPath: card.isWeb ? (modelData.iconFile || "") : (modelData.icon || "")
         readonly property string label: modelData.label || modelData.name || modelData.id
+        readonly property string iconUrl: root.localAppIcon(card.iconPath, card.label)
+        readonly property string initials: root.appInitials(card.label)
+        readonly property color monogramColor: root.appMonogramColor(card.label)
         readonly property bool canOpen: card.isWeb ? !!modelData.slug : !!modelData.path
         signal openRequested()
         signal removeRequested()
         signal categoryRequested()
-        radius: 12
+        radius: 6
         color: root.theme.bgBase
         border.width: 1
         border.color: root.theme.bgBorder
@@ -2063,18 +2066,27 @@ Scope {
                     id: cardIcon
                     anchors.centerIn: parent
                     width: 56; height: 56
-                    source: card.iconPath ? "file://" + card.iconPath : ""
+                    source: card.iconUrl
                     sourceSize.width: 112; sourceSize.height: 112
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true
-                    visible: card.iconPath !== "" && status === Image.Ready
+                    visible: status === Image.Ready
                 }
-                Text {
+                Rectangle {
                     anchors.centerIn: parent
+                    width: 56; height: 56
+                    radius: 12
+                    color: card.monogramColor
                     visible: !cardIcon.visible
-                    text: card.isWeb ? "\u{F0595}" : "\u{F01D4}"
-                    color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 26
+                    Text {
+                        anchors.centerIn: parent
+                        text: card.initials
+                        color: "#ffffff"
+                        font.family: root.sans
+                        font.pixelSize: 19
+                        font.weight: Font.DemiBold
+                    }
                 }
             }
             Text {
@@ -2243,6 +2255,10 @@ Scope {
         required property var modelData
         required property int index
         readonly property string kind: modelData.kind
+        readonly property string label: modelData.label || modelData.name || modelData.id || ""
+        readonly property string appIcon: row.kind === "appimage" ? root.localAppIcon(modelData.icon, row.label) : ""
+        readonly property string initials: root.appInitials(row.label)
+        readonly property color monogramColor: root.appMonogramColor(row.label)
         readonly property bool pluginOn: kind === "plugin" && (AequalynSettings.enabledPlugins || []).indexOf(modelData.id) >= 0
         Layout.fillWidth: true
         spacing: 0
@@ -2262,17 +2278,31 @@ Scope {
                 Image {
                     id: rowIcon
                     anchors.fill: parent
-                    visible: row.kind === "appimage" && !!row.modelData.icon && status === Image.Ready
-                    source: row.modelData.icon ? "file://" + row.modelData.icon : ""
+                    visible: row.kind === "appimage" && status === Image.Ready
+                    source: row.appIcon
                     sourceSize.width: 64
                     sourceSize.height: 64
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     smooth: true
                 }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 8
+                    color: row.monogramColor
+                    visible: row.kind === "appimage" && !rowIcon.visible
+                    Text {
+                        anchors.centerIn: parent
+                        text: row.initials
+                        color: "#ffffff"
+                        font.family: root.sans
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                }
                 Text {
                     anchors.centerIn: parent
-                    visible: row.kind !== "appimage" || !row.modelData.icon || rowIcon.status === Image.Error
+                    visible: row.kind !== "appimage"
                     text: (root.sections.find(s => s.key === row.kind) || {}).glyph || "\u{F01D4}"
                     color: root.theme.accentPrimary
                     font.family: root.mono
@@ -3368,6 +3398,10 @@ Scope {
                                             id: wrow
                                             required property var modelData
                                             required property int index
+                                            readonly property string label: wrow.modelData.name || wrow.modelData.slug || "web app"
+                                            readonly property string iconUrl: root.localAppIcon(wrow.modelData.iconFile, wrow.label)
+                                            readonly property string initials: root.appInitials(wrow.label)
+                                            readonly property color monogramColor: root.appMonogramColor(wrow.label)
                                             Layout.fillWidth: true
                                             spacing: 0
                                             Rectangle { visible: wrow.index > 0; Layout.fillWidth: true; Layout.preferredHeight: 1; color: root.theme.bgBorder }
@@ -4305,12 +4339,31 @@ Scope {
                         Layout.preferredHeight: 66
                         spacing: 14
                         Btn { text: "‹ Back"; onClicked: root.backFromApp() }
-                        Image {
+                        Item {
                             Layout.preferredWidth: 50; Layout.preferredHeight: 50
-                            source: root.appPage ? (root.appPage.icon || "") : ""
-                            sourceSize.width: 100; sourceSize.height: 100
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 10
+                                color: root.appMonogramColor(root.appPage ? root.appPage.name : "app")
+                                visible: pageIcon.status !== Image.Ready
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: root.appInitials(root.appPage ? root.appPage.name : "app")
+                                    color: "#ffffff"
+                                    font.family: root.sans
+                                    font.pixelSize: 17
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+                            Image {
+                                id: pageIcon
+                                anchors.fill: parent
+                                source: root.appPage ? root.appIconUrl(root.appPage.icon, root.appPage.name) : ""
+                                sourceSize.width: 100; sourceSize.height: 100
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                visible: status === Image.Ready
+                            }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
