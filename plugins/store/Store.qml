@@ -353,6 +353,12 @@ Scope {
         for (const s of g.sources) if (ids[s.source] !== undefined && !ids[s.source]) ids[s.source] = s.id;
         return ids;
     }
+    // app-info validates a display name before it queries the backends. Curated
+    // names like ".NET" and "Heroic (Epic Games)" are still plain app names, so
+    // pass them through unchanged; the backend ids are validated on their own.
+    function appInfoName(g) {
+        return String((g && g.name) || (g && g.id) || "app").slice(0, 80);
+    }
     function openApp(g) {
         if (!g) return;
         if (appInfoProc.running) appInfoProc.running = false;
@@ -364,7 +370,7 @@ Scope {
         root.appDetailBusy = true;
         root.appDetailErrors = {};
         const ids = root.appIds(g);
-        appInfoProc.command = ["aequalyn-store", "app-info", g.name]
+        appInfoProc.command = ["aequalyn-store", "app-info", root.appInfoName(g)]
             .concat(ids.Arch ? ["--arch", ids.Arch] : [])
             .concat(ids.AUR ? ["--aur", ids.AUR] : [])
             .concat(ids.Flatpak ? ["--flatpak", ids.Flatpak] : [])
