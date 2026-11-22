@@ -945,9 +945,7 @@ Scope {
         const keys = [a.id, a.name].map(v => (v || "").toLowerCase()).filter(v => v !== "");
         const hit = apps.find(x => [x.id, x.name, x.pacman, x.aur, x.flatpak, x.snap]
             .some(v => !!v && keys.indexOf(String(v).toLowerCase()) >= 0));
-        return hit && hit.icon
-            ? "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + hit.icon + ".png"
-            : "";
+        return hit && hit.icon ? root.appIconUrl(hit.icon, a.name) : "";
     }
     readonly property var installedResults: root.installedApps
         .filter(a => root.installedQuery === "" ||
