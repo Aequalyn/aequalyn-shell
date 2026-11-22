@@ -195,8 +195,15 @@ CcPage {
         title: "Lock screen editor"
         hint: "Customize what the Quickshell lock screen shows."
 
+        Text {
+            text: "Wallpaper"
+            color: Cc.theme.textMuted
+            font.pixelSize: 12
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.topMargin: 4
+        }
         CcChoice {
-            title: "Wallpaper"
             options: [
                 { key: "wallpaper", label: "Current" },
                 { key: "theme",     label: "Theme" },
@@ -206,8 +213,15 @@ CcPage {
             onChosen: key => { AequalynSettings.lockWallpaperSource = key; AequalynSettings.save() }
         }
 
+        Text {
+            text: "Password field"
+            color: Cc.theme.textMuted
+            font.pixelSize: 12
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.topMargin: 4
+        }
         CcChoice {
-            title: "Password field"
             options: [
                 { key: "center", label: "Center" },
                 { key: "bottom", label: "Bottom" },
