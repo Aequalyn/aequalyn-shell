@@ -2938,7 +2938,7 @@ Scope {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.min(implicitWidth, 220)
                         elide: Text.ElideRight
-                        text: (root.sections.find(s => s.key === root.section) || {}).label || ""
+                        text: root.currentTitle()
                         color: root.theme.textMuted
                         font.family: root.sans
                         font.pixelSize: 13
@@ -3115,18 +3115,18 @@ Scope {
                         Text {
                             leftPadding: 8
                             bottomPadding: 10
-                            text: root.categoryNow ? root.categoryNow.sections.length + " sections" : ""
+                            text: root.sectionNavItems.length + " sections"
                             color: root.theme.textMuted
                             font.family: root.mono
                             font.pixelSize: 11
                         }
                         Repeater {
-                            model: root.categoryNow ? root.categoryNow.sections : []
+                            model: root.sectionNavItems
                             delegate: Rectangle {
                                 id: navItem
                                 required property var modelData
-                                readonly property var info: root.sections.find(s => s.key === modelData) || {}
-                                readonly property bool on: root.section === modelData
+                                readonly property var info: modelData
+                                readonly property bool on: root.navIsOn(modelData)
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 38
                                 radius: 8
@@ -3162,7 +3162,7 @@ Scope {
                                         font.weight: navItem.on ? Font.DemiBold : Font.Normal
                                     }
                                 }
-                                MouseArea { id: navMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openSection(modelData) }
+                                MouseArea { id: navMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openNav(modelData) }
                             }
                         }
                         Item { Layout.fillHeight: true }
