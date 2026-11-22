@@ -70,7 +70,7 @@ Flickable {
             caption: AequalynSettings.dockEnabled ? pane.list.length + " of 16 docks" : "Docks are off"
         }
 
-        Toggle {
+        SettingToggle {
             visible: pane.shows("docks")
             theme: pane.theme; font: pane.font
             label: "Docks"
@@ -205,7 +205,7 @@ Flickable {
                 sub: pane.dock ? pane.dock.apps.length + (pane.dock.apps.length === 1 ? " app" : " apps")
                     + ". Pin apps with its + button and drag icons to reorder."
                     + (pane.sel === 0 && AequalynSettings.dockUnpinned === "primary" ? " Open apps that aren't pinned show here too." : "") : ""
-                ChoiceRow {
+                SettingChoice {
                     visible: Quickshell.screens.length > 1
                     theme: pane.theme; font: pane.font
                     label: "Screen"
@@ -214,7 +214,7 @@ Flickable {
                     value: pane.dock ? pane.dock.monitor : ""
                     onPicked: v => pane.set("monitor", v)
                 }
-                ChoiceRow {
+                SettingChoice {
                     theme: pane.theme; font: pane.font
                     label: "Edge"
                     options: ["bottom", "top", "left", "right"]
@@ -222,7 +222,7 @@ Flickable {
                     value: pane.dock ? pane.dock.edge : ""
                     onPicked: v => pane.set("edge", v)
                 }
-                ChoiceRow {
+                SettingChoice {
                     theme: pane.theme; font: pane.font
                     label: "Along it"
                     options: ["start", "center", "end"]
@@ -230,7 +230,7 @@ Flickable {
                     value: pane.dock ? pane.dock.align : ""
                     onPicked: v => pane.set("align", v)
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Size"
                     value: pane.dock ? pane.dock.size : 44
@@ -238,7 +238,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("size", v)
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Icons"
                     value: pane.dock ? pane.dock.iconScale : 100
@@ -246,7 +246,7 @@ Flickable {
                     suffix: "%"
                     onStepped: v => pane.set("iconScale", v)
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Margin"
                     value: pane.svc && pane.dock ? pane.svc.marginOf(pane.dock.edge) : 6
@@ -254,13 +254,13 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.svc.setMargin(pane.dock.edge, v)
                 }
-                Toggle {
+                SettingToggle {
                     theme: pane.theme; font: pane.font
                     label: "Full length"
                     checked: pane.dock ? pane.dock.stretch : false
                     onToggled: v => pane.set("stretch", v)
                 }
-                Toggle {
+                SettingToggle {
                     theme: pane.theme; font: pane.font
                     label: "Keep windows clear"
                     sublabel: "Shared by every dock on this edge"
@@ -284,13 +284,13 @@ Flickable {
                 icon: "󰘕"
                 title: "Hiding"
                 sub: "Out of the way until the pointer reaches the edge"
-                Toggle {
+                SettingToggle {
                     theme: pane.theme; font: pane.font
                     label: "Auto-hide"
                     checked: pane.dock ? pane.dock.autohide : false
                     onToggled: v => pane.set("autohide", v)
                 }
-                ChoiceRow {
+                SettingChoice {
                     theme: pane.theme; font: pane.font
                     label: "Effect"
                     options: pane.svc ? pane.svc.hideEffects : []
@@ -299,7 +299,7 @@ Flickable {
                     enabled: pane.dock ? pane.dock.autohide : false
                     onPicked: v => pane.setLook({ hideEffect: v })
                 }
-                Stepper {
+                SettingSlider {
                     visible: !!pane.dock && pane.dock.autohide
                     theme: pane.theme; font: pane.font
                     label: "Speed"
@@ -308,7 +308,7 @@ Flickable {
                     suffix: " ms"
                     onStepped: v => pane.setLook({ hideSpeed: v })
                 }
-                Stepper {
+                SettingSlider {
                     visible: !!pane.dock && pane.dock.autohide
                     theme: pane.theme; font: pane.font
                     label: "Show after"
@@ -317,7 +317,7 @@ Flickable {
                     suffix: " ms"
                     onStepped: v => pane.setLook({ showDelay: v })
                 }
-                Stepper {
+                SettingSlider {
                     visible: !!pane.dock && pane.dock.autohide
                     theme: pane.theme; font: pane.font
                     label: "Hide after"
@@ -326,7 +326,7 @@ Flickable {
                     suffix: " ms"
                     onStepped: v => pane.setLook({ hideDelay: v })
                 }
-                Stepper {
+                SettingSlider {
                     visible: !!pane.dock && pane.dock.autohide
                     theme: pane.theme; font: pane.font
                     label: "Edge strip"
@@ -335,14 +335,14 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.setLook({ revealStrip: v })
                 }
-                Toggle {
+                SettingToggle {
                     visible: !!pane.dock && pane.dock.autohide
                     theme: pane.theme; font: pane.font
                     label: "A line where it waits"
                     checked: pane.dock ? pane.dock.edgeHint : true
                     onToggled: v => pane.setLook({ edgeHint: v })
                 }
-                ChoiceRow {
+                SettingChoice {
                     theme: pane.theme; font: pane.font
                     label: "Attention"
                     options: ["off", "dot", "pulse"]
@@ -360,70 +360,16 @@ Flickable {
             icon: "󰏘"
             title: "Look"
             sub: "Wear the bar's look and change with it, or a look of the dock's own."
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                Repeater {
-                    model: [[true, "󰍜", "Same as the bar", "Changes whenever the bar does"],
-                            [false, "󱂬", "Its own look", "Picked below"]]
-                    delegate: Rectangle {
-                        id: followCard
-                        required property var modelData
-                        readonly property bool on: !!pane.dock && pane.dock.followBar === modelData[0]
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 54
-                        radius: 12
-                        color: on ? pane.theme.bgSelected : (followArea.containsMouse ? pane.theme.bgHover : pane.theme.bgSurface)
-                        border.width: on ? 2 : 1
-                        border.color: on ? pane.theme.accentPrimary : pane.theme.bgBorder
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 10
-                            Rectangle {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
-                                radius: 9
-                                color: followCard.on ? pane.theme.accentPrimary : pane.theme.bgBase
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: followCard.modelData[1]
-                                    color: followCard.on ? pane.theme.bgBase : pane.theme.accentPrimary
-                                    font.family: pane.font
-                                    font.pixelSize: 12
-                                }
-                            }
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 1
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: followCard.modelData[2]
-                                    color: pane.theme.textPrimary
-                                    font.family: "sans-serif"
-                                    font.pixelSize: 13
-                                    font.bold: true
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: followCard.modelData[3]
-                                    color: pane.theme.textMuted
-                                    font.family: "sans-serif"
-                                    font.pixelSize: 11
-                                }
-                            }
-                        }
-                        MouseArea {
-                            id: followArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: pane.svc.setFollow(pane.sel, followCard.modelData[0], pane.scope)
-                        }
-                    }
-                }
+            SettingChoice {
+                theme: pane.theme; font: pane.font
+                label: "Look from"
+                options: [true, false]
+                labels: ({ true: "Same as the bar", false: "Its own look" })
+                value: pane.dock ? pane.dock.followBar : true
+                enabled: !!pane.dock
+                onPicked: v => pane.svc.setFollow(pane.sel, v, pane.scope)
             }
-            ChoiceRow {
+            SettingChoice {
                 theme: pane.theme; font: pane.font
                 label: "Apply to"
                 options: ["one", "edge", "all"]
@@ -520,7 +466,7 @@ Flickable {
                 icon: "󰏘"
                 title: "Colors"
                 sub: pane.dock && pane.dock.followBar ? "From the bar; a change here gives the dock its own look" : "Theme follows your colours"
-                ChoiceRow {
+                SettingChoice {
                     theme: pane.theme; font: pane.font
                     label: "From"
                     options: pane.svc ? pane.svc.styles : []
@@ -528,7 +474,7 @@ Flickable {
                     value: pane.drawn.style
                     onPicked: v => pane.setLook({ style: v })
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Opacity"
                     value: pane.drawn.opacity || 90
@@ -536,7 +482,7 @@ Flickable {
                     suffix: "%"
                     onStepped: v => pane.setLook({ opacity: v })
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Corners"
                     value: pane.drawn.radius || 16
@@ -544,50 +490,20 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.setLook({ radius: v })
                 }
-                Swatches {
+                PaletteRow {
                     visible: pane.drawn.style === "custom"
                     theme: pane.theme; font: pane.font
-                    label: "Background"
-                    colors: pane.svc ? pane.svc.swatches.slice(0, 8) : []
-                    value: pane.drawn.customBg || ""
-                    onPicked: v => pane.setLook({ customBg: v })
-                }
-                ColorField {
-                    visible: pane.drawn.style === "custom"
-                    theme: pane.theme; font: pane.font
-                    label: "Background hex"
-                    value: pane.drawn.customBg || ""
-                    onPicked: v => pane.setLook({ customBg: v })
-                }
-                Swatches {
-                    visible: pane.drawn.style === "custom"
-                    theme: pane.theme; font: pane.font
-                    label: "Text"
-                    colors: pane.svc ? pane.svc.swatches.slice(8, 16) : []
-                    value: pane.drawn.customFg || ""
-                    onPicked: v => pane.setLook({ customFg: v })
-                }
-                ColorField {
-                    visible: pane.drawn.style === "custom"
-                    theme: pane.theme; font: pane.font
-                    label: "Text hex"
-                    value: pane.drawn.customFg || ""
-                    onPicked: v => pane.setLook({ customFg: v })
-                }
-                Swatches {
-                    visible: pane.drawn.style === "custom"
-                    theme: pane.theme; font: pane.font
-                    label: "Accent"
-                    colors: pane.svc ? pane.svc.swatches.slice(16) : []
-                    value: pane.drawn.accentColor || ""
-                    onPicked: v => pane.setLook({ accentColor: v })
-                }
-                ColorField {
-                    visible: pane.drawn.style === "custom"
-                    theme: pane.theme; font: pane.font
-                    label: "Accent hex"
-                    value: pane.drawn.accentColor || ""
-                    onPicked: v => pane.setLook({ accentColor: v })
+                    swatches: pane.svc ? pane.svc.swatches : []
+                    targets: [
+                        { key: "customBg", label: "Background", value: pane.drawn.customBg || "" },
+                        { key: "customFg", label: "Text", value: pane.drawn.customFg || "" },
+                        { key: "accentColor", label: "Accent", value: pane.drawn.accentColor || "" }
+                    ]
+                    onPicked: (key, value) => {
+                        const changes = {};
+                        changes[key] = value;
+                        pane.setLook(changes);
+                    }
                 }
             }
 

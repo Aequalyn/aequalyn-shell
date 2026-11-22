@@ -136,7 +136,7 @@ Flickable {
             icon: "󰍜"
             title: "Shape"
             sub: "Where the bar is painted. Off leaves the plain bar."
-            Toggle {
+            SettingToggle {
                 theme: pane.theme; font: pane.font
                 label: "Shaped bar"
                 checked: pane.look.enabled
@@ -300,7 +300,7 @@ Flickable {
                 icon: "󰘞"
                 title: "Placement"
                 sub: "How far it floats and how it meets the edge"
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Float"
                     value: pane.look.floatGap
@@ -308,7 +308,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("floatGap", v)
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Padding"
                     value: pane.look.padding
@@ -316,7 +316,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("padding", v)
                 }
-                Stepper {
+                SettingSlider {
                     theme: pane.theme; font: pane.font
                     label: "Corners"
                     value: pane.look.radius
@@ -324,7 +324,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("radius", v)
                 }
-                Stepper {
+                SettingSlider {
                     visible: pane.look.shape !== "full"
                     theme: pane.theme; font: pane.font
                     label: "Edge gap"
@@ -333,7 +333,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("edgeGap", v)
                 }
-                Stepper {
+                SettingSlider {
                     visible: pane.look.shape !== "full"
                     theme: pane.theme; font: pane.font
                     label: "Side gap"
@@ -342,7 +342,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("sideGap", v)
                 }
-                Stepper {
+                SettingSlider {
                     visible: pane.look.shape === "full"
                     theme: pane.theme; font: pane.font
                     label: "Thicker"
@@ -351,7 +351,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("fullExtra", v)
                 }
-                Stepper {
+                SettingSlider {
                     visible: pane.look.shape === "islands"
                     theme: pane.theme; font: pane.font
                     label: "Merge"
@@ -360,7 +360,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("mergeGap", v)
                 }
-                Stepper {
+                SettingSlider {
                     visible: pane.look.shape === "islands"
                     theme: pane.theme; font: pane.font
                     label: "Middle"
@@ -369,7 +369,7 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("centerMin", v)
                 }
-                Stepper {
+                SettingSlider {
                     visible: pane.look.shape === "widgets"
                     theme: pane.theme; font: pane.font
                     label: "Spacing"
@@ -378,35 +378,35 @@ Flickable {
                     suffix: " px"
                     onStepped: v => pane.set("pillGap", v)
                 }
-                Toggle {
+                SettingToggle {
                     visible: pane.look.shape !== "full"
                     theme: pane.theme; font: pane.font
                     label: "Hang from the edge"
                     checked: pane.look.attach
                     onToggled: v => pane.set("attach", v)
                 }
-                Toggle {
+                SettingToggle {
                     visible: pane.look.shape !== "full" && pane.look.attach
                     theme: pane.theme; font: pane.font
                     label: "Curve into the edge"
                     checked: pane.look.concave
                     onToggled: v => pane.set("concave", v)
                 }
-                Toggle {
+                SettingToggle {
                     visible: pane.look.shape === "pill"
                     theme: pane.theme; font: pane.font
                     label: "Only as long as the widgets"
                     checked: pane.look.pillFit
                     onToggled: v => pane.set("pillFit", v)
                 }
-                Toggle {
+                SettingToggle {
                     visible: pane.look.shape === "islands"
                     theme: pane.theme; font: pane.font
                     label: "Sides the same width"
                     checked: pane.look.mirrorSides
                     onToggled: v => pane.set("mirrorSides", v)
                 }
-                ChoiceRow {
+                SettingChoice {
                     visible: pane.look.shape === "islands" || pane.look.shape === "widgets"
                     theme: pane.theme; font: pane.font
                     label: "Painted"
@@ -415,7 +415,7 @@ Flickable {
                     value: pane.look.regions
                     onPicked: v => pane.set("regions", v)
                 }
-                ChoiceRow {
+                SettingChoice {
                     theme: pane.theme; font: pane.font
                     label: "Pointing"
                     options: ["right", "left", "both", "outward", "inward"]
@@ -437,7 +437,7 @@ Flickable {
                     icon: "󰳽"
                     title: "Widgets"
                     sub: "Hover marks and what sits between them"
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "Hover"
                         options: ["none", "fill", "underline", "glow", "dot"]
@@ -445,7 +445,7 @@ Flickable {
                         value: pane.look.hover
                         onPicked: v => pane.set("hover", v)
                     }
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "In"
                         options: ["text", "accent"]
@@ -454,7 +454,7 @@ Flickable {
                         enabled: pane.look.hover !== "none"
                         onPicked: v => pane.set("hoverColor", v)
                     }
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "Between"
                         options: ["none", "line", "dot", "slash"]
@@ -462,7 +462,7 @@ Flickable {
                         value: pane.look.separators
                         onPicked: v => pane.set("separators", v)
                     }
-                    Stepper {
+                    SettingSlider {
                         visible: pane.look.separators !== "none"
                         theme: pane.theme; font: pane.font
                         label: "Strength"
@@ -471,7 +471,7 @@ Flickable {
                         suffix: "%"
                         onStepped: v => pane.set("sepOpacity", v)
                     }
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "Open"
                         options: ["line", "fill", "dot", "glow", "none"]
@@ -479,20 +479,20 @@ Flickable {
                         value: pane.look.openMark
                         onPicked: v => pane.set("openMark", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         theme: pane.theme; font: pane.font
                         label: "Dividers between groups"
                         checked: pane.look.dividers
                         onToggled: v => pane.set("dividers", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         visible: pane.look.shape === "full"
                         theme: pane.theme; font: pane.font
                         label: "Accent line underneath"
                         checked: pane.look.edgeLine
                         onToggled: v => pane.set("edgeLine", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         visible: pane.look.shape !== "widgets"
                         theme: pane.theme; font: pane.font
                         label: "Widget backgrounds"
@@ -507,7 +507,7 @@ Flickable {
                     icon: "󰏘"
                     title: "Colors"
                     sub: "Theme follows your colours"
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "From"
                         options: ["theme", "palette", "borders", "custom", "monochrome"]
@@ -515,7 +515,7 @@ Flickable {
                         value: pane.look.colorMode
                         onPicked: v => pane.set("colorMode", v)
                     }
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "Middle"
                         options: ["same", "tinted", "accent"]
@@ -523,7 +523,7 @@ Flickable {
                         value: pane.look.centerStyle
                         onPicked: v => pane.set("centerStyle", v)
                     }
-                    ChoiceRow {
+                    SettingChoice {
                         theme: pane.theme; font: pane.font
                         label: "Widget text"
                         options: ["auto", "theme", "custom"]
@@ -531,7 +531,7 @@ Flickable {
                         value: pane.look.widgetText
                         onPicked: v => pane.set("widgetText", v)
                     }
-                    ChoiceRow {
+                    SettingChoice {
                         visible: pane.look.colorMode === "palette"
                         theme: pane.theme; font: pane.font
                         label: "Palette"
@@ -540,34 +540,34 @@ Flickable {
                         value: pane.look.paletteUse
                         onPicked: v => pane.set("paletteUse", v)
                     }
-                    Toggle {
+                    SettingToggle {
                         theme: pane.theme; font: pane.font
                         label: "One color per side"
                         checked: pane.look.groupColors
                         onToggled: v => pane.set("groupColors", v)
                     }
-                    ColorField {
+                    SettingColorField {
                         visible: pane.look.groupColors
                         theme: pane.theme; font: pane.font
                         label: "Left"
                         value: pane.look.leftColor
                         onPicked: v => pane.set("leftColor", v)
                     }
-                    ColorField {
+                    SettingColorField {
                         visible: pane.look.groupColors
                         theme: pane.theme; font: pane.font
                         label: "Middle"
                         value: pane.look.centerColor
                         onPicked: v => pane.set("centerColor", v)
                     }
-                    ColorField {
+                    SettingColorField {
                         visible: pane.look.groupColors
                         theme: pane.theme; font: pane.font
                         label: "Right"
                         value: pane.look.rightColor
                         onPicked: v => pane.set("rightColor", v)
                     }
-                    Stepper {
+                    SettingSlider {
                         theme: pane.theme; font: pane.font
                         label: "Opacity"
                         value: pane.look.opacity
@@ -575,7 +575,7 @@ Flickable {
                         suffix: "%"
                         onStepped: v => pane.set("opacity", v)
                     }
-                    Stepper {
+                    SettingSlider {
                         theme: pane.theme; font: pane.font
                         label: "Tint"
                         value: pane.look.barTint
@@ -583,29 +583,16 @@ Flickable {
                         suffix: "%"
                         onStepped: v => pane.set("barTint", v)
                     }
-                    Swatches {
+                    PaletteRow {
                         visible: pane.look.colorMode === "custom"
                         theme: pane.theme; font: pane.font
-                        label: "Background"
-                        colors: pane.svc ? pane.svc.swatches.slice(0, 8) : []
-                        value: pane.look.customBg
-                        onPicked: v => pane.set("customBg", v)
-                    }
-                    Swatches {
-                        visible: pane.look.colorMode === "custom"
-                        theme: pane.theme; font: pane.font
-                        label: "Text"
-                        colors: pane.svc ? pane.svc.swatches.slice(8, 16) : []
-                        value: pane.look.customFg
-                        onPicked: v => pane.set("customFg", v)
-                    }
-                    Swatches {
-                        visible: pane.look.colorMode === "custom"
-                        theme: pane.theme; font: pane.font
-                        label: "Accent"
-                        colors: pane.svc ? pane.svc.swatches.slice(16) : []
-                        value: pane.look.accentColor
-                        onPicked: v => pane.set("accentColor", v)
+                        swatches: pane.svc ? pane.svc.swatches : []
+                        targets: [
+                            { key: "customBg", label: "Background", value: pane.look.customBg || "" },
+                            { key: "customFg", label: "Text", value: pane.look.customFg || "" },
+                            { key: "accentColor", label: "Accent", value: pane.look.accentColor || "" }
+                        ]
+                        onPicked: (key, value) => pane.set(key, value)
                     }
                 }
             }
@@ -634,7 +621,7 @@ Flickable {
             icon: "󰓝"
             title: "Details"
             sub: "The little things, the same parts the docks use."
-            ChoiceRow {
+            SettingChoice {
                 theme: pane.theme; font: pane.font
                 label: "Shadow"
                 options: ["around", "windows"]
@@ -642,7 +629,7 @@ Flickable {
                 value: pane.look.shadowDir
                 onPicked: v => pane.set("shadowDir", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 theme: pane.theme; font: pane.font
                 label: "Line fade"
                 options: ["along", "diagonal", "across", "theme"]
@@ -651,7 +638,7 @@ Flickable {
                 enabled: pane.look.outlineGradient === true
                 onPicked: v => pane.set("outlineGradientDir", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.ornaments === "brackets"
                 theme: pane.theme; font: pane.font
                 label: "Bracket"
@@ -660,7 +647,7 @@ Flickable {
                 suffix: " px"
                 onStepped: v => pane.set("bracket", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: !pane.look.attach
                 theme: pane.theme; font: pane.font
                 label: "End cap"
@@ -678,7 +665,7 @@ Flickable {
             icon: "󰅐"
             title: "Motion"
             sub: "How the shapes move and settle when things change."
-            Stepper {
+            SettingSlider {
                 theme: pane.theme; font: pane.font
                 label: "Speed"
                 value: pane.look.speed
@@ -686,7 +673,7 @@ Flickable {
                 suffix: " ms"
                 onStepped: v => pane.set("speed", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 theme: pane.theme; font: pane.font
                 label: "Easing"
                 options: ["smooth", "springy", "linear"]
@@ -694,7 +681,7 @@ Flickable {
                 value: pane.look.easing
                 onPicked: v => pane.set("easing", v)
             }
-            Stepper {
+            SettingSlider {
                 theme: pane.theme; font: pane.font
                 label: "Resting fade"
                 value: pane.look.idleOpacity
@@ -702,7 +689,7 @@ Flickable {
                 suffix: "%"
                 onStepped: v => pane.set("idleOpacity", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.idleOpacity < 100
                 theme: pane.theme; font: pane.font
                 label: "Fade time"
@@ -720,13 +707,13 @@ Flickable {
             icon: "󰺵"
             title: "Screen edges"
             sub: "Rounded corners and a frame, drawn over the desktop."
-            Toggle {
+            SettingToggle {
                 theme: pane.theme; font: pane.font
                 label: "Rounded corners"
                 checked: pane.look.corners
                 onToggled: v => pane.set("corners", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.corners
                 theme: pane.theme; font: pane.font
                 label: "Which"
@@ -735,7 +722,7 @@ Flickable {
                 value: pane.look.cornerWhich
                 onPicked: v => pane.set("cornerWhich", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.corners
                 theme: pane.theme; font: pane.font
                 label: "Roundness"
@@ -744,7 +731,7 @@ Flickable {
                 suffix: " px"
                 onStepped: v => pane.set("cornerSize", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.corners
                 theme: pane.theme; font: pane.font
                 label: "Color"
@@ -753,13 +740,13 @@ Flickable {
                 value: pane.look.cornerColor
                 onPicked: v => pane.set("cornerColor", v)
             }
-            Toggle {
+            SettingToggle {
                 theme: pane.theme; font: pane.font
                 label: "Screen frame"
                 checked: pane.look.screenFrame
                 onToggled: v => pane.set("screenFrame", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.screenFrame
                 theme: pane.theme; font: pane.font
                 label: "Width"
@@ -768,7 +755,7 @@ Flickable {
                 suffix: " px"
                 onStepped: v => pane.set("screenFrameWidth", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.screenFrame
                 theme: pane.theme; font: pane.font
                 label: "Color"
@@ -786,7 +773,7 @@ Flickable {
             icon: "󰜟"
             title: "Bar button"
             sub: "The button on the bar that opens these settings. The Atelier button stays as it is."
-            ChoiceRow {
+            SettingChoice {
                 theme: pane.theme; font: pane.font
                 label: "Show"
                 options: ["icon", "text", "hidden"]
@@ -794,29 +781,30 @@ Flickable {
                 value: pane.look.barButton
                 onPicked: v => pane.set("barButton", v)
             }
-            RowLayout {
+            ColumnLayout {
                 visible: pane.look.barButton === "text"
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 6
                 Text {
-                    text: "Text"
+                    text: "Button text"
                     color: pane.theme.textSecondary
                     font.family: "sans-serif"
                     font.pixelSize: 12
-                    Layout.preferredWidth: 110
+                    Layout.fillWidth: true
                 }
                 Rectangle {
-                    Layout.preferredWidth: 140
-                    Layout.preferredHeight: 28
-                    radius: 8
-                    color: pane.theme.bgSurface
+                    Layout.fillWidth: true
+                    implicitHeight: 34
+                    radius: 6
+                    color: Qt.rgba(pane.theme.textPrimary.r, pane.theme.textPrimary.g, pane.theme.textPrimary.b, 0.05)
                     border.width: 1
-                    border.color: barTextInput.activeFocus ? pane.theme.accentPrimary : pane.theme.bgBorder
+                    border.color: Qt.rgba(pane.theme.textPrimary.r, pane.theme.textPrimary.g, pane.theme.textPrimary.b,
+                                          barTextInput.activeFocus ? 0.28 : 0.08)
                     TextInput {
                         id: barTextInput
                         anchors.fill: parent
-                        anchors.leftMargin: 8
-                        anchors.rightMargin: 8
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
                         verticalAlignment: TextInput.AlignVCenter
                         text: pane.look.barText
                         color: pane.theme.textPrimary
@@ -824,11 +812,13 @@ Flickable {
                         font.pixelSize: 12
                         maximumLength: 12
                         selectByMouse: true
+                        activeFocusOnTab: true
                         onEditingFinished: if (text.trim() !== "") pane.set("barText", text.trim())
+                        Keys.onEscapePressed: { text = pane.look.barText; focus = false; }
                     }
                 }
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Right click"
@@ -837,7 +827,7 @@ Flickable {
                 value: pane.look.rightClick
                 onPicked: v => pane.set("rightClick", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Middle click"
@@ -846,7 +836,7 @@ Flickable {
                 value: pane.look.middleClick
                 onPicked: v => pane.set("middleClick", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Open as"
@@ -855,7 +845,7 @@ Flickable {
                 value: pane.look.openAs
                 onPicked: v => pane.set("openAs", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Width"
@@ -864,7 +854,7 @@ Flickable {
                 suffix: " px"
                 onStepped: v => pane.set("windowWidth", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Height"
@@ -873,7 +863,7 @@ Flickable {
                 suffix: " px"
                 onStepped: v => pane.set("windowHeight", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Spacing"
@@ -882,7 +872,7 @@ Flickable {
                 value: pane.look.density
                 onPicked: v => pane.set("density", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Roundness"
@@ -891,7 +881,7 @@ Flickable {
                 suffix: " px"
                 onStepped: v => pane.set("cornerRadius", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Text size"
@@ -900,7 +890,7 @@ Flickable {
                 suffix: "%"
                 onStepped: v => pane.set("fontScale", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Panel tint"
@@ -909,7 +899,7 @@ Flickable {
                 suffix: "%"
                 onStepped: v => pane.set("surfaceTint", v)
             }
-            Stepper {
+            SettingSlider {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Panel opacity"
@@ -918,21 +908,21 @@ Flickable {
                 suffix: "%"
                 onStepped: v => pane.set("panelOpacity", v)
             }
-            Toggle {
+            SettingToggle {
                 visible: pane.look.barButton !== "hidden"
                 theme: pane.theme; font: pane.font
                 label: "Colored outline"
                 checked: pane.look.frame
                 onToggled: v => pane.set("frame", v)
             }
-            Toggle {
+            SettingToggle {
                 visible: pane.look.barButton !== "hidden" && pane.look.frame
                 theme: pane.theme; font: pane.font
                 label: "Outline follows window border"
                 checked: pane.look.frameGradient
                 onToggled: v => pane.set("frameGradient", v)
             }
-            ChoiceRow {
+            SettingChoice {
                 visible: pane.look.barButton !== "hidden" && pane.look.frame && !pane.look.frameGradient
                 theme: pane.theme; font: pane.font
                 label: "Outline color"

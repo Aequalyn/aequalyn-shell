@@ -6,3 +6,10 @@ ChoiceRow 1.0 ChoiceRow.qml
 Swatches 1.0 Swatches.qml
 ColorField 1.0 ColorField.qml
 Group 1.0 Group.qml
+StepButton 1.0 StepButton.qml
+ChoiceTrack 1.0 ChoiceTrack.qml
+SettingChoice 1.0 SettingChoice.qml
+SettingSlider 1.0 SettingSlider.qml
+SettingToggle 1.0 SettingToggle.qml
+SettingColorField 1.0 SettingColorField.qml
+PaletteRow 1.0 PaletteRow.qml
