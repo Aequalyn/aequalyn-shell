@@ -37,6 +37,14 @@ Item {
 
     // ---- derived state -----------------------------------------------------
     readonly property string effStyle: service && service.styleOverride !== "" ? service.styleOverride : cfg.vizStyle
+    // Wheel over the widget: step through the styles and keep the choice.
+    function stepStyle(step) {
+        const list = Visuals.keys
+        let i = list.indexOf(effStyle)
+        if (i < 0) i = 0
+        const next = list[(i + (step < 0 ? list.length - 1 : 1)) % list.length]
+        if (service) service.setSetting("vizStyle", next)
+    }
     // On the bar while a song is playing or paused; "Hide the widget" can keep it
     // there always, or only while music plays. It leaves a moment after the music
     // does, so skipping a song or a player starting up doesn't make it blink.
@@ -404,6 +412,14 @@ Item {
                     if (role === "middle") root.service.runAction("next")
                     else if (root.cfg.clickAction === "playPause") root.service.runAction("playPause")
                     else if (root.cfg.clickAction === "next") root.service.runAction("next")
+                }
+
+                onWheel: function(wheel) {
+                    if (!root.service || root.cfg.wheelAction === "none") return
+                    const up = wheel.angleDelta.y > 0
+                    if (root.cfg.wheelAction === "style") root.stepStyle(up ? -1 : 1)
+                    else if (root.cfg.wheelAction === "volume") root.service.nudgeVolume(up ? 0.05 : -0.05)
+                    else root.service.runAction(up ? "previous" : "next")
                 }
 
                 onEntered: if (root.bar && typeof root.bar.showTooltip === "function") root.bar.showTooltip(root, root.tooltipLine())
