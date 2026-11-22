@@ -480,6 +480,9 @@ Scope {
     readonly property string themeRepoDir: Quickshell.env("HOME") + "/.cache/aequalyn/aequalyn-themes"
     property var themeCatalog: []
     property string themeLabelFilter: "All"
+    property int catalogPage: 0
+    readonly property int catalogPerPage: 15
+    readonly property int catalogAt: Math.min(catalogPage, Math.max(0, Math.ceil(root.catalogItems().length / root.catalogPerPage) - 1)) * root.catalogPerPage
     property var wallpaperCatalog: []
     property bool repoSyncing: false
     function syncThemeRepo() { if (!repoSync.running) repoSync.running = true; }
@@ -490,7 +493,7 @@ Scope {
         return items;
     }
     function catalogRows() {
-        const items = root.catalogItems();
+        const items = root.catalogItems().slice(root.catalogAt, root.catalogAt + root.catalogPerPage);
         const rows = [];
         for (let i = 0; i < items.length; i += 5) rows.push(items.slice(i, i + 5));
         return rows;
@@ -2222,19 +2225,19 @@ Scope {
                                              text: "All"
                                              primary: root.themeLabelFilter === "All"
                                              implicitHeight: 26
-                                             onClicked: root.themeLabelFilter = "All"
+                                             onClicked: { root.themeLabelFilter = "All"; root.catalogPage = 0; }
                                          }
                                          Btn {
                                              text: "Built-in"
                                              primary: root.themeLabelFilter === "Built-in"
                                              implicitHeight: 26
-                                             onClicked: root.themeLabelFilter = "Built-in"
+                                             onClicked: { root.themeLabelFilter = "Built-in"; root.catalogPage = 0; }
                                          }
                                          Btn {
                                              text: "Community"
                                              primary: root.themeLabelFilter === "Community"
                                              implicitHeight: 26
-                                             onClicked: root.themeLabelFilter = "Community"
+                                             onClicked: { root.themeLabelFilter = "Community"; root.catalogPage = 0; }
                                          }
                                          Item { Layout.fillWidth: true }
                                      }
@@ -2357,6 +2360,32 @@ Scope {
                                               }
                                           }
                                       }
+
+                                     RowLayout {
+                                         visible: root.catalogItems().length > root.catalogPerPage
+                                         Layout.fillWidth: true
+                                         spacing: 6
+                                         Item { Layout.fillWidth: true }
+                                         Text {
+                                             text: root.catalogItems().length + " items"
+                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                         }
+                                         StepBtn {
+                                             glyph: "‹"
+                                             enabled: root.catalogAt > 0
+                                             onClicked: root.catalogPage = root.catalogAt / root.catalogPerPage - 1
+                                         }
+                                         Text {
+                                             text: (root.catalogAt + 1) + "–" + Math.min(root.catalogAt + root.catalogPerPage, root.catalogItems().length)
+                                                   + " of " + root.catalogItems().length
+                                             color: root.theme.textMuted; font.family: root.mono; font.pixelSize: 11
+                                         }
+                                         StepBtn {
+                                             glyph: "›"
+                                             enabled: root.catalogAt + root.catalogPerPage < root.catalogItems().length
+                                             onClicked: root.catalogPage = root.catalogAt / root.catalogPerPage + 1
+                                         }
+                                     }
 
                                  }
 
