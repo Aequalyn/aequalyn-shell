@@ -1,10 +1,8 @@
 // Snap flyout for floating workspaces.
 //
-// Leave the pointer in the top edge strip for a moment and a compact grid of
-// snap arrangements appears. Dragging a floating window up to that same strip
-// also opens it; clicking a layout places the active window in the highlighted
-// zone and the other floating windows of the workspace in the remaining ones.
-// Super + G opens the same flyout without depending on the pointer.
+// Super+G opens a compact grid of snap arrangements. Clicking a layout places
+// the active window in the highlighted zone and the other floating windows of
+// the workspace in the remaining ones.
 
 import QtQuick
 import Quickshell
@@ -51,22 +49,6 @@ Scope {
     property real pickY: -1
     property var selectedPreset: null
     property int chosenZone: 0
-
-    // latched while a drag-to-edge gesture owns the flyout: the focused floating
-    // window is held at the snap edge and the zones are waiting for a pick.
-    property bool dragSnap: false
-    // Position latch for drag-to-top detection.
-    property bool wasAtEdge: false
-    // After a snap or a drag-initiated cancel, stay shut until the window has
-    // genuinely left the trigger line. The cooldown covers the async move that
-    // places the snapped window.
-    property bool snapArmBlocked: false
-    property double blockedAt: 0
-    property string dragAddr: ""
-
-    // Top-edge hotspot: dwell in the strip, no drag or click required.
-    readonly property int hoverDwellMs: 180
-    property double hoverEnteredAt: 0
 
     // Normalized zones; the first one is where the focused window goes.
     // Each entry is a distinct partition, and the later ones cover sessions
@@ -137,23 +119,6 @@ Scope {
     function wsId(c) {
         const w = c.workspace
         return String(w && typeof w === "object" ? w.id : (w || ""))
-    }
-
-    // Focus can stay on a shell surface during a title-bar drag, so pick the
-    // window physically under the pointer (smallest matching frame wins).
-    function dragCandidate() {
-        const px = root.cursorX, py = root.cursorY
-        if (px < 0 || py < 0) return null
-        let best = null, bestArea = Infinity
-        for (const c of root.clients) {
-            if (!c || c.mapped === false) continue
-            const g = root.geom(c)
-            if (px >= g.x && px <= g.x + g.w && py >= g.y - 48 && py <= g.y + g.h) {
-                const area = g.w * g.h
-                if (area < bestArea) { bestArea = area; best = c }
-            }
-        }
-        return best
     }
 
     // the floating windows of the focused window's workspace, in stack order
@@ -279,20 +244,6 @@ Scope {
         return g
     }
 
-    // Dragging up always targets the top of the usable area. A top bar or dock
-    // shifts that edge below itself; other edges leave it at the monitor top.
-    function snapTopEdge(mon) {
-        const res = mon && Array.isArray(mon.reserved) ? mon.reserved : [0, 0, 0, 0]
-        const reservedTop = Math.max(0, Number(res[1]) || 0)
-        return Number((mon && mon.y) || 0) + reservedTop
-    }
-
-    function inTopStrip(mon) {
-        if (!mon || root.cursorY < 0) return false
-        const monY = Number(mon.y) || 0
-        return root.cursorY >= monY - 12 && root.cursorY <= root.snapTopEdge(mon) + 56
-    }
-
     // zones rotated so the chosen zone is first (where the focused window lands)
     function zonesFor(preset, chosen) {
         const z = preset.zones
@@ -346,8 +297,6 @@ Scope {
 
     function apply(preset, chosen) {
         if (!preset || !root.active) {
-            root.snapArmBlocked = true
-            root.blockedAt = Date.now()
             root.open = false
             return
         }
@@ -367,9 +316,6 @@ Scope {
             addresses: placed.map(c => String(c.address || "")),
             monitor: monIdx
         }
-        root.endDragSnap()
-        root.snapArmBlocked = true
-        root.blockedAt = Date.now()
         root.selectedPreset = null
         root.open = false
     }
@@ -430,47 +376,6 @@ Scope {
         }
     }
 
-    // A window dragged to the top, or the pointer dwelling in the top strip,
-    // opens the arrangement picker. A new approach is needed to re-arm it after
-    // a snap/cancel.
-    function beginDragSnap() {
-        root.dragSnap = true
-        root.snapArmBlocked = false
-        root.blockedAt = 0
-        root.selectedPreset = null
-        root.hoverEnteredAt = 0
-        root.show()
-        // Keep the zones assigned to the dragged window even after focus moves
-        // to the picker.
-        const c = root.dragCandidate()
-        if (c && c.floating === true) {
-            root.active = c
-            root.dragAddr = norm(c.address)
-        }
-    }
-
-    // Hover-opened picker uses the same latch as a drag: it stays up until a
-    // layout/zone is chosen or the click-outside surface dismisses it.
-    function beginEdgeSnap(monIdx) {
-        root.dragSnap = true
-        root.snapArmBlocked = false
-        root.blockedAt = 0
-        root.selectedPreset = null
-        root.hoverEnteredAt = 0
-        root.showAt(root.cursorX, root.cursorY, Math.max(0, monIdx))
-        const c = root.dragCandidate() || root.active
-        if (c && c.floating === true) {
-            root.active = c
-            root.dragAddr = norm(c.address)
-        }
-    }
-
-    function endDragSnap() {
-        root.dragSnap = false
-        root.dragAddr = ""
-        root.hoverEnteredAt = 0
-    }
-
     function showAt(x, y, monitor) {
         root.targetMonitor = Math.max(0, Math.min(monitor || 0, root.monitors.length - 1))
         root.anchorX = x
@@ -500,12 +405,6 @@ Scope {
         }
     }
     function hide() {
-        const fromDrag = root.dragSnap
-        root.endDragSnap()
-        if (fromDrag) {
-            root.snapArmBlocked = true
-            root.blockedAt = Date.now()
-        }
         root.selectedPreset = null
         root.open = false
     }
@@ -524,47 +423,13 @@ Scope {
         triggeredOnStart: true
         onTriggered: {
             root.ask()
-            // Layout changes made outside the shell must reach the drag check.
+            // Layout changes made outside the shell must reach the picker.
             if (Date.now() - root.lastLayoutPoll > 2000) {
                 root.lastLayoutPoll = Date.now()
                 root.refreshLayout()
             }
-            // Keep geometry fresh even while closed: a drag-to-top gesture is
-            // detected from the window's moving position before any flyout is up.
             root.refresh()
-            const i = activeIndex()
-            const focused = i >= 0 ? root.clients[i] : null
-            const candidate = root.dragCandidate()
-            let picked = (candidate && candidate.floating === true) ? candidate : focused
-            if (root.dragSnap && root.dragAddr) {
-                const held = root.clients.find(c => norm(c.address) === root.dragAddr)
-                if (held) picked = held
-            }
-            root.active = picked || null
-            if (!root.open && root.active && root.active.floating === true && root.onFloatingWorkspace()) {
-                const monIdx = root.monitorAtCursor()
-                const mon = root.monitors[monIdx]
-                            || root.monitors[monitorIndex(root.active.monitor)]
-                            || { x: 0, y: 0, width: 1920, height: 1080 }
-                const atEdge = root.inTopStrip(mon)
-                // The cooldown ends only after the cursor has left the strip,
-                // so a snap or cancel cannot immediately reopen the flyout.
-                if (root.snapArmBlocked && Date.now() - root.blockedAt > 1200 && !atEdge) {
-                    root.snapArmBlocked = false
-                    root.blockedAt = 0
-                }
-                root.wasAtEdge = atEdge
-                if (!root.snapArmBlocked && monIdx >= 0 && atEdge) {
-                    if (root.hoverEnteredAt <= 0) root.hoverEnteredAt = Date.now()
-                    else if (Date.now() - root.hoverEnteredAt >= root.hoverDwellMs)
-                        root.beginEdgeSnap(monIdx)
-                } else {
-                    root.hoverEnteredAt = 0
-                }
-            } else {
-                root.hoverEnteredAt = 0
-                if (!root.active) root.wasAtEdge = false
-            }
+            root.active = root.clients[activeIndex()] || null
             if (root.open) {
                 const g = root.targetGeometry()
                 const mx = g.x, my = g.y, mw = g.w, mh = g.h
@@ -575,10 +440,9 @@ Scope {
                 const away = root.cursorX < left - 40 || root.cursorX > left + cw + 40
                              || root.cursorY < top - 40 || root.cursorY > top + ch + 40
 
-                // The drag-originated picker waits for a click on a layout or
-                // outside the card. Other openers still auto-dismiss when the
-                // pointer walks away.
-                if (!root.dragSnap && away && root.cursorX >= 0 && Date.now() - root.openedAt > 1200) root.hide()
+                // The pointer walking away dismisses the picker, so it never
+                // lingers after it was opened with the key.
+                if (away && root.cursorX >= 0 && Date.now() - root.openedAt > 1200) root.hide()
                 else refresh()
             }
         }
@@ -706,7 +570,6 @@ Scope {
         function show(): void { root.show() }
         function hide(): void { root.hide() }
         function toggle(): void { root.open ? root.hide() : root.show() }
-        function dragTop(): void { root.beginDragSnap() }
     }
 
     readonly property color c_bg: theme ? theme.bgBase : "#17171b"
@@ -735,8 +598,7 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             anchors { top: true; bottom: true; left: true; right: true }
 
-            // Clicking anywhere outside the card cancels the picker, including
-            // while it is waiting after a drag and no layout has been chosen.
+            // Clicking anywhere outside the card cancels the picker.
             MouseArea {
                 anchors.fill: parent
                 z: -1
