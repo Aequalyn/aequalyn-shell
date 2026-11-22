@@ -1,6 +1,8 @@
-// The visible lock surface: blurred wallpaper, clock, password field and the
-// fingerprint glyph. All colours come from the shell's injected theme.
+// The visible lock surface: wallpaper/theme background, style-driven layout,
+// clock, password field and fingerprint/glance hint. All colours come from the
+// shell's injected theme.
 import Quickshell
+import Quickshell.Io
 import QtQuick
 import QtQuick.Effects
 
@@ -30,8 +32,79 @@ Item {
   readonly property color fg: theme && theme.textPrimary ? theme.textPrimary : "#e0e0e0"
   readonly property color muted: theme && theme.textMuted ? theme.textMuted : "#8a8a8a"
   readonly property color accent: theme && theme.accentPrimary ? theme.accentPrimary : "#7aa2f7"
+  readonly property color accent2: theme && theme.accentSecondary ? theme.accentSecondary : accent
   readonly property color error: theme && theme.accentRed ? theme.accentRed : "#f7768e"
   readonly property string font: "JetBrainsMono Nerd Font"
+
+  readonly property string style: {
+    const s = String(root.lockStyle || "classic")
+    const known = ["classic","clean","mono","corner","pill","split","stack","dot","frame","glass","line","terminal","neon","poster","orbit","dashboard","zen","vertical","duo","card","nowplaying","binary","words","day","calendar","weather","quote","avatar","battery"]
+    return known.indexOf(s) >= 0 ? s : "classic"
+  }
+
+  readonly property bool isSolid: ["mono","dot","line","terminal","battery","binary","neon"].indexOf(style) >= 0
+  readonly property bool showWallpaper: wallpaper.status === Image.Ready && !isSolid
+  readonly property real blurAmount: {
+    if (style === "glass" || style === "zen" || style === "quote" || style === "nowplaying") return 0.75
+    if (style === "calendar" || style === "avatar") return 0.7
+    if (style === "words" || style === "orbit" || style === "stack") return 0.55
+    if (style === "clean" || style === "dashboard") return 0.45
+    if (style === "corner" || style === "split" || style === "frame") return 0.0
+    if (style === "classic" || style === "pill" || style === "duo" || style === "day" || style === "poster" || style === "weather" || style === "vertical" || style === "card") return 0.35
+    return 0.45
+  }
+  readonly property real dimAmount: {
+    if (style === "mono" || style === "dot" || style === "line" || style === "terminal" || style === "battery" || style === "binary" || style === "neon") return 1.0
+    if (style === "glass" || style === "calendar" || style === "avatar") return 0.24
+    if (style === "quote" || style === "nowplaying" || style === "zen") return 0.32
+    if (style === "corner" || style === "frame" || style === "split") return 0.35
+    return 0.18
+  }
+  readonly property string timeFormat: root.use24h ? "HH:mm" : "h:mm AP"
+  readonly property string timeText: Qt.formatTime(new Date(), root.timeFormat)
+  readonly property string dateText: Qt.formatDate(new Date(), "dddd, d MMMM")
+  readonly property string shortDateText: Qt.formatDate(new Date(), "ddd d")
+  property string infoText: ""
+  property string infoText2: ""
+
+  function refreshInfo() {
+    if (style === "weather") infoProc.command = [root.homeBin("aequalyn-lock-info"), "weather"]
+    else if (style === "words") infoProc.command = [root.homeBin("aequalyn-lock-info"), "words"]
+    else if (style === "quote") infoProc.command = [root.homeBin("aequalyn-lock-info"), "quote"]
+    else if (style === "day") infoProc.command = [root.homeBin("aequalyn-lock-info"), "day"]
+    else if (style === "battery") infoProc.command = [root.homeBin("aequalyn-lock-info"), "battery"]
+    else if (style === "binary") infoProc.command = [root.homeBin("aequalyn-lock-info"), "binary"]
+    else if (style === "dashboard") infoProc.command = ["bash", "-c", "b=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1); echo \"󰁹 ${b:---}%    󰔛 $(uptime -p | sed 's/up //')\""]
+    else if (style === "calendar") infoProc.command = ["bash", "-c", "cal -m | sed -e 's/&/\\&amp;/g'"]
+    else { root.infoText = ""; root.infoText2 = ""; return }
+    infoProc.running = false
+    infoProc.running = true
+  }
+  function homeBin(name) { return (Quickshell.env("HOME") || "") + "/.local/bin/" + name }
+
+  onStyleChanged: refreshInfo()
+  Component.onCompleted: { refreshInfo(); input.forceActiveFocus() }
+
+  Process {
+    id: infoProc
+    command: []
+    stdout: StdioCollector {
+      onStreamFinished: {
+        const t = String(text || "").trim()
+        if (root.style === "binary") {
+          const lines = t.split("\n")
+          root.infoText = lines[0] || ""
+          root.infoText2 = lines[1] || ""
+        } else {
+          root.infoText = t
+          root.infoText2 = ""
+        }
+      }
+    }
+  }
+
+  Timer { interval: 1000; repeat: true; running: true; onTriggered: { clockText.text = Qt.formatTime(new Date(), root.timeFormat); if (root.style === "binary") root.refreshInfo() } }
+  Timer { interval: 60000; repeat: true; running: ["weather","words","quote","day","battery","dashboard","calendar","nowplaying"].indexOf(root.style) >= 0; onTriggered: root.refreshInfo() }
 
   Image {
     id: wallpaper
@@ -44,96 +117,402 @@ Item {
     layer.enabled: true
   }
 
-  readonly property bool showWallpaper: wallpaper.status === Image.Ready && root.lockStyle !== "mono" && root.lockStyle !== "dot"
-  readonly property real blurAmount: root.lockStyle === "glass" ? 0.72 : (root.lockStyle === "clean" || root.lockStyle === "zen" ? 0.55 : 0.45)
-  readonly property real dimAmount: root.lockStyle === "glass" ? 0.28 : (root.lockStyle === "mono" || root.lockStyle === "dot" ? 1.0 : 0.18)
-
   MultiEffect {
     source: wallpaper
     anchors.fill: parent
     visible: root.showWallpaper
     autoPaddingEnabled: false
-    blurEnabled: true
+    blurEnabled: root.blurAmount > 0.01
     blurMax: 64
     blur: root.blurAmount
     blurMultiplier: 1.0
-    brightness: root.lockStyle === "glass" ? -0.14 : -0.08
-    saturation: root.lockStyle === "mono" ? -1.0 : 0.0
+    brightness: root.style === "glass" || root.style === "zen" || root.style === "quote" ? -0.14 : -0.08
+    saturation: 0.0
   }
 
   Rectangle {
     anchors.fill: parent
-    color: (root.lockStyle === "mono" || root.lockStyle === "dot") ? root.bg : "#000000"
+    color: root.isSolid ? root.bg : "#000000"
     opacity: root.showWallpaper ? root.dimAmount : 1
   }
 
-  readonly property string timeFormat: root.use24h ? "HH:mm" : "h:mm AP"
+  // ---- style helpers -------------------------------------------------------
+  readonly property bool showClock: style !== "dot"
+  readonly property bool showDate: ["dot","mono","line","terminal","binary","stack","duo","pill","poster","words","quote","day","battery","avatar","card","nowplaying","vertical"].indexOf(style) < 0 || ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon"].indexOf(style) >= 0
+  readonly property bool showUser: ["classic","avatar","card","split","terminal","dot"].indexOf(style) >= 0
+  readonly property bool centerLayout: ["corner","split","terminal","vertical","card","line"].indexOf(style) < 0
+  readonly property int clockSize: style === "mono" ? 120 : (style === "stack" || style === "duo" ? 110 : (style === "neon" ? 96 : (style === "clean" || style === "glass" || style === "orbit" || style === "dashboard" ? 72 : (style === "battery" ? 72 : (style === "corner" ? 64 : (style === "poster" ? 44 : (style === "nowplaying" ? 28 : (style === "frame" ? 40 : 64))))))))
+  readonly property color clockColor: style === "neon" ? root.accent : (style === "duo" ? root.fg : root.fg)
 
-  Timer {
-    id: clockTimer
-    interval: 1000
-    repeat: true
-    running: true
-    onTriggered: clockText.text = Qt.formatTime(new Date(), root.timeFormat)
+  // ---- special background shapes -------------------------------------------
+  Rectangle { // split left panel
+    visible: root.style === "split"
+    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+    width: parent.width * 0.34
+    color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.95)
+  }
+  Rectangle { // vertical left strip
+    visible: root.style === "vertical"
+    anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+    width: 160
+    color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.9)
+  }
+  Rectangle { // frame
+    visible: root.style === "frame"
+    anchors.centerIn: parent
+    width: parent.width * 0.96; height: parent.height * 0.92
+    radius: 24; color: "transparent"
+    border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.8)
+    border.width: 2
+  }
+  Rectangle { // glass card
+    visible: root.style === "glass"
+    anchors.centerIn: parent
+    width: Math.min(360, parent.width - 64); height: 300
+    radius: 24
+    color: Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.6)
+    border.color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.13)
+    border.width: 1
+  }
+  Rectangle { // orbit circle
+    visible: root.style === "orbit"
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: 20
+    width: 360; height: 360; radius: 180
+    color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.65)
+    border.width: 3
+    border.color: root.accent
+  }
+  Rectangle { // pill
+    visible: root.style === "pill"
+    anchors.centerIn: parent
+    width: Math.min(440, parent.width - 64); height: 70; radius: 35
+    color: Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.9)
+  }
+  Rectangle { // line accent
+    visible: root.style === "line"
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: 28
+    width: 300; height: 2; color: root.accent
+  }
+  Rectangle { // card bottom
+    visible: root.style === "card"
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom; anchors.bottomMargin: 80
+    width: Math.min(420, parent.width - 64); height: 150; radius: 18
+    color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.93)
+    border.color: root.border; border.width: 1
+  }
+  Rectangle { // calendar card
+    visible: root.style === "calendar"
+    anchors.centerIn: parent; anchors.verticalCenterOffset: 20
+    width: Math.min(640, parent.width - 64); height: 330; radius: 20
+    color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.86)
+    border.color: root.border; border.width: 1
   }
 
+  // ---- clock ---------------------------------------------------------------
   Text {
     id: clockText
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.top: parent.top
-    anchors.topMargin: Math.max(48, parent.height * 0.12)
-    text: Qt.formatTime(new Date(), root.timeFormat)
-    color: root.fg
+    visible: root.showClock && root.style !== "stack" && root.style !== "duo" && root.style !== "binary" && root.style !== "words" && root.style !== "quote" && root.style !== "vertical"
+    text: root.timeText
+    color: root.clockColor
     font.family: root.font
-    font.pixelSize: 64
+    font.pixelSize: root.clockSize
     font.bold: true
+    anchors.horizontalCenter: root.centerLayout || ["pill","frame","nowplaying","poster","orbit","glass","dashboard","day","weather","battery","avatar","calendar","neon"].indexOf(root.style) >= 0 ? parent.horizontalCenter : undefined
+    anchors.left: ["corner","split","terminal"].indexOf(root.style) >= 0 ? parent.left : undefined
+    anchors.leftMargin: root.style === "corner" ? 60 : (root.style === "split" ? parent.width * 0.08 : (root.style === "terminal" ? 80 : 0))
+    anchors.top: ["frame","nowplaying","terminal"].indexOf(root.style) >= 0 ? parent.top : undefined
+    anchors.topMargin: root.style === "frame" ? 70 : (root.style === "nowplaying" ? 60 : (root.style === "terminal" ? 80 : 0))
+    anchors.bottom: ["corner"].indexOf(root.style) >= 0 ? parent.bottom : undefined
+    anchors.bottomMargin: root.style === "corner" ? 110 : 0
+    anchors.verticalCenter: ["classic","clean","mono","pill","glass","orbit","dashboard","zen","neon","poster","duo","day","weather","battery","avatar","calendar","line","dot","quote","words","split"].indexOf(root.style) >= 0 ? parent.verticalCenter : undefined
+    anchors.verticalCenterOffset: {
+      if (root.style === "classic") return -40
+      if (root.style === "clean") return -20
+      if (root.style === "mono") return -40
+      if (root.style === "glass") return -30
+      if (root.style === "orbit") return -30
+      if (root.style === "dashboard") return -80
+      if (root.style === "zen") return -60
+      if (root.style === "neon") return -60
+      if (root.style === "poster") return -20
+      if (root.style === "day") return -60
+      if (root.style === "weather") return -90
+      if (root.style === "battery") return -60
+      if (root.style === "avatar") return -120
+      if (root.style === "calendar") return -60
+      if (root.style === "split") return -60
+      return 0
+    }
   }
 
+  // stack/duo split clocks
   Text {
+    visible: root.style === "stack" || root.style === "duo"
+    text: Qt.formatTime(new Date(), "HH")
+    color: root.fg
+    font.family: root.font; font.pixelSize: 110; font.bold: true
     anchors.horizontalCenter: parent.horizontalCenter
-    anchors.top: clockText.bottom
-    anchors.topMargin: 8
-    text: Qt.formatDate(new Date(), "dddd, d MMMM")
+    anchors.horizontalCenterOffset: root.style === "duo" ? -90 : 0
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: root.style === "stack" ? -90 : -40
+  }
+  Text {
+    visible: root.style === "stack" || root.style === "duo"
+    text: Qt.formatTime(new Date(), "mm")
+    color: root.accent
+    font.family: root.font; font.pixelSize: 110; font.bold: true
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.horizontalCenterOffset: root.style === "duo" ? 90 : 0
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: root.style === "stack" ? 50 : -40
+  }
+  Rectangle {
+    visible: root.style === "duo"
+    width: 4; height: 90; radius: 2
+    color: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.4)
+    anchors.centerIn: parent; anchors.verticalCenterOffset: -40
+  }
+
+  // vertical rotated clock
+  Item {
+    visible: root.style === "vertical"
+    width: 160; height: parent.height
+    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+    Text {
+      anchors.centerIn: parent
+      rotation: 90
+      text: root.timeText
+      color: root.fg
+      font.family: root.font; font.pixelSize: 72; font.bold: true
+    }
+  }
+
+  // binary/words/quote special main text
+  Text {
+    visible: root.style === "binary"
+    text: root.infoText || "·····"
+    color: root.accent
+    font.family: root.font; font.pixelSize: 40; font.bold: true
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -70
+  }
+  Text {
+    visible: root.style === "binary"
+    text: root.infoText2 || "·····"
+    color: root.fg
+    font.family: root.font; font.pixelSize: 40; font.bold: true
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 0
+  }
+  Text {
+    visible: root.style === "binary"
+    text: "16 8 4 2 1   ·   " + root.timeText
     color: root.muted
+    font.family: root.font; font.pixelSize: 11
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: 55
+  }
+  Text {
+    visible: root.style === "words"
+    text: root.infoText || root.timeText
+    color: root.fg
+    font.family: root.font; font.pixelSize: 54; font.bold: true
+    anchors.left: parent.left; anchors.leftMargin: 100
+    anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -40
+    width: parent.width - 200; wrapMode: Text.WordWrap
+  }
+  Text {
+    visible: root.style === "quote"
+    text: root.infoText ? "“" + root.infoText + "”" : "“Breathe.”"
+    color: root.fg
+    font.family: root.font; font.pixelSize: 28
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter; anchors.verticalCenterOffset: -40
+    width: Math.min(760, parent.width - 120); wrapMode: Text.WordWrap; horizontalAlignment: Text.AlignHCenter
+  }
+
+  // ---- date / user / info --------------------------------------------------
+  Text {
+    id: dateLabel
+    visible: ["classic","clean","corner","frame","glass","orbit","dashboard","zen","split","calendar","weather","neon","day","poster","battery","avatar","card","nowplaying","vertical","duo","stack","mono","line","terminal","words","quote"].indexOf(root.style) >= 0 && root.style !== "dot" && root.style !== "binary" && root.style !== "pill"
+    text: {
+      if (root.style === "terminal") return "last seen " + Qt.formatDateTime(new Date(), "ddd d MMM, HH:mm")
+      if (root.style === "calendar" || root.style === "split" || root.style === "clean" || root.style === "corner" || root.style === "frame" || root.style === "glass" || root.style === "orbit" || root.style === "dashboard" || root.style === "duo" || root.style === "day" || root.style === "weather" || root.style === "words") return root.dateText
+      if (root.style === "zen") return root.timeText + "  ·  " + Qt.formatDate(new Date(), "dddd")
+      if (root.style === "quote") return root.timeText + "  ·  " + Qt.formatDate(new Date(), "dddd")
+      if (root.style === "mono") return root.dateText
+      if (root.style === "line") return root.timeText + "  ·  " + root.dateText
+      if (root.style === "poster") return Qt.formatDate(new Date(), "d MMMM yyyy")
+      if (root.style === "avatar") return root.timeText + "  ·  " + Qt.formatDate(new Date(), "ddd d MMM")
+      if (root.style === "card") return root.timeText
+      if (root.style === "nowplaying") return root.dateText
+      if (root.style === "vertical") return root.shortDateText
+      if (root.style === "stack" || root.style === "neon") return root.dateText
+      if (root.style === "battery") return "up " + (root.infoText2 || "")
+      return root.dateText
+    }
+    color: (root.style === "split" || root.style === "neon" || root.style === "poster" || root.style === "quote") ? root.accent : (root.style === "mono" || root.style === "terminal" || root.style === "line" ? root.muted : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.75))
     font.family: root.font
-    font.pixelSize: 14
+    font.pixelSize: root.style === "poster" ? 13 : (root.style === "mono" || root.style === "line" || root.style === "terminal" ? 12 : 14)
+    anchors.horizontalCenter: ["corner","split","terminal","vertical","card"].indexOf(root.style) < 0 ? parent.horizontalCenter : undefined
+    anchors.left: ["corner","split","terminal","vertical","words"].indexOf(root.style) >= 0 ? parent.left : undefined
+    anchors.leftMargin: root.style === "corner" ? 64 : (root.style === "split" ? parent.width * 0.084 : (root.style === "terminal" ? 80 : (root.style === "vertical" ? 40 : (root.style === "words" ? 104 : 0))))
+    anchors.top: ["terminal","nowplaying","frame"].indexOf(root.style) >= 0 ? parent.top : undefined
+    anchors.topMargin: root.style === "terminal" ? 155 : (root.style === "nowplaying" ? 105 : (root.style === "frame" ? 130 : 0))
+    anchors.bottom: ["corner","vertical","card"].indexOf(root.style) >= 0 ? parent.bottom : undefined
+    anchors.bottomMargin: root.style === "corner" ? 70 : (root.style === "vertical" ? 40 : (root.style === "card" ? 175 : 0))
+    anchors.verticalCenter: ["classic","clean","mono","glass","orbit","dashboard","zen","neon","poster","duo","day","weather","battery","avatar","calendar","line","quote","split","stack","words"].indexOf(root.style) >= 0 ? parent.verticalCenter : undefined
+    anchors.verticalCenterOffset: {
+      if (root.style === "classic") return 30
+      if (root.style === "clean") return 45
+      if (root.style === "mono") return 30
+      if (root.style === "glass") return 25
+      if (root.style === "orbit") return 25
+      if (root.style === "dashboard") return -20
+      if (root.style === "zen") return -10
+      if (root.style === "neon") return 10
+      if (root.style === "poster") return 30
+      if (root.style === "duo") return 20
+      if (root.style === "day") return 25
+      if (root.style === "weather") return -30
+      if (root.style === "battery") return 25
+      if (root.style === "avatar") return -70
+      if (root.style === "calendar") return 0
+      if (root.style === "split") return 0
+      if (root.style === "stack") return 130
+      if (root.style === "words") return 10
+      if (root.style === "quote") return 20
+      if (root.style === "line") return -60
+      return 0
+    }
   }
 
   Text {
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.bottom: field.top
-    anchors.bottomMargin: 14
-    text: root.userName
-    color: root.fg
+    visible: root.showUser && root.style !== "terminal" && root.style !== "card" && root.style !== "avatar"
+    text: root.style === "dot" ? "Hi, " + root.userName : (root.style === "split" ? "Hi, " + root.userName : root.userName)
+    color: root.style === "dot" || root.style === "split" ? root.muted : root.fg
     font.family: root.font
-    font.pixelSize: 18
-    font.bold: true
-    visible: root.userName !== ""
+    font.pixelSize: root.style === "dot" ? 16 : (root.style === "split" ? 13 : 22)
+    font.bold: root.style === "classic"
+    anchors.horizontalCenter: ["split","terminal"].indexOf(root.style) < 0 ? parent.horizontalCenter : undefined
+    anchors.left: root.style === "split" ? parent.left : undefined
+    anchors.leftMargin: root.style === "split" ? parent.width * 0.084 : 0
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: root.style === "classic" ? -100 : (root.style === "dot" ? -40 : (root.style === "split" ? 50 : -100))
   }
+
+  // terminal prompt
+  Text {
+    visible: root.style === "terminal"
+    text: root.userName + "@aequalyn ~ $ unlock"
+    color: root.fg
+    font.family: root.font; font.pixelSize: 16
+    anchors.left: parent.left; anchors.leftMargin: 80
+    anchors.top: parent.top; anchors.topMargin: 120
+  }
+
+  // avatar image
+  Image {
+    visible: root.style === "avatar" || root.style === "card"
+    source: "file://" + (Quickshell.env("HOME") || "") + "/.face"
+    width: root.style === "avatar" ? 150 : 72; height: width
+    fillMode: Image.PreserveAspectCrop
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.horizontalCenterOffset: root.style === "card" ? -140 : 0
+    anchors.verticalCenter: root.style === "avatar" ? parent.verticalCenter : undefined
+    anchors.verticalCenterOffset: root.style === "avatar" ? -170 : 0
+    anchors.bottom: root.style === "card" ? parent.bottom : undefined
+    anchors.bottomMargin: root.style === "card" ? 120 : 0
+    layer.enabled: true
+    layer.effect: MultiEffect { maskEnabled: true; maskThresholdMin: 0.5; maskSpreadAtMin: 1.0 }
+  }
+  Rectangle { // avatar ring fallback border
+    visible: (root.style === "avatar" || root.style === "card")
+    width: (root.style === "avatar" ? 150 : 72) + 6; height: width; radius: width/2
+    color: "transparent"
+    border.width: root.style === "avatar" ? 3 : 2
+    border.color: root.accent
+    anchors.centerIn: parent.children[parent.children.length - 2]
+  }
+
+  // ---- extra info labels ---------------------------------------------------
+  Text {
+    visible: root.style === "dashboard" || root.style === "weather" || root.style === "day" || root.style === "battery"
+    text: root.infoText
+    color: root.style === "day" ? root.accent : (root.style === "battery" ? root.accent : root.fg)
+    font.family: root.font; font.pixelSize: root.style === "weather" ? 20 : 14
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: root.style === "dashboard" ? 30 : (root.style === "weather" ? -20 : (root.style === "day" ? -20 : 0))
+  }
+  Text {
+    visible: root.style === "nowplaying"
+    text: root.infoText
+    color: root.accent
+    font.family: root.font; font.pixelSize: 12
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    anchors.verticalCenterOffset: 100
+  }
+
+  // ---- password field ------------------------------------------------------
+  readonly property bool fieldBottom: ["corner","frame","card","mono","nowplaying","poster","vertical"].indexOf(root.style) >= 0
+  readonly property bool fieldLeft: ["split","terminal","words"].indexOf(root.style) >= 0
+  readonly property bool fieldPill: root.style === "pill"
 
   Rectangle {
     id: field
-    width: Math.min(420, parent.width - 64)
-    height: 56
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.verticalCenter: parent.verticalCenter
-    anchors.verticalCenterOffset: 48
-    radius: 12
-    color: root.surface
-    opacity: 0.94
-    border.color: root.failureMessage ? root.error : (input.activeFocus ? root.accent : root.border)
-    border.width: input.activeFocus || root.failureMessage ? 2 : 1
+    width: root.fieldPill ? 250 : (root.style === "terminal" ? 420 : (root.style === "line" ? 300 : Math.min(root.style === "dashboard" || root.style === "nowplaying" || root.style === "frame" || root.style === "glass" || root.style === "orbit" || root.style === "split" ? 280 : 260, parent.width - 64)))
+    height: root.style === "terminal" ? 36 : (root.style === "line" ? 44 : (root.style === "pill" ? 46 : 44))
+    radius: root.style === "terminal" || root.style === "line" ? 0 : (root.style === "pill" ? 23 : (["clean","nowplaying","weather","day","quote","avatar","poster","dot"].indexOf(root.style) >= 0 ? 22 : 10))
+    color: root.style === "terminal" || root.style === "line" || root.style === "dot" ? root.bg : (root.style === "mono" ? root.bg : Qt.rgba(root.surface.r, root.surface.g, root.surface.b, 0.92))
+    border.color: root.failureMessage ? root.error : (input.activeFocus ? root.accent : (root.style === "line" ? "transparent" : root.border))
+    border.width: root.style === "line" || root.style === "dot" || root.style === "terminal" ? 0 : (input.activeFocus || root.failureMessage ? 2 : 1)
+    anchors.horizontalCenter: (!root.fieldLeft && !root.fieldPill) ? parent.horizontalCenter : undefined
+    anchors.horizontalCenterOffset: root.style === "card" ? 40 : (root.style === "corner" ? 0 : 0)
+    anchors.left: root.fieldLeft ? parent.left : (root.fieldPill ? undefined : undefined)
+    anchors.leftMargin: root.style === "split" ? parent.width * 0.08 : (root.style === "terminal" ? 80 : (root.style === "words" ? 100 : 0))
+    anchors.right: root.style === "corner" ? parent.right : undefined
+    anchors.rightMargin: root.style === "corner" ? 60 : 0
+    anchors.bottom: root.fieldBottom ? parent.bottom : undefined
+    anchors.bottomMargin: root.style === "corner" ? 70 : (root.style === "frame" ? 90 : (root.style === "card" ? 105 : (root.style === "mono" || root.style === "nowplaying" || root.style === "poster" ? 80 : (root.style === "vertical" ? 60 : 0))))
+    anchors.verticalCenter: (!root.fieldBottom && root.style !== "terminal") ? parent.verticalCenter : undefined
+    anchors.verticalCenterOffset: {
+      if (root.fieldBottom) return 0
+      if (root.style === "classic") return 80
+      if (root.style === "clean") return 100
+      if (root.style === "glass") return 80
+      if (root.style === "orbit") return 100
+      if (root.style === "dashboard") return 100
+      if (root.style === "zen" || root.style === "quote") return 80
+      if (root.style === "neon") return 90
+      if (root.style === "split") return 120
+      if (root.style === "stack") return 140
+      if (root.style === "duo") return 100
+      if (root.style === "day" || root.style === "weather") return 80
+      if (root.style === "battery") return 90
+      if (root.style === "avatar") return 40
+      if (root.style === "calendar") return 90
+      if (root.style === "line") return 0
+      if (root.style === "dot") return 10
+      if (root.style === "words") return 90
+      if (root.style === "pill") return 0
+      return 90
+    }
+    anchors.top: root.style === "terminal" ? parent.top : undefined
+    anchors.topMargin: root.style === "terminal" ? 200 : 0
+    // pill layout: field sits right side of pill
+    x: root.fieldPill ? (parent.width - pillShape.width) / 2 + pillShape.width - width - 12 : x
 
     TextInput {
       id: input
-      anchors {
-        left: parent.left
-        right: parent.right
-        top: parent.top
-        bottom: parent.bottom
-        leftMargin: 18
-        rightMargin: 56
-      }
+      anchors.fill: parent
+      anchors.leftMargin: 16; anchors.rightMargin: 44
       verticalAlignment: TextInput.AlignVCenter
       echoMode: TextInput.Password
       passwordCharacter: "•"
@@ -141,66 +520,66 @@ Item {
       focus: true
       color: root.fg
       font.family: root.font
-      font.pixelSize: 18
+      font.pixelSize: 16
       selectByMouse: true
-      onAccepted: {
-        const value = text
-        text = ""
-        if (value) root.submitPassword(value)
-      }
+      onAccepted: { const value = text; text = ""; if (value) root.submitPassword(value) }
       onTextEdited: root.clearFailure()
       Keys.onPressed: function(event) {
-        if (event.key === Qt.Key_Space && text === "") {
-          root.triggerGlance()
-          event.accepted = true
-        }
+        if (event.key === Qt.Key_Space && text === "") { root.triggerGlance(); event.accepted = true }
       }
     }
 
     Text {
-      anchors {
-        right: parent.right
-        rightMargin: 18
-        verticalCenter: parent.verticalCenter
-      }
+      anchors.right: parent.right; anchors.rightMargin: 14
+      anchors.verticalCenter: parent.verticalCenter
       text: root.fingerprintConfigured ? "󰏖" : "󰌾"
-      color: root.fingerprintConfigured
-        ? (root.fingerprintClaimed ? root.accent : root.muted) : root.muted
-      font.family: root.font
-      font.pixelSize: 20
+      color: root.fingerprintConfigured ? (root.fingerprintClaimed ? root.accent : root.muted) : root.muted
+      font.family: root.font; font.pixelSize: 18
       opacity: root.authenticating ? 0.5 : 1
+    }
+
+    // placeholder
+    Text {
+      anchors.left: parent.left; anchors.leftMargin: 16
+      anchors.verticalCenter: parent.verticalCenter
+      visible: input.text.length === 0 && !input.activeFocus
+      text: root.style === "terminal" ? "password:" : (root.style === "zen" ? "Breathe, then type" : "")
+      color: root.style === "terminal" ? root.accent : root.muted
+      font.family: root.font; font.pixelSize: 14
     }
   }
 
+  // pill needs the field positioned relative to pill shape
+  Item {
+    id: pillShape
+    visible: root.style === "pill"
+    anchors.centerIn: parent
+    width: Math.min(440, parent.width - 64); height: 70
+  }
+
   Text {
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.top: field.bottom
-    anchors.topMargin: 14
+    visible: root.style !== "dot" && root.style !== "line"
+    anchors.horizontalCenter: field.horizontalCenter
+    anchors.top: field.bottom; anchors.topMargin: 12
     text: root.failureMessage
       ? root.failureMessage + (root.failedAttempts > 1 ? " (" + root.failedAttempts + ")" : "")
       : (root.glanceScanning ? "Scanning face…" : (root.authenticating ? "Checking…" : "Password, then Enter · Space for face unlock"))
     color: root.failureMessage ? root.error : root.muted
-    font.family: root.font
-    font.pixelSize: 13
+    font.family: root.font; font.pixelSize: 12
   }
 
   Text {
     anchors.horizontalCenter: parent.horizontalCenter
-    anchors.bottom: parent.bottom
-    anchors.bottomMargin: 28
+    anchors.bottom: parent.bottom; anchors.bottomMargin: 28
     text: "Aequalyn"
     color: root.muted
-    font.family: root.font
-    font.pixelSize: 12
+    font.family: root.font; font.pixelSize: 12
     opacity: 0.7
+    visible: root.style !== "terminal" && root.style !== "corner"
   }
 
   Connections {
     target: LockService
-    function onSessionSecureChanged() {
-      if (root.sessionSecure) input.forceActiveFocus()
-    }
+    function onSessionSecureChanged() { if (root.sessionSecure) input.forceActiveFocus() }
   }
-
-  Component.onCompleted: input.forceActiveFocus()
 }
