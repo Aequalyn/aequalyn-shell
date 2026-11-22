@@ -10,7 +10,19 @@ Item {
   id: root
   property var theme: AequalynDefaultTheme {}
 
-  onThemeChanged: LockService.theme = root.theme
+  function syncSettings() {
+    LockService.theme = root.theme
+    LockService.use24h = AequalynSettings.use24h
+    LockService.lockStyle = AequalynSettings.lockStyle
+  }
 
-  Component.onCompleted: LockService.theme = root.theme
+  onThemeChanged: syncSettings()
+
+  Connections {
+    target: AequalynSettings
+    function onUse24hChanged() { root.syncSettings() }
+    function onLockStyleChanged() { root.syncSettings() }
+  }
+
+  Component.onCompleted: syncSettings()
 }

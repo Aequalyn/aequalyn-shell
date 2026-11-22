@@ -10,6 +10,8 @@ Item {
   property var theme: null
   property string wallpaperPath: ""
   property string userName: ""
+  property bool use24h: true
+  property string lockStyle: "classic"
   property string failureMessage: ""
   property int failedAttempts: 0
   property bool authenticating: false
@@ -42,31 +44,37 @@ Item {
     layer.enabled: true
   }
 
+  readonly property bool showWallpaper: wallpaper.status === Image.Ready && root.lockStyle !== "mono" && root.lockStyle !== "dot"
+  readonly property real blurAmount: root.lockStyle === "glass" ? 0.72 : (root.lockStyle === "clean" || root.lockStyle === "zen" ? 0.55 : 0.45)
+  readonly property real dimAmount: root.lockStyle === "glass" ? 0.28 : (root.lockStyle === "mono" || root.lockStyle === "dot" ? 1.0 : 0.18)
+
   MultiEffect {
     source: wallpaper
     anchors.fill: parent
-    visible: wallpaper.status === Image.Ready
+    visible: root.showWallpaper
     autoPaddingEnabled: false
     blurEnabled: true
-    blurMax: 48
-    blur: 0.45
+    blurMax: 64
+    blur: root.blurAmount
     blurMultiplier: 1.0
-    brightness: -0.08
-    saturation: 0.0
+    brightness: root.lockStyle === "glass" ? -0.14 : -0.08
+    saturation: root.lockStyle === "mono" ? -1.0 : 0.0
   }
 
   Rectangle {
     anchors.fill: parent
-    color: "#000000"
-    opacity: wallpaper.status === Image.Ready ? 0.18 : 1
+    color: (root.lockStyle === "mono" || root.lockStyle === "dot") ? root.bg : "#000000"
+    opacity: root.showWallpaper ? root.dimAmount : 1
   }
+
+  readonly property string timeFormat: root.use24h ? "HH:mm" : "h:mm AP"
 
   Timer {
     id: clockTimer
     interval: 1000
     repeat: true
     running: true
-    onTriggered: clockText.text = Qt.formatTime(new Date(), "HH:mm")
+    onTriggered: clockText.text = Qt.formatTime(new Date(), root.timeFormat)
   }
 
   Text {
@@ -74,7 +82,7 @@ Item {
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.top: parent.top
     anchors.topMargin: Math.max(48, parent.height * 0.12)
-    text: Qt.formatTime(new Date(), "HH:mm")
+    text: Qt.formatTime(new Date(), root.timeFormat)
     color: root.fg
     font.family: root.font
     font.pixelSize: 64

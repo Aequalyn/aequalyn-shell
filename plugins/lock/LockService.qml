@@ -13,6 +13,8 @@ Singleton {
   id: root
 
   property var theme: null
+  property bool use24h: true
+  property string lockStyle: "classic"
 
   readonly property string home: Quickshell.env("HOME") || ""
   readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME") || ""
@@ -330,6 +332,8 @@ Singleton {
         theme: root.theme
         wallpaperPath: root.wallpaperPath
         userName: root.userName
+        use24h: root.use24h
+        lockStyle: root.lockStyle
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
         authenticating: root.authenticating
