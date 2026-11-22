@@ -37,8 +37,8 @@ Scope {
     // every module uses, so the Store dresses like the control center on any theme
     property var theme: AequalynDefaultTheme {}
     // words in a plain sans, numbers, paths, keys and icons in the shell's mono
-    readonly property string sans: "sans-serif"
-    readonly property string mono: "JetBrainsMono Nerd Font"
+    readonly property string sans: Cc.sans
+    readonly property string mono: Cc.mono
     property bool open: false
     property string section: "home"
     property string category: ""
@@ -300,6 +300,7 @@ Scope {
         root.settingCat = root.isSettingSource(source) && source !== "Settings" ? source : "";
         root.pick = 0;
     }
+
     function searchFromTitle() {
         if (!root.queryActive) return;
         root.open = true;
@@ -1158,7 +1159,6 @@ Scope {
         if (open && section === "appimage") checkHandler();
         if (open && (section === "theme" || section === "wallpaper")) root.syncThemeRepo();
     }
-
     // ---- web apps: websites in their own window ----------------------------------------
     // aequalyn-webapp owns everything (the desktop entries, the Super + Shift
     // binds, ~/.config/aequalyn/webapps.json); this page shows what it holds and
@@ -1510,25 +1510,27 @@ Scope {
         property bool primary: false
         property bool danger: false
         signal clicked()
-        implicitHeight: 32
-        implicitWidth: row.implicitWidth + 26
-        radius: 8
-        color: primary ? (ma.containsMouse ? root.theme.bgHover : root.theme.bgSelected)
-             : ma.containsMouse ? root.theme.bgHover : root.theme.bgSurface
-        border.width: 1
-        border.color: danger && ma.containsMouse ? root.theme.accentRed : primary ? root.theme.accentPrimary : root.theme.bgBorder
-        opacity: enabled ? 1 : 0.45
-        Behavior on color { ColorAnimation { duration: 120 } }
+        implicitHeight: 24
+        implicitWidth: row.implicitWidth + 16
+        radius: 6
+        color: primary ? root.theme.accentPrimary
+             : danger && ma.containsMouse ? Cc.alpha(root.theme.accentRed, 0.10)
+             : ma.containsMouse ? Cc.alpha(root.theme.textPrimary, 0.12)
+             : Cc.alpha(root.theme.textPrimary, 0.05)
+        border.width: !primary && danger ? 1 : 0
+        border.color: root.theme.accentRed
+        opacity: enabled ? 1 : 0.4
+        Behavior on color { ColorAnimation { duration: 90 } }
         Accessible.role: Accessible.Button
         Accessible.name: text
-        readonly property color ink: danger && ma.containsMouse ? root.theme.accentRed
-                       : primary ? root.theme.accentPrimary : root.theme.textPrimary
+        readonly property color ink: primary ? root.theme.bgBase
+                       : danger && ma.containsMouse ? root.theme.accentRed : root.theme.textPrimary
         Row {
             id: row
             anchors.centerIn: parent
-            spacing: 7
-            Text { visible: btn.icon !== ""; text: btn.icon; color: btn.ink; font.family: root.mono; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
-            Text { visible: btn.text !== ""; text: btn.text; color: btn.ink; font.family: root.sans; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+            spacing: 5
+            Text { visible: btn.icon !== ""; text: btn.icon; color: btn.ink; font.family: root.mono; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Text { visible: btn.text !== ""; text: btn.text; color: btn.ink; opacity: btn.primary ? 1 : 0.85; font.family: root.sans; font.pixelSize: 11; font.weight: btn.primary ? Font.DemiBold : Font.Normal; anchors.verticalCenter: parent.verticalCenter }
         }
         MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: btn.clicked() }
     }
@@ -1540,25 +1542,25 @@ Scope {
         signal accepted()
         function forceInput() { input.forceActiveFocus() }
         Layout.fillWidth: true
-        implicitHeight: 38
-        radius: 10
-        color: root.theme.bgBase
+        implicitHeight: 34
+        radius: 6
+        color: Cc.alpha(root.theme.textPrimary, 0.05)
         border.width: 1
-        border.color: input.activeFocus ? root.theme.accentPrimary : root.theme.bgBorder
-        Behavior on border.color { ColorAnimation { duration: 120 } }
+        border.color: Cc.alpha(root.theme.textPrimary, input.activeFocus ? 0.28 : 0.08)
+        Behavior on border.color { ColorAnimation { duration: 90 } }
         MouseArea { anchors.fill: parent; onClicked: input.forceActiveFocus() }
         TextInput {
             id: input
             anchors.left: parent.left
-            anchors.leftMargin: 12
+            anchors.leftMargin: 10
             anchors.right: parent.right
-            anchors.rightMargin: 12
+            anchors.rightMargin: 10
             verticalAlignment: TextInput.AlignVCenter
             color: root.theme.textPrimary
             selectionColor: root.theme.accentPrimary
             selectedTextColor: root.theme.bgBase
             font.family: root.sans
-            font.pixelSize: 13
+            font.pixelSize: 12
             clip: true
             selectByMouse: true
             onAccepted: fld.accepted()
@@ -1579,14 +1581,16 @@ Scope {
         property string title: ""
         property string hint: ""
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 6
         Text {
             visible: box.title !== ""
-            text: box.title
+            text: box.title.toUpperCase()
             color: root.theme.textSecondary
             font.family: root.sans
-            font.pixelSize: 13
+            font.pixelSize: 9
             font.weight: Font.DemiBold
+            font.letterSpacing: 1
+            opacity: 0.45
             Layout.fillWidth: true
             Layout.leftMargin: 2
         }
@@ -1595,27 +1599,28 @@ Scope {
             text: box.hint
             color: root.theme.textMuted
             font.family: root.sans
-            font.pixelSize: 12
+            font.pixelSize: 10
             wrapMode: Text.WordWrap
+            opacity: 0.55
             Layout.fillWidth: true
             Layout.leftMargin: 2
             Layout.topMargin: -4
         }
-        // the group: a quiet box around the content
+        // the group: the quiet framed group a control center page uses
         Rectangle {
             Layout.fillWidth: true
             Layout.topMargin: 2
             implicitHeight: body.implicitHeight + 8
-            radius: 12
-            color: root.theme.bgSurface
+            radius: 6
+            color: Cc.alpha(root.theme.textPrimary, 0.03)
             border.width: 1
-            border.color: root.theme.bgBorder
+            border.color: Cc.alpha(root.theme.textPrimary, 0.08)
             ColumnLayout {
                 id: body
                 x: 4
                 y: 4
                 width: parent.width - 8
-                spacing: 8
+                spacing: 6
             }
         }
     }
@@ -1623,10 +1628,10 @@ Scope {
         property string text: ""
         property color tone: root.theme.accentGreen
         implicitWidth: pt.implicitWidth + 16
-        implicitHeight: 22
-        radius: 8
-        color: Qt.rgba(tone.r, tone.g, tone.b, 0.14)
-        Text { id: pt; anchors.centerIn: parent; text: parent.text; color: parent.tone; font.family: root.mono; font.pixelSize: 11; font.weight: Font.DemiBold }
+        implicitHeight: 20
+        radius: 4
+        color: Cc.alpha(tone, 0.14)
+        Text { id: pt; anchors.centerIn: parent; text: parent.text; color: parent.tone; font.family: root.mono; font.pixelSize: 10; font.weight: Font.DemiBold }
     }
 
     // ‹ and ›, as the control center steps its choices
@@ -2210,24 +2215,21 @@ Scope {
                         text: card.label
                         color: root.theme.textPrimary
                         font.family: root.sans
-                        font.pixelSize: 12
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
+                        font.pixelSize: 12; font.weight: Font.DemiBold
+                        elide: Text.ElideRight; Layout.fillWidth: true
                     }
                     Text {
                         text: card.stateText
                         color: card.stateTone
                         font.family: root.mono
                         font.pixelSize: 10
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
+                        elide: Text.ElideRight; Layout.fillWidth: true
                     }
                 }
             }
             Text {
                 Layout.fillWidth: true
-                text: modelData.description || ""
+                text: root.aiMeta(modelData).about || modelData.description || ""
                 color: root.theme.textSecondary
                 font.family: root.sans
                 font.pixelSize: 11
@@ -2254,14 +2256,14 @@ Scope {
                 spacing: 6
                 Btn {
                     Layout.fillWidth: true
-                    implicitHeight: 24
+                    implicitHeight: 26
                     text: "Update"
                     enabled: !root.busy
                     onClicked: card.updateRequested()
                 }
                 Btn {
                     Layout.fillWidth: true
-                    implicitHeight: 24
+                    implicitHeight: 26
                     text: "Remove"
                     danger: true
                     enabled: !root.busy
@@ -2469,7 +2471,7 @@ Scope {
         Layout.preferredWidth: 180
         Layout.minimumWidth: 120
         Layout.preferredHeight: 208
-        radius: 12
+        radius: 6
         color: root.theme.bgBase
         border.width: 1
         border.color: card.on ? root.theme.accentPrimary : root.theme.bgBorder
@@ -2660,7 +2662,7 @@ Scope {
         Layout.preferredWidth: 180
         Layout.minimumWidth: 120
         Layout.preferredHeight: 208
-        radius: 12
+        radius: 6
         color: root.theme.bgBase
         border.width: 1
         border.color: root.theme.bgBorder
@@ -2891,7 +2893,7 @@ Scope {
             }
             Keys.onEscapePressed: {
                 // the picker over the page closes first, then an app page goes
-                // back to where it was opened from, then the window
+                // back to where it was opened from, then the window.
                 if (root.pickOpen) { root.pickOpen = false; return; }
                 if (root.appPage) { root.backFromApp(); return; }
                 root.open = false;
@@ -3053,14 +3055,14 @@ Scope {
                                 required property var modelData
                                 readonly property bool on: root.category === modelData.key
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 56
+                                Layout.preferredHeight: 64
                                 Accessible.role: Accessible.PageTab
                                 Accessible.name: modelData.title
                                 Rectangle {
                                     id: catBox
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    y: 4
-                                    width: 36; height: 30; radius: 8
+                                    y: 6
+                                    width: 40; height: 34; radius: 10
                                     color: catItem.on ? root.theme.bgSelected : catMa.containsMouse ? root.theme.bgSurface : "transparent"
                                     border.width: catItem.on ? 1 : 0
                                     border.color: root.theme.accentPrimary
@@ -3069,20 +3071,20 @@ Scope {
                                         text: catItem.modelData.icon
                                         color: catItem.on ? root.theme.accentPrimary : root.theme.textSecondary
                                         font.family: root.mono
-                                        font.pixelSize: 15
+                                        font.pixelSize: 17
                                     }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     anchors.top: catBox.bottom
-                                    anchors.topMargin: 3
+                                    anchors.topMargin: 4
                                     width: parent.width - 4
                                     text: catItem.modelData.title
                                     elide: Text.ElideRight
                                     horizontalAlignment: Text.AlignHCenter
                                     color: catItem.on ? root.theme.textPrimary : root.theme.textMuted
                                     font.family: root.mono
-                                    font.pixelSize: 10
+                                    font.pixelSize: 11
                                     font.bold: catItem.on
                                 }
                                 MouseArea { id: catMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.openCategory(modelData.key) }
@@ -4061,8 +4063,9 @@ Scope {
                             visible: root.jobTitle !== ""
                             Layout.fillWidth: true
                             Layout.preferredHeight: 170
-                            color: root.theme.bgSurface
-                            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: root.theme.bgBorder }
+                            radius: 6
+                            color: Cc.alpha(root.theme.textPrimary, 0.03)
+                            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Cc.alpha(root.theme.textPrimary, 0.08) }
                             ColumnLayout {
                                 anchors.fill: parent
                                 anchors.margins: 12
@@ -4493,7 +4496,7 @@ Scope {
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 172
-                                radius: 12
+                                radius: 6
                                 color: root.theme.bgSurface
                                 border.width: 1
                                 border.color: root.theme.bgBorder
@@ -4613,7 +4616,7 @@ Scope {
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         Layout.minimumHeight: 150
-                                        radius: 12
+                                        radius: 6
                                         color: root.theme.bgSurface
                                         border.width: 1
                                         border.color: root.theme.bgBorder
