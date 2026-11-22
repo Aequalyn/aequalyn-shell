@@ -20,6 +20,10 @@ import Quickshell.Wayland
 import "root:/settings"
 import "../../settings/center"
 import "root:/settings/center/Pages.js" as Pages
+import "root:/plugins/installMenu/InstallOptions.js" as InstallOptions
+import "root:/plugins/store/AppIcons.js" as AppIcons
+import "root:/plugins/store/PackageIds.js" as PackageIds
+import "root:/plugins/store/AppMeta.js" as AppMeta
 import "root:/style/backdrop"
 import "../../style/AequalynLooks.js" as Looks
 import "../../Plugins.js" as PluginRegistry
@@ -66,8 +70,168 @@ Scope {
         return root.apps.find(a => root.normKey(a.name) === name || root.normKey(a.id) === name) || null;
     }
     function appIcon(c, r) {
-        if (c && c.icon) return "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + c.icon + ".png";
-        return r.icon || "";
+        return root.appIconUrl(c && c.icon ? c.icon : (r && r.icon), (r && (r.name || r.id)) || "");
+    }
+    // The app list uses the same categories as Super + I. Everything that is not
+    // one of those curated choices stays in All and under Uncategorised.
+    // AI stays one place: the AI tools page. Super + I keeps its AI group, but
+    // the Store's Apps rail does not repeat it.
+    readonly property var appCategories: InstallOptions.categories
+        .filter(c => c.key !== "all" && c.key !== "ai")
+    property string appCategory: "all"
+    // A category shows at most 30 apps: two pages of the same 5x3 grid.
+    readonly property int categoryAppLimit: 30
+    // Only the picked category gets a page. Web apps, AI tools and AppImages are
+    // their own sections; All Apps keeps its search and source filters.
+    readonly property var currentAppCategory: root.section !== "apps" || root.appCategory === "all"
+        ? null : (root.appCategories.find(c => c.key === root.appCategory) || null)
+    function backendKey(source) {
+        const s = String(source || "").toLowerCase();
+        if (s === "pacman") return "arch";
+        return s;
+    }
+    function optionForResult(r) {
+        if (!r) return null;
+        const src = root.backendKey(r.source), id = root.normKey(r.id);
+        const name = root.normKey(r.name || r.id), curated = root.curatedFor(r);
+        const curatedName = curated ? root.normKey(curated.name) : "";
+        return InstallOptions.options.find(o => {
+            const c = o.cmd || [];
+            if (c[0] !== "qs" || c[4] !== "package") return false;
+            if (root.backendKey(c[5]) === src && root.normKey(c[6]) === id) return true;
+            const label = root.normKey(o.label);
+            return label !== "" && (label === name || (curatedName !== "" && label === curatedName));
+        }) || null;
+    }
+    function categoryForResult(r) {
+        const o = root.optionForResult(r);
+        return o && o.category ? o.category : "other";
+    }
+    function appCategoryCount(key) {
+        const pool = root.appPool || [];
+        return key === "all" ? pool.length : root.appsInCategory(key).length;
+    }
+    // A category page shows its own apps: matches from the current app list first,
+    // then the curated Super + I packages for that group. Live search rows win,
+    // and one app never appears twice because source and id are the same.
+    function appsInCategory(key) {
+        const seen = {}, out = [];
+        function add(r) {
+            if (!r || !r.source || !r.id) return;
+            const sig = root.backendKey(r.source) + "|" + root.normKey(r.id);
+            if (seen[sig]) return;
+            seen[sig] = true;
+            out.push(r);
+        }
+        for (const r of root.appPool || [])
+            if (root.categoryForResult(r) === key) add(r);
+        const curated = InstallOptions.options
+            .filter(o => o.category === key && root.packageOption(o))
+            .map(o => root.optionResult(o));
+        for (const r of curated)
+            if (root.foundSource !== "Installed" || r.installed) add(r);
+        return out;
+    }
+    // One card per app, with the same four install buttons the Popular apps grid
+    // uses. Sources for the same app are merged, so it never appears twice.
+    function appCardShape(r) {
+        const via = root.backendKey(r.source);
+        const a = { name: r.name || r.id || "", about: r.about || "",
+                    icon: root.appIconUrl(r.icon, r.name || r.id),
+                    pacman: r.pacman || "", aur: r.aur || "",
+                    flatpak: r.flatpak || "", snap: r.snap || "" };
+        if (via === "arch") a.pacman = r.id;
+        else if (via === "aur") a.aur = r.id;
+        else if (via === "flatpak") a.flatpak = r.id;
+        else if (via === "snap") a.snap = r.id;
+        return a;
+    }
+    function categoryAppCards(key) {
+        const byName = {}, out = [];
+        for (const r of root.appsInCategory(key)) {
+            const nk = root.normKey(r.name || r.id);
+            const s = root.appCardShape(r);
+            let a = byName[nk];
+            if (!a) { byName[nk] = s; out.push(s); continue; }
+            for (const k of ["pacman", "aur", "flatpak", "snap"])
+                if (s[k] && !a[k]) a[k] = s[k];
+            if (!a.icon && s.icon) a.icon = s.icon;
+            if (!a.about && s.about) a.about = s.about;
+        }
+        return out.slice(0, root.categoryAppLimit);
+    }
+    function packageOption(o) {
+        const c = (o && o.cmd) || [];
+        return c[0] === "qs" && c[4] === "package";
+    }
+    // A curated choice carries a font glyph, not an image. The icon library maps
+    // it to the closest published icon name, then to a local badge when there is
+    // none, so every app in every category has its own face.
+    function iconForOption(o) {
+        return AppIcons.slugForOption(o);
+    }
+    // One icon policy for every app card: a real image when the icon set has it,
+    // and a locally generated badge for everything else. No 404 requests.
+    function appIconUrl(icon, name) {
+        return AppIcons.url(icon, name);
+    }
+    // Web apps and AppImages keep their icon as a local file. When no file was
+    // saved -- or it has gone missing -- the same generated badge every other
+    // app uses stands in, so no app ever shows a blank or shared icon.
+    function localAppIcon(path, name) {
+        const p = String(path || "").trim();
+        if (p === "") return root.appIconUrl("", name);
+        if (/^(?:https?:|file:|data:)/i.test(p)) return p;
+        return "file://" + p;
+    }
+    function appInitials(name) {
+        return AppIcons.initials(name);
+    }
+    function appMonogramColor(name) {
+        return Qt.hsla(AppIcons.hue(name) / 360, 0.42, 0.42, 1);
+    }
+    // A curated AI package is shown on the AI tools page with the same cards as
+    // All Apps. Give it the plain result shape those cards and actions expect.
+    function optionResult(o) {
+        const c = (o && o.cmd) || [];
+        const via = ({ arch: "Arch", aur: "AUR", flatpak: "Flatpak", snap: "Snap" })[String(c[5]).toLowerCase()] || "AUR";
+        const ids = PackageIds.forOption(o);
+        const r = { source: via, id: c[6] || "", name: o.label || c[6] || "",
+                    about: AppMeta.aboutFor(o.id) || o.words || "",
+                    icon: AppMeta.iconFor(o.id) || root.iconForOption(o), installed: false,
+                    flatpak: ids.flatpak || "", snap: ids.snap || "" };
+        r.installed = root.foundInstalled(r);
+        return r;
+    }
+    function aiAppResults() {
+        return InstallOptions.options
+            .filter(o => o.category === "ai" && root.packageOption(o))
+            .map(o => root.optionResult(o));
+    }
+    // The terminal agents keep their own lifecycle, but they are still apps: the
+    // same checked package ids and icon/description data feed a full app page.
+    function aiMeta(tool) {
+        return tool && tool.id ? AppMeta.aiFor(tool.id) : ({});
+    }
+    function aiIconUrl(tool) {
+        const m = root.aiMeta(tool);
+        return root.appIconUrl(m.icon || "", (tool && tool.name) || (tool && tool.id) || "ai tool");
+    }
+    function openAiApp(tool) {
+        if (!tool) return;
+        const m = root.aiMeta(tool);
+        const sources = [];
+        [["Arch", m.arch], ["AUR", m.aur], ["Flatpak", m.flatpak], ["Snap", m.snap]]
+            .forEach(x => { if (x[1]) sources.push({ source: x[0], id: x[1], name: tool.name || tool.id }); });
+        root.openApp({
+            key: "ai-tool:" + (tool.id || ""),
+            name: tool.name || tool.id || "AI tool",
+            about: m.about || tool.description || "",
+            icon: root.aiIconUrl(tool),
+            sources: sources,
+            installed: !!tool.installed,
+            popularity: 0
+        });
     }
     readonly property var appResults: {
         const list = root.found.slice();
