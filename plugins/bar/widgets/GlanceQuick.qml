@@ -219,6 +219,16 @@ QuickPopup {
                 font.family: Quick.sans
                 font.pixelSize: 12
             }
+
+            QuickWide {
+                visible: q.backend && q.backend.binaryOk
+                glyph: "\u{F02EC}"
+                label: "Enable sudo face auth"
+                onClicked: {
+                    if (q.backend && q.backend.binaryOk)
+                        Quickshell.execDetached(["/usr/bin/xdg-terminal-exec", q.backend.binaryPath, "setup-pam", "--sudo"])
+                }
+            }
         }
 
         // last scan
