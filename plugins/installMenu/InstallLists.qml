@@ -315,21 +315,6 @@ Item {
                                 anchors.leftMargin: 12
                                 anchors.rightMargin: 10
                                 spacing: 10
-                                Rectangle {
-                                    Layout.preferredWidth: 24; Layout.preferredHeight: 24
-                                    radius: 6
-                                    color: optRow.modelData.badgeColor
-                                    border.width: optRow.active ? 2 : 0
-                                    border.color: lists.cAccent
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: optRow.modelData.badge
-                                        color: "#ffffff"
-                                        font.family: lists.sans
-                                        font.pixelSize: 10
-                                        font.weight: Font.DemiBold
-                                    }
-                                }
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 0
