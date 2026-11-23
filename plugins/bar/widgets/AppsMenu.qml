@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import QtQuick.Controls
 
@@ -18,19 +17,14 @@ Rectangle {
   width: 28; height: 24
   radius: 8
   color: appsMenuHover.containsMouse || quick.visible ? bar.theme.bgSelected : "transparent"
-  Image {
+  Text {
     id: logo
     anchors.centerIn: parent
-    source: "root:/assets/ae-mark.svg"
-    sourceSize.width: 24; sourceSize.height: 16
-    width: 24; height: 16
-    fillMode: Image.PreserveAspectFit
-    smooth: true
-    layer.enabled: true
-    layer.effect: MultiEffect {
-      colorization: 1.0
-      colorizationColor: bar.inked(ink, bar.theme.accentPrimary)
-    }
+    text: "AE"
+    font.family: "Aequalyn"
+    font.pixelSize: 16
+    font.weight: Font.DemiBold
+    color: bar.inked(ink, bar.theme.accentPrimary)
   }
   MouseArea {
     id: appsMenuHover
