@@ -179,7 +179,7 @@ CcPage {
         CcToggle {
             setting: "themeBrowser"
             title: "Browsers use these colours too"
-            sub: "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. The first time asks for admin permission."
+            sub: "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. Each colour change asks for admin permission."
         }
     }
     CcMore {

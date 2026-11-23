@@ -27,7 +27,7 @@ QtObject {
     property string themeMode: "wallpaper"   // "wallpaper" | "theme" | "light"
     property bool themeApps: true
     // Publish the active accent to Chromium-based browsers via a managed policy.
-    property bool themeBrowser: false
+    property bool themeBrowser: true
     property int barHeight: 32
     // the screen edge the bar sits on: "top", "bottom", "left" or "right"
     property string barPosition: "top"

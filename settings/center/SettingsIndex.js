@@ -14,7 +14,7 @@ var entries = [
     {"page": "theme", "title": "Your themes", "kind": "group"},
     {"page": "theme", "title": "Apps use these colours too", "kind": "toggle", "sub": "Files, settings windows and other GTK apps match your desktop. Off leaves them as they come.", "setting": "themeApps"},
     {"page": "theme", "title": "Show each theme on the whole desktop while choosing", "kind": "toggle", "sub": "In the picker, the bar, dock and windows take the colours of the theme you are on until you pick one or close it."},
-    {"page": "theme", "title": "Browsers use these colours too", "kind": "toggle", "sub": "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. The first time asks for admin permission.", "setting": "themeBrowser"},
+    {"page": "theme", "title": "Browsers use these colours too", "kind": "toggle", "sub": "Chromium, Chrome, Brave and Edge take the bar's base colour from a managed policy. Off removes it. Each colour change asks for admin permission.", "setting": "themeBrowser"},
     {"page": "theme", "title": "Add your own theme", "kind": "more"},
     {"page": "theme", "title": "Open the themes folder", "kind": "button", "group": "Add your own theme"},
     {"page": "bar", "title": "The widgets' colours", "kind": "choice", "sub": "Their own: each widget in its usual colour. The theme's: they take the theme's colours in turn, along the bar from left to right.", "tab": 1, "setting": "barInk", "options": [{"key": "own", "label": "Their own"}, {"key": "theme", "label": "The theme's"}]},
