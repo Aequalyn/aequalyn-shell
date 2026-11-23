@@ -3,6 +3,7 @@
 // web apps' keys are refused with their names, and the written block says
 // exactly what Hyprland needs, unbinds before binds.
 const assert = require("assert");
+const fs = require("fs");
 const path = require("path");
 const load = require("./jsload.js");
 const B = load(path.join(__dirname, "../plugins/keybinds/js/Binds.js"));
@@ -271,5 +272,11 @@ ok(BadCustom.text.indexOf("Files again") < 0, "the skipped made bind is not writ
 const Empty = B.blockLua(binds, st());
 ok(Empty.text.indexOf("hl.bind") >= 0 && Empty.text.indexOf('pcall(hl.unbind, "SUPER + Q")') < 0,
    "with no changes, only this page's own key is bound");
+
+// Super + T and Super + W call atelier, so an install saved before atelier existed
+// must gain the plugin once; otherwise both keys are silently dead.
+const settings = fs.readFileSync(path.join(__dirname, "../settings/AequalynSettings.qml"), "utf8");
+ok(/readonly property var newPlugins: \[[^\]]*"atelier"/.test(settings),
+    "existing installs gain the theme and wallpaper picker once");
 
 console.log("keybinds: " + n + " ok");

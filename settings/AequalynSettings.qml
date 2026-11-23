@@ -209,7 +209,7 @@ QtObject {
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "programsMenu", "installMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap", "lock"]
+    readonly property var newPlugins: ["plume", "altscape", "atelier", "programsMenu", "installMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap", "lock"]
     property var pluginsKnown: []
     // Plugins that must never run in the supervisor's sandbox, even when marked for
     // it in Plugins.js or by a Store manifest (watchdog.json's noSandbox list ends up
