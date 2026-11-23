@@ -165,6 +165,22 @@ Item {
     // whose most recent event is still a failure when the clock runs out is
     // turned off, with a notification. The supervisor's own decisions (crash,
     // hang, memory) come through the watchdog IPC target, not here.
+    //
+    // During a config swap, install.sh/aequalyn-update writes a short-lived
+    // marker. While it is fresh, load failures are treated as transient: they
+    // are logged and retried, but never persisted as disabled plugins.
+    readonly property string swapMarkerPath: (Quickshell.env("XDG_RUNTIME_DIR") || ("/run/user/" + Quickshell.env("UID"))) + "/aequalyn/quickshell-config-swap"
+    readonly property bool configSwapActive: {
+        const t = Number(String(swapMarker.text() || "").trim())
+        return isFinite(t) && t > 0 && (Date.now() / 1000 - t) < 120
+    }
+    property FileView swapMarker: FileView {
+        path: pm.swapMarkerPath
+        printErrors: false
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {}
+    }
     property var loadFailAt: ({})     // id -> last load failure
     property var loadOkAt: ({})      // id -> last successful load
     property var loadFailFirst: ({}) // id -> first failure of the current streak
@@ -173,6 +189,12 @@ Item {
     function loadFailed(id, why) {
         if (enabledIds.indexOf(id) < 0) return
         const now = Date.now()
+        if (pm.configSwapActive) {
+            pm.loadFailAt[id] = now
+            console.warn("Plugin failed to load during config swap:", id, "- leaving it enabled.", why || "")
+            pm.scheduleSwapRetry(id)
+            return
+        }
         if (!pm.loadFailFirst[id]) {
             if (pm.forceTried[id]) {
                 // it already had its second chance, forced: this one is real
@@ -186,12 +208,19 @@ Item {
         }
         pm.loadFailAt[id] = now
     }
+    function scheduleSwapRetry(id) {
+        if ((pm.swapRetryQueue || []).indexOf(id) >= 0) return
+        pm.swapRetryQueue = (pm.swapRetryQueue || []).concat(id)
+    }
+    property var swapRetryQueue: []
     function loadSucceeded(id) {
         pm.loadOkAt[id] = Date.now()
         delete pm.forceTried[id]
         delete pm.loadFailFirst[id]
         if (pm.disableQueue.indexOf(id) >= 0)
             pm.disableQueue = pm.disableQueue.filter(x => x !== id)   // assigned: stops the clock when empty
+        if ((pm.swapRetryQueue || []).indexOf(id) >= 0)
+            pm.swapRetryQueue = (pm.swapRetryQueue || []).filter(x => x !== id)
     }
     function turnOffFailed(id) {
         try { AequalynSettings.togglePlugin(id, false) } catch (e) { console.warn("could not turn off", id, e) }
@@ -205,6 +234,7 @@ Item {
         repeat: true
         interval: 1000
         onTriggered: {
+            if (pm.configSwapActive) return
             const grace = 10000, now = Date.now()
             const due = pm.disableQueue.filter(id => now - (pm.loadFailFirst[id] || now) >= grace)
             if (!due.length) return
@@ -220,6 +250,26 @@ Item {
                     pm.reloading = id
                     reloadTimer.restart()
                 }
+            }
+        }
+    }
+
+    // Swap failures get another chance after the marker disappears, but never
+    // disable the plugin. This covers the "config tree moved mid-reload" case.
+    Timer {
+        running: (pm.swapRetryQueue || []).length > 0
+        repeat: true
+        interval: 1500
+        onTriggered: {
+            if (pm.configSwapActive) return
+            const q = pm.swapRetryQueue || []
+            if (!q.length) return
+            pm.swapRetryQueue = []
+            for (const id of q) {
+                if (enabledIds.indexOf(id) < 0) continue
+                if ((pm.loadFailAt[id] || 0) <= (pm.loadOkAt[id] || 0)) continue
+                console.warn("Retrying plugin after config swap:", id)
+                pm.reloadPlugin(id)
             }
         }
     }
