@@ -14,9 +14,13 @@ pragma ComponentBehavior: Bound
 Item {
     id: lists
     property var theme: null
-    // install: everything; remove: only choices with an uninstall command;
-    // both: everything, with both actions exposed by the caller.
+    // install: everything (installed rows stay visible but cannot run);
+    // remove: only choices that are here already; both: everything, with the
+    // action each row can actually take. `ready` keeps both lists honest while
+    // the package-manager sweep is still running.
     property string mode: "install"
+    property var installed: null
+    property bool ready: false
     property string query: ""
     // The Store's page has no text field under the cursor, so Delete can be a
     // remove shortcut there. In the panels Backspace belongs to the search line.
@@ -29,11 +33,24 @@ Item {
     signal chosen(var option)
     signal removed(var option)
 
-    function canRemove(o) { return !!o && Options.uninstall(o).length > 0; }
-    function hasAction(o) { return !!o && (lists.mode !== "remove" || lists.canRemove(o)); }
-    function modeOptions() { return Options.options.filter(o => lists.hasAction(o)); }
+    function canInstall(o) {
+        return lists.ready && !!o && !Options.isInstalled(o, lists.installed);
+    }
+    function canRemove(o) {
+        return lists.ready && !!o && Options.isInstalled(o, lists.installed)
+            && Options.removal(o, lists.installed).length > 0;
+    }
+    function actionable(o) {
+        if (!o || !lists.ready) return false;
+        if (lists.mode === "remove") return lists.canRemove(o);
+        if (lists.mode === "both") return lists.canInstall(o) || lists.canRemove(o);
+        return lists.canInstall(o);
+    }
+    function visibleOptions() {
+        return Options.options.filter(o => lists.mode !== "remove" || lists.canRemove(o));
+    }
     function categoryCount(c) {
-        const pool = lists.modeOptions();
+        const pool = lists.visibleOptions();
         return c.key === "all" ? pool.length : pool.filter(o => o.category === c.key).length;
     }
     function tint(c, a) { return Qt.rgba(c.r, c.g, c.b, a); }
@@ -47,7 +64,7 @@ Item {
         const q = String(lists.query || "").trim().toLowerCase();
         const cat = lists.categoryRows[lists.categoryPick];
         const key = cat ? cat.key : "all";
-        return lists.modeOptions().filter(o => (q !== ""
+        return lists.visibleOptions().filter(o => (q !== ""
                 ? Options.matches(o, q)
                 : key === "all" || o.category === key))
             .map(o => ({
@@ -57,7 +74,10 @@ Item {
                 badge: Icons.initials(o.label),
                 badgeColor: Qt.hsla(Icons.hue(o.label + "|" + o.id) / 360, 0.42, 0.42, 1),
                 sub: Options.categoryLabel(o.category) + " · " + o.source,
-                hint: Options.related(o).length > 0 ? "See also: " + Options.related(o).join(", ") : ""
+                installed: Options.isInstalled(o, lists.installed),
+                enabled: lists.actionable(o),
+                hint: Options.isInstalled(o, lists.installed) ? "Already installed"
+                    : Options.related(o).length > 0 ? "See also: " + Options.related(o).join(", ") : ""
             }));
     }
     readonly property var currentOption: {
@@ -103,7 +123,7 @@ Item {
     function activate() {
         if (lists.side === "category") return lists.focusOptions();
         const o = lists.currentOption;
-        if (!lists.hasAction(o)) return false;
+        if (!lists.actionable(o)) return false;
         if (lists.mode === "remove") lists.removed(o);
         else lists.chosen(o);
         return true;
@@ -278,6 +298,7 @@ Item {
                         Rectangle {
                             anchors.fill: parent
                             radius: 7
+                            opacity: optRow.modelData.enabled ? 1 : 0.55
                             color: optRow.active ? lists.cSelected
                                 : optRow.idle ? lists.tint(lists.cAccent, 0.12)
                                 : optMa.containsMouse ? lists.cHover : "transparent"
@@ -340,8 +361,9 @@ Item {
                                     elide: Text.ElideRight
                                 }
                                 Text {
-                                    text: lists.actionLabel
-                                    color: lists.cAccent
+                                    text: optRow.modelData.installed && lists.mode === "install"
+                                        ? "Installed" : lists.actionLabel
+                                    color: optRow.modelData.enabled ? lists.cAccent : lists.cMuted
                                     font.family: lists.mono
                                     font.pixelSize: 10
                                     font.weight: Font.DemiBold
@@ -364,7 +386,8 @@ Item {
                     Text {
                         anchors.centerIn: parent
                         visible: lists.optionRows.length === 0
-                        text: "Nothing here"
+                        text: lists.mode === "remove" && !lists.ready
+                            ? "Checking what is installed…" : "Nothing here"
                         color: lists.cMuted
                         font.family: lists.sans
                         font.pixelSize: 12

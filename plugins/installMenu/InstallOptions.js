@@ -1,4 +1,5 @@
 .pragma library
+.import "../store/PackageIds.js" as PackageIds
 
 // The curated install chooser. Every entry either goes through the Store's
 // package path or runs one of Aequalyn's own tools. Labels stay plain and
@@ -377,10 +378,15 @@ function matches(o, q) {
 // agents through their own tool, web apps by name, and the one setup step that
 // leaves something behind removes the thing it made. Launchers and sign-in
 // pages have nothing to remove, so they return an empty command.
+function packageCommand(action, source, name) {
+    if (!/^[A-Za-z0-9@._+-]{1,128}$/.test(String(name || ""))) return [];
+    return ["qs", "ipc", "call", "store", action, source, name];
+}
+
 function uninstall(o) {
     const c = (o && o.cmd) || [];
     if (c[0] === "qs" && c[4] === "package")
-        return ["qs", "ipc", "call", "store", "remove", c[5], c[6]];
+        return packageCommand("remove", c[5], c[6]);
     if (c[0] === "aequalyn-ai-tool" && c[1] === "install")
         return ["aequalyn-ai-tool", "remove", c[2]];
     if (c[0] === "aequalyn-webapp" && c[1] === "add") {
@@ -390,4 +396,129 @@ function uninstall(o) {
     if (o && o.id === "dev-docker-db")
         return ["sh", "-c", "docker rm -f aequalyn-postgres || true"];
     return [];
+}
+
+// ---- installation state ---------------------------------------------------
+// The panel only needs to know which choices are here already. The sweep in
+// InstallMenu.qml prints one marked section per source; the two JSON sections
+// stay JSON so the agent and web app details survive intact.
+
+function blankState() {
+    return { pacman: [], flatpak: [], snap: [], agents: [], webapps: [], containers: [], ready: false };
+}
+
+function stateFromText(text) {
+    const sections = { pacman: [], flatpak: [], snap: [], agents: [], webapps: [], containers: [] };
+    let part = "";
+    for (const line of String(text || "").split("\n")) {
+        if (line.charAt(0) === "#") { part = line.slice(1); continue; }
+        const value = line.trim();
+        if (part === "" || value === "" || !sections[part]) continue;
+        sections[part].push(value);
+    }
+    let agents = [];
+    try {
+        const parsed = JSON.parse(sections.agents.join("\n"));
+        if (Array.isArray(parsed)) agents = parsed;
+    } catch (e) { /* no agent CLI: every agent is simply not installed */ }
+    let webapps = [];
+    try {
+        const parsed = JSON.parse(sections.webapps.join("\n"));
+        if (parsed && Array.isArray(parsed.apps))
+            webapps = parsed.apps.map(a => a.name || "");
+    } catch (e) { /* no web app CLI: no web apps are installed */ }
+    return {
+        pacman: sections.pacman, flatpak: sections.flatpak, snap: sections.snap,
+        agents: agents, webapps: webapps, containers: sections.containers, ready: true
+    };
+}
+
+function normKey(v) { return String(v || "").toLowerCase().trim(); }
+
+function has(list, value) {
+    const v = String(value || "");
+    return v !== "" && (list || []).some(x => String(x) === v);
+}
+
+function hasName(list, value) {
+    const v = normKey(value);
+    return v !== "" && (list || []).some(x => normKey(x) === v);
+}
+
+function agentId(o) {
+    const c = (o && o.cmd) || [];
+    return c[0] === "aequalyn-ai-tool" && c[1] === "install" ? c[2] || "" : "";
+}
+
+function agentRecord(o, state) {
+    const id = agentId(o);
+    return id ? (state && state.agents || []).find(a => a && a.id === id) : null;
+}
+
+function webappName(o) {
+    const c = (o && o.cmd) || [];
+    const i = c.indexOf("--name");
+    return c[0] === "aequalyn-webapp" && c[1] === "add" && i >= 0 && i + 1 < c.length ? c[i + 1] : "";
+}
+
+// Which path actually put this choice here: the primary one, a Flatpak/Snap
+// edition of the same app, an installed agent, a web app, or the setup container.
+function installedVia(o, state) {
+    if (!o || !state) return "";
+    const c = o.cmd || [];
+    if (c[0] === "qs" && c[4] === "package") {
+        const source = String(c[5] || "").toLowerCase();
+        const name = c[6] || "";
+        if ((source === "arch" || source === "aur") && has(state.pacman, name)) return source;
+        if (source === "flatpak" && has(state.flatpak, name)) return "flatpak";
+        if (source === "snap" && has(state.snap, name)) return "snap";
+        const alt = PackageIds.forOption(o);
+        if (alt.flatpak && has(state.flatpak, alt.flatpak)) return "flatpak";
+        if (alt.snap && has(state.snap, alt.snap)) return "snap";
+        // A same-named Arch package counts too: the app is here whichever
+        // store it came from, even when this choice names another store.
+        if (has(state.pacman, name)) return "arch";
+        return "";
+    }
+    if (c[0] === "aequalyn-ai-tool" && c[1] === "install") {
+        const a = agentRecord(o, state);
+        if (!a) return "";
+        if (a.installed) return "agent";
+        if (a.availableElsewhere) return "system:" + String(a.systemManager || "agent").toLowerCase();
+        return "";
+    }
+    if (webappName(o) !== "" && hasName(state.webapps, webappName(o))) return "webapp";
+    if (o.id === "dev-docker-db" && has(state.containers, "aequalyn-postgres")) return "container";
+    return "";
+}
+
+function isInstalled(o, state) { return installedVia(o, state) !== ""; }
+
+// Removal follows the backend that is really installed. A Flatpak/Snap edition
+// of a curated Arch app removes by that store's id; an agent installed by the
+// system package manager removes through the Store, not the agent tool.
+function removal(o, state) {
+    if (!o || !isInstalled(o, state)) return [];
+    const via = installedVia(o, state);
+    const c = o.cmd || [];
+    if (c[0] === "qs" && c[4] === "package") {
+        if (via === "flatpak" || via === "snap") {
+            const alt = PackageIds.forOption(o);
+            const id = c[5] === via ? c[6]
+                : via === "flatpak" ? alt.flatpak : alt.snap;
+            return id ? packageCommand("remove", via, id) : [];
+        }
+        if (via === "arch" && c[5] !== "arch" && c[5] !== "aur")
+            return packageCommand("remove", "arch", c[6]);
+        return uninstall(o);
+    }
+    if (c[0] === "aequalyn-ai-tool" && via.indexOf("system:") === 0) {
+        const a = agentRecord(o, state) || {};
+        const manager = String(a.systemManager || "").toLowerCase();
+        const source = manager === "aur" ? "aur" : manager === "flatpak" ? "flatpak"
+            : manager === "snap" ? "snap" : "arch";
+        const id = a.systemId || a.systemPrefix || a.command || a.package || "";
+        return packageCommand("remove", source, id);
+    }
+    return uninstall(o);
 }
