@@ -71,6 +71,49 @@ for (const o of O.options.filter(x => x.category !== "all")) {
     ok(also.length > 0 && also.indexOf(o.label) < 0, o.id + " has a see-also list without itself");
 }
 
+// The chooser's live state: one sweep says what is here, so install cannot run
+// twice and remove cannot offer something that is gone. Flatpak/Snap editions
+// of a curated app and agents installed outside the tool count as installed.
+const stateText = [
+    "#pacman", "firefox", "codex",
+    "#flatpak", "com.visualstudio.code",
+    "#snap",
+    "#agents", JSON.stringify([
+        { id: "codex", installed: true },
+        { id: "opencode", installed: false, availableElsewhere: true,
+          systemManager: "pacman", systemId: "opencode" }
+    ]),
+    "#webapps", JSON.stringify({ apps: [{ name: "Microsoft 365" }] }),
+    "#containers", "aequalyn-postgres"
+].join("\n");
+const state = O.stateFromText(stateText);
+const choice = id => O.options.find(o => o.id === id);
+ok(state.ready && state.pacman.indexOf("firefox") >= 0 && state.agents.length === 2
+    && state.webapps[0] === "Microsoft 365", "the state sweep parses every section");
+ok(!O.blankState().ready && O.options.every(o => !O.isInstalled(o, O.blankState())),
+    "a state that has not arrived blocks every action");
+ok(O.isInstalled(choice("web-firefox"), state) && !O.isInstalled(choice("web-chrome"), state),
+    "an installed package is known and an absent one is not");
+ok(JSON.stringify(O.removal(choice("web-firefox"), state))
+    === JSON.stringify(["qs", "ipc", "call", "store", "remove", "arch", "firefox"]),
+    "removing that package goes through the same Store path");
+ok(O.installedVia(choice("ed-vscode"), state) === "flatpak"
+    && O.removal(choice("ed-vscode"), state)[6] === "com.visualstudio.code",
+    "a Flatpak edition of a curated app removes by its Flatpak id");
+ok(O.isInstalled(choice("ai-codex"), state)
+    && O.removal(choice("ai-codex"), state)[0] === "aequalyn-ai-tool",
+    "an agent installed by its tool is known and removes by its tool");
+ok(O.installedVia(choice("ai-opencode"), state) === "system:pacman"
+    && JSON.stringify(O.removal(choice("ai-opencode"), state))
+    === JSON.stringify(["qs", "ipc", "call", "store", "remove", "arch", "opencode"]),
+    "an agent installed by pacman is known and removes through the Store");
+ok(O.isInstalled(choice("svc-microsoft"), state)
+    && O.removal(choice("svc-microsoft"), state)[1] === "remove",
+    "an existing web app is known and removes by name");
+ok(O.isInstalled(choice("dev-docker-db"), state)
+    && O.removal(choice("dev-docker-db"), state).length > 0,
+    "the setup container is known and can be taken back off");
+
 const text = JSON.stringify({ categories: O.categories, options: O.options });
 for (const word of ["omarchy", "omaudix", "baroque", "multi-docks", "qempexe"]) {
     ok(!text.toLowerCase().includes(word), "no " + word + " wording in the chooser");
