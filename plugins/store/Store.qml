@@ -42,6 +42,9 @@ Scope {
     property bool open: false
     property string section: "home"
     property string category: ""
+    // Which of the two left lists the arrows work in. Right moves from the
+    // squares to the section list, Left back; Up/Down then move in that list.
+    property string navSide: "sections"
     // the title-bar search, as the control center's: apps and settings share one
     // results view, with a chip for each source, one page per app, and keys to move
     property string query: ""
@@ -770,12 +773,14 @@ Scope {
         root.category = root.categoryOf(section);
         root.section = section;
         if (section === "apps") root.appCategory = "all";
+        root.navSide = "sections";
     }
     function openCategory(key) {
         const c = root.categories.find(x => x.key === key);
         root.category = c ? c.key : "";
         root.section = c ? c.sections[0] : "home";
         if (c && c.key === "apps") root.appCategory = "all";
+        root.navSide = "rail";
     }
     function openNav(item) {
         if (!item) return;
@@ -787,6 +792,30 @@ Scope {
             if (item.key === "apps") root.appCategory = "all";
             root.openSection(item.key);
         }
+        root.navSide = "sections";
+    }
+    function focusRail() {
+        if (root.queryActive || root.pickOpen || root.appPage) return;
+        root.navSide = "rail";
+        card.forceActiveFocus();
+    }
+    function focusSections() {
+        if (root.queryActive || root.pickOpen || root.appPage || !root.categoryNow) return;
+        root.navSide = "sections";
+        card.forceActiveFocus();
+    }
+    function stepCategory(delta) {
+        const keys = [""].concat(root.categories.map(c => c.key));
+        const i = keys.indexOf(root.category);
+        root.openCategory(keys[Math.max(0, Math.min(keys.length - 1, i + delta))]);
+    }
+    function stepSection(delta) {
+        const items = root.sectionNavItems;
+        if (items.length === 0) return;
+        let i = 0;
+        for (let j = 0; j < items.length; j++)
+            if (root.navIsOn(items[j])) { i = j; break; }
+        root.openNav(items[Math.max(0, Math.min(items.length - 1, i + delta))]);
     }
     readonly property var kindWords: ({
         plugin: { one: "plugin", hint: "A git repo with a plugin.json: it is checked (its files, qmllint, what it may run), then installed into ~/.local/share/aequalyn/plugins and switched on at once." },
@@ -2889,6 +2918,22 @@ Scope {
                 if (event.key === Qt.Key_K && (event.modifiers & Qt.ControlModifier)) {
                     titleSearch.forceActiveFocus();
                     event.accepted = true;
+                } else if (root.queryActive || root.pickOpen || root.appPage || titleSearch.activeFocus) {
+                    // the search, the file picker and an app page own their keys;
+                    // the chooser down the left is only for the plain page view
+                    return;
+                } else if (event.key === Qt.Key_Left) {
+                    root.focusRail();
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Right) {
+                    root.focusSections();
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Up) {
+                    if (root.navSide === "rail") root.stepCategory(-1); else root.stepSection(-1);
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Down) {
+                    if (root.navSide === "rail") root.stepCategory(1); else root.stepSection(1);
+                    event.accepted = true;
                 }
             }
             Keys.onEscapePressed: {
@@ -3064,8 +3109,8 @@ Scope {
                                     y: 6
                                     width: 40; height: 34; radius: 10
                                     color: catItem.on ? root.theme.bgSelected : catMa.containsMouse ? root.theme.bgSurface : "transparent"
-                                    border.width: catItem.on ? 1 : 0
-                                    border.color: root.theme.accentPrimary
+                                    border.width: catItem.on || (root.navSide === "rail" && !root.queryActive && !root.pickOpen && !root.appPage) ? 1 : 0
+                                    border.color: catItem.on ? root.theme.accentPrimary : Cc.alpha(root.theme.accentPrimary, 0.35)
                                     Text {
                                         anchors.centerIn: parent
                                         text: catItem.modelData.icon
@@ -3133,6 +3178,8 @@ Scope {
                                 Layout.preferredHeight: 38
                                 radius: 8
                                 color: navItem.on ? root.theme.bgSelected : navMa.containsMouse ? root.theme.bgSurface : "transparent"
+                                border.width: root.navSide === "sections" && sectionNav.visible && !root.queryActive && !root.pickOpen && !root.appPage ? 1 : 0
+                                border.color: Cc.alpha(root.theme.accentPrimary, 0.28)
                                 Rectangle {
                                     visible: navItem.on
                                     width: 3; height: 20; radius: 2
@@ -4131,7 +4178,7 @@ Scope {
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.queryActive
                             ? "↑ ↓  move     ⏎  open or change     tab  filter     esc  clear"
-                            : root.appPage ? "esc  back to the previous page" : "super alt s  open     esc  close"
+                            : root.appPage ? "esc  back to the previous page" : "↑ ↓  move     ← →  rail / list     esc  close"
                         color: root.theme.textMuted
                         font.family: root.mono
                         font.pixelSize: 10

@@ -14,8 +14,9 @@
 //   qs ipc call aequalyn search <words>      open it searching
 //   qs ipc call aequalyn wifi | bluetooth | bar | dock | ...   the same, by name
 //
-// Keys: type to search (Ctrl+K or / from anywhere), ↑ ↓ between pages, Page Up /
-// Page Down between categories, Esc closes.
+// Keys: type to search (Ctrl+K or / from anywhere), ← → between the square rail
+// and the page list, ↑ ↓ in the one you are on, Page Up / Page Down between
+// categories, Esc closes.
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
@@ -56,6 +57,9 @@ Scope {
         pages: c.pages.filter(p => root.filteredOrder.indexOf(p) >= 0) }))
     readonly property string category: Pages.categoryOf(root.page)
     readonly property var categoryNow: root.categories.find(c => c.key === root.category) || null
+    // Which of the two left lists the arrows work in. Right moves from the
+    // squares to the page list, Left back; Up/Down then move in that list.
+    property string navSide: "pages"
     // the page last open in each category, so coming back to one lands where you were
     property var lastPage: ({})
     onPageChanged: {
@@ -69,11 +73,22 @@ Scope {
         if (key === "") { root.goTo("home"); return; }
         const c = root.categories.find(x => x.key === key);
         if (c && c.pages.length > 0) root.goTo(root.lastPage[key] && c.pages.indexOf(root.lastPage[key]) >= 0 ? root.lastPage[key] : c.pages[0]);
+        root.navSide = "rail";
     }
     function stepCategory(delta) {
         const keys = [""].concat(root.categories.map(c => c.key));
         const i = keys.indexOf(root.category);
         root.openCategory(keys[Math.max(0, Math.min(keys.length - 1, i + delta))]);
+    }
+    function focusRail() {
+        if (root.searching) return;
+        root.navSide = "rail";
+        keys.forceActiveFocus();
+    }
+    function focusPages() {
+        if (root.searching || !side.visible) return;
+        root.navSide = "pages";
+        keys.forceActiveFocus();
     }
 
     // ---- the search ------------------------------------------------------------------
@@ -186,6 +201,7 @@ Scope {
         const i = order.indexOf(root.page);
         Cc.startTab = 0;
         root.page = order[Math.max(0, Math.min(order.length - 1, i + delta))];
+        root.navSide = "pages";
     }
 
     IpcHandler {
@@ -293,8 +309,18 @@ Scope {
                 const ctrl = event.modifiers & Qt.ControlModifier;
                 if (event.key === Qt.Key_Escape) { root.panelVisible = false; event.accepted = true; }
                 else if ((ctrl && event.key === Qt.Key_K) || event.key === Qt.Key_Slash) { search.forceActiveFocus(); event.accepted = true; }
-                else if (event.key === Qt.Key_Up || (ctrl && event.key === Qt.Key_Backtab)) { root.step(-1); event.accepted = true; }
-                else if (event.key === Qt.Key_Down || (ctrl && event.key === Qt.Key_Tab)) { root.step(1); event.accepted = true; }
+                else if (event.key === Qt.Key_Left && !root.searching) { root.focusRail(); event.accepted = true; }
+                else if (event.key === Qt.Key_Right && !root.searching) { root.focusPages(); event.accepted = true; }
+                else if (event.key === Qt.Key_Up) {
+                    if (root.navSide === "rail" && !root.searching) root.stepCategory(-1); else root.step(-1);
+                    event.accepted = true;
+                }
+                else if (ctrl && event.key === Qt.Key_Backtab) { root.step(-1); event.accepted = true; }
+                else if (event.key === Qt.Key_Down) {
+                    if (root.navSide === "rail" && !root.searching) root.stepCategory(1); else root.step(1);
+                    event.accepted = true;
+                }
+                else if (ctrl && event.key === Qt.Key_Tab) { root.step(1); event.accepted = true; }
                 else if (event.key === Qt.Key_PageUp) { root.stepCategory(-1); event.accepted = true; }
                 else if (event.key === Qt.Key_PageDown) { root.stepCategory(1); event.accepted = true; }
                 // just start typing: it goes to the search
@@ -503,8 +529,8 @@ Scope {
                                 y: 6
                                 width: 40; height: 34; radius: 10
                                 color: cat.on ? Cc.theme.bgSelected : (catArea.containsMouse ? Cc.theme.bgSurface : "transparent")
-                                border.width: cat.on ? 1 : 0
-                                border.color: Cc.theme.accentPrimary
+                                border.width: cat.on || (root.navSide === "rail" && !root.searching) ? 1 : 0
+                                border.color: cat.on ? Cc.theme.accentPrimary : Cc.alpha(Cc.theme.accentPrimary, 0.35)
                                 Text {
                                     anchors.centerIn: parent
                                     text: cat.modelData.icon
@@ -590,6 +616,8 @@ Scope {
                                 height: 38
                                 radius: 8
                                 color: on ? Cc.theme.bgSelected : (navArea.containsMouse ? Cc.theme.bgSurface : "transparent")
+                                border.width: root.navSide === "pages" && side.visible ? 1 : 0
+                                border.color: Cc.alpha(Cc.theme.accentPrimary, 0.28)
                                 Accessible.role: Accessible.PageTab
                                 Accessible.name: info.label
                                 // the chosen page, as the Applications menu marks it: a bar at its left
@@ -733,7 +761,7 @@ Scope {
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.searching
                             ? "↑ ↓  move     ⏎  change or open     ← →  adjust     tab  category     esc  clear"
-                            : "↑ ↓  pages     pg up pg dn  categories     ctrl k  search     esc  close"
+                            : "↑ ↓  move     ← →  rail / list     pg up pg dn  categories     ctrl k  search     esc  close"
                         color: Cc.theme.textMuted
                         font.family: Cc.mono
                         font.pixelSize: 10
@@ -937,6 +965,7 @@ Scope {
         Cc.startTab = 0;
         root.page = p;
         search.text = "";
+        root.navSide = side.visible ? "pages" : "rail";
         keys.forceActiveFocus();
     }
 
