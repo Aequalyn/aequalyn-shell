@@ -120,6 +120,7 @@ Scope {
         target: "installMenu"
         function toggle(): void { root.toggle("install") }
         function install(): void { root.show("install") }
+        function remove(): void { root.show("remove") }
         function open(): void { root.show("install") }
         function close(): void { panel.open = false }
     }
