@@ -1,11 +1,12 @@
 // "Label   ● ● ● ●": a color out of a set of swatches.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 RowLayout {
     id: sw
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property var colors: []
     property string value: ""
@@ -17,7 +18,7 @@ RowLayout {
     Text {
         text: sw.label
         color: sw.theme.textSecondary
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         Layout.preferredWidth: 96
     }

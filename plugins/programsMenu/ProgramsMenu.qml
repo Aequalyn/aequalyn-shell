@@ -9,6 +9,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "root:/plugins/docks"
 import "root:/style/backdrop"
+import "root:/settings"
 
 Scope {
   id: root
@@ -19,7 +20,7 @@ Scope {
     textPrimary: "#c0caf5", textSecondary: "#a9b1d6", textMuted: "#565f89",
     accentPrimary: "#7aa2f7"
   })
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.monoFont
 
   IpcHandler {
     target: "programs"

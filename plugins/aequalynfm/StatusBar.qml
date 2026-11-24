@@ -1,5 +1,6 @@
 import QtQuick
 import "root:/plugins/aequalynfm/compat"
+import "root:/settings"
 
 // the pane's foot: how many things, what is selected, room left on the drive,
 // and every copy or move still running, each with a way to stop it
@@ -118,7 +119,7 @@ Item {
                         anchors.centerIn: parent
                         text: "\u{F0156}"
                         color: Theme.text
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: AequalynSettings.monoFont
                         font.pixelSize: Theme.dp(14)
                     }
 

@@ -10,12 +10,13 @@ import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
 import "root:/style/backdrop"
+import "root:/settings"
 
 Scope {
   id: root
 
   property var  theme: DefaultTheme {}
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.monoFont
 
   property var  editState:       []
   property int  selectedIndex:   -1

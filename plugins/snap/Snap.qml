@@ -9,11 +9,12 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Wayland
+import "root:/settings"
 
 Scope {
     id: root
     property var theme: null
-    readonly property string font: "JetBrainsMono Nerd Font"
+    readonly property string font: AequalynSettings.monoFont
 
     property bool open: false
     property real anchorX: 0

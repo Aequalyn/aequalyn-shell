@@ -20,7 +20,7 @@ Rectangle {
   Text {
     id: logo
     anchors.centerIn: parent
-    text: "AE"
+    text: "ae"
     font.family: "Aequalyn"
     font.pixelSize: 16
     font.weight: Font.DemiBold

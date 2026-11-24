@@ -8,7 +8,7 @@ import "root:/settings"
 Flickable {
     id: pane
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     readonly property var cfg: AequalynSettings.wallpaperCfg
     readonly property string mode: cfg.mode || "static"
@@ -73,7 +73,7 @@ Flickable {
                             Text {
                                 text: modeCard.modelData.name
                                 color: pane.theme.textPrimary
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 14
                                 font.bold: true
                             }
@@ -81,7 +81,7 @@ Flickable {
                                 Layout.fillWidth: true
                                 text: modeCard.modelData.text
                                 color: pane.theme.textMuted
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 11
                                 wrapMode: Text.WordWrap
                                 maximumLineCount: 2

@@ -1,11 +1,12 @@
 // "Label   #rrggbb": a typed colour, next to the swatches above it.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 RowLayout {
     id: field
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property string value: ""
     signal picked(string value)
@@ -28,7 +29,7 @@ RowLayout {
     Text {
         text: field.label
         color: field.theme.textSecondary
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         Layout.preferredWidth: 96
     }

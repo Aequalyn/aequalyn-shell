@@ -2,11 +2,12 @@
 // of desktop, its name and one line about it.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 Rectangle {
     id: card
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string title: ""
     property string subtitle: ""
     property string badge: ""
@@ -42,7 +43,7 @@ Rectangle {
                 Layout.fillWidth: true
                 text: card.title
                 color: card.theme.textPrimary
-                font.family: "sans-serif"
+                font.family: AequalynSettings.uiFont
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
@@ -69,7 +70,7 @@ Rectangle {
             Layout.fillWidth: true
             text: card.subtitle
             color: card.theme.textMuted
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 11
             elide: Text.ElideRight
         }

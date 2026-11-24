@@ -2,11 +2,12 @@
 // and a validated hex field. `targets` are { key, label, value } objects.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 ColumnLayout {
     id: pal
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: "Colors"
     property var swatches: []
     property var targets: []
@@ -45,7 +46,7 @@ ColumnLayout {
         visible: pal.label !== ""
         text: pal.label
         color: pal.theme ? pal.theme.textPrimary : "white"
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 13
         font.weight: Font.DemiBold
         Layout.fillWidth: true

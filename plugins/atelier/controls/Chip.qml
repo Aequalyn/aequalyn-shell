@@ -1,11 +1,12 @@
 // A choice button, drawn like the control center's: a soft fill, and the accent
 // outline when `selected`. Words in sans, the icon in the icon font.
 import QtQuick
+import "root:/settings"
 
 Rectangle {
     id: chip
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string text: ""
     property string icon: ""
     property bool selected: false
@@ -37,7 +38,7 @@ Rectangle {
         Text {
             text: chip.text
             color: chip.theme ? (chip.selected ? chip.theme.textPrimary : chip.theme.textSecondary) : "white"
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 12
             font.weight: chip.selected ? Font.DemiBold : Font.Normal
             anchors.verticalCenter: parent.verticalCenter

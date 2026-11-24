@@ -1,5 +1,6 @@
 // The small − / + button beside a slider reading, drawn like the desktop's settings.
 import QtQuick
+import "root:/settings"
 
 Rectangle {
     id: button
@@ -18,7 +19,7 @@ Rectangle {
         anchors.centerIn: parent
         text: button.glyph
         color: button.theme ? button.theme.textPrimary : "white"
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 13
         font.weight: Font.DemiBold
     }

@@ -1,4 +1,5 @@
 import QtQuick
+import "root:/settings"
 
 Row {
     id: root
@@ -35,7 +36,7 @@ Row {
         opacity: enabled ? 1 : 0.35
         iconText: "\uDB81\uDCAE"
         foreground: root.bar ? root.bar.theme.textPrimary : "#e0e0e0"
-        fontFamily: root.bar ? root.bar.font : "JetBrainsMono Nerd Font"
+        fontFamily: root.bar ? root.bar.font : AequalynSettings.monoFont
         iconSize: 12
         horizontalPadding: (3)
         verticalPadding: (2)
@@ -53,7 +54,7 @@ Row {
         opacity: enabled ? 1 : 0.35
         iconText: root.playing ? "\uDB80\uDFE4" : "\uDB81\uDC0A"
         foreground: root.bar ? root.bar.theme.textPrimary : "#e0e0e0"
-        fontFamily: root.bar ? root.bar.font : "JetBrainsMono Nerd Font"
+        fontFamily: root.bar ? root.bar.font : AequalynSettings.monoFont
         iconSize: 12
         horizontalPadding: (4)
         verticalPadding: (2)
@@ -71,7 +72,7 @@ Row {
         opacity: enabled ? 1 : 0.35
         iconText: "\uDB81\uDCAD"
         foreground: root.bar ? root.bar.theme.textPrimary : "#e0e0e0"
-        fontFamily: root.bar ? root.bar.font : "JetBrainsMono Nerd Font"
+        fontFamily: root.bar ? root.bar.font : AequalynSettings.monoFont
         iconSize: 12
         horizontalPadding: (3)
         verticalPadding: (2)

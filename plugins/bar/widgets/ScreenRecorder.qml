@@ -21,7 +21,7 @@ Rectangle {
     text: bar.recordingActive ? "󰑊" : "󰻂"
     color: bar.recordingActive ? bar.theme.bgBase : bar.inked(ink, bar.theme.textPrimary)
     font.pixelSize: 14
-    font.family: bar.font
+    font.family: bar.iconFont
   }
   Rectangle {
     visible: bar.recordingActive

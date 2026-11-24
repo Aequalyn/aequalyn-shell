@@ -51,7 +51,7 @@ QuickPopup {
         columns: 2
         columnSpacing: 8
         rowSpacing: 8
-        QuickTile { glyph: "\u{F033E}"; title: "Lock"; sub: "The lock screen"; onToggled: q.act("lock", ["loginctl", "lock-session"], false) }
+        QuickTile { glyph: "\u{F033E}"; title: "Lock"; sub: "The lock screen"; onToggled: q.act("lock", ["aequalyn-lock", "lock"], false) }
         QuickTile { glyph: "\u{F04B2}"; title: "Sleep"; sub: "Lock, then sleep"; onToggled: q.act("sleep", ["systemctl", "suspend"], false) }
         QuickTile {
             glyph: "\u{F0343}"; title: "Log out"

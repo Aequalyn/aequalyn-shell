@@ -8,6 +8,7 @@ import QtQuick
 import QtQuick.Layouts
 import "InstallOptions.js" as Options
 import "../store/AppIcons.js" as Icons
+import "root:/settings"
 
 pragma ComponentBehavior: Bound
 
@@ -25,7 +26,7 @@ Item {
     // The Store's page has no text field under the cursor, so Delete can be a
     // remove shortcut there. In the panels Backspace belongs to the search line.
     property bool allowDeleteKey: false
-    property string mono: "JetBrainsMono Nerd Font"
+    property string mono: AequalynSettings.monoFont
     property string sans: "sans-serif"
     property int categoryPick: 0
     property int optionPick: 0

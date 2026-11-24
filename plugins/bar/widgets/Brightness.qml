@@ -27,7 +27,7 @@ Rectangle {
       text: "󰃠"
       color: bar.inked(ink, bar.theme.accentOrange)
       font.pixelSize: 14
-      font.family: bar.font
+      font.family: bar.iconFont
     }
     Text {
       readonly property string full: Math.round(bar.brightnessValue * 100) + "%"

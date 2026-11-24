@@ -16,7 +16,7 @@ Scope {
     property var theme: null
 
     readonly property var actions: [
-        { icon: "\u{F033E}", title: "Lock the screen", sub: "Action", cmd: ["loginctl", "lock-session"] },
+        { icon: "\u{F033E}", title: "Lock the screen", sub: "Action", cmd: ["aequalyn-lock", "lock"] },
         { icon: "\u{F0E09}", title: "Next wallpaper", sub: "Action", cmd: ["aequalyn-wallpaper", "next"] },
         { icon: "\u{F009B}", title: "Do not disturb on or off", sub: "Action", cmd: ["qs", "ipc", "call", "notifications", "dnd_toggle"] },
         { icon: "\u{F0A20}", title: "Clear notifications", sub: "Action", cmd: ["qs", "ipc", "call", "notifications", "dismiss_all"] },

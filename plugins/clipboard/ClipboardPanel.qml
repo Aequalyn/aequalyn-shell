@@ -17,7 +17,7 @@ import "root:/plugins/clipboard"
 Scope {
     id: root
     property var theme: AequalynDefaultTheme {}
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     IpcHandler {
         target: "clipboard"

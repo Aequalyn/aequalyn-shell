@@ -1,11 +1,12 @@
 // "Label" above a framed hex field: the same text row Clipboard uses for colours.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 ColumnLayout {
     id: field
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property string value: ""
     signal picked(string value)
@@ -32,7 +33,7 @@ ColumnLayout {
         visible: field.label !== ""
         text: field.label
         color: field.theme ? field.theme.textSecondary : "white"
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         Layout.fillWidth: true
         elide: Text.ElideRight
@@ -66,7 +67,7 @@ ColumnLayout {
         text: "hex, like #ff6a1f"
         color: field.theme ? field.theme.textMuted : "white"
         opacity: 0.45
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 10
     }
     Connections {

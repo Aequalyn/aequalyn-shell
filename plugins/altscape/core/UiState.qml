@@ -1,5 +1,6 @@
 import QtQuick
 import "../js/Schema.js" as Schema
+import "root:/settings"
 
 // theme + spacing + panel state for panel, popout and overlay (`ui.*`).
 // own item so the names can't clash with the shell's types
@@ -41,7 +42,7 @@ Item {
     property color barBg: "#121217"
     property color themeAccent: "transparent"
     property color themeUrgent: "#e06c75"
-    property string fontName: ""
+    property string fontName: AequalynSettings.monoFont
 
     // the theme's window border (colors + angle), read by Service
     property var borderColors: []

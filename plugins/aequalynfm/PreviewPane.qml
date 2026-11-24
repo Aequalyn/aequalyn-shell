@@ -1,6 +1,7 @@
 import QtMultimedia
 import QtQuick
 import "root:/plugins/aequalynfm/compat"
+import "root:/settings"
 
 // the preview pane, right of the folder: what is picked out, big, and what there
 // is to know about it. nothing picked shows the folder itself, several a stack.
@@ -494,7 +495,7 @@ Item {
                 text: prev.infoFits && prev.info.text !== undefined ? prev.info.text + (prev.info.cut ? "\n…" : "") : ""
                 textFormat: Text.PlainText
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                font.family: "monospace"
+                font.family: AequalynSettings.monoFont
                 font.pixelSize: Theme.dp(11)
                 color: Theme.text
                 opacity: 0.9

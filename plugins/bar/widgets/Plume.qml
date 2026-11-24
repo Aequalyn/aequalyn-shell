@@ -28,7 +28,7 @@ Rectangle {
     text: "\u{F01C0}"
     color: plumeButton.on ? bar.inked(ink, bar.theme.accentPrimary) : bar.theme.textMuted
     font.pixelSize: 14
-    font.family: bar.font
+    font.family: bar.iconFont
   }
   MouseArea {
     id: plumeArea

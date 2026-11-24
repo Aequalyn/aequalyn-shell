@@ -2,11 +2,12 @@
 // underneath. The same slider shape the desktop's other settings use.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 ColumnLayout {
     id: stepper
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property real value: 0
     property real from: 0
@@ -40,7 +41,7 @@ ColumnLayout {
         Text {
             text: stepper.label
             color: stepper.theme ? stepper.theme.textSecondary : "white"
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 12
             Layout.fillWidth: true
             elide: Text.ElideRight

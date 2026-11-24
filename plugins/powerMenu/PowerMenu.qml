@@ -16,7 +16,7 @@ import "root:/style/backdrop"
 Scope {
     id: root
     property var theme: AequalynDefaultTheme {}
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property bool panelVisible: false
     property int selectedIndex: 0
 

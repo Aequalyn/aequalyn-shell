@@ -1,4 +1,5 @@
 import QtQuick
+import "root:/settings"
 
 // Spartan segmented control: a row of flat chips, 10px corners, 120ms colour
 // fade. Keeps the ButtonGroup API (options/current/onPicked/width).
@@ -37,7 +38,7 @@ Item {
                         visible: modelData.icon !== undefined && modelData.icon !== ""
                         text: modelData.icon || ""
                         color: on ? Theme.fgAccent : Theme.text
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: AequalynSettings.monoFont
                         font.pixelSize: 16
                         anchors.verticalCenter: parent.verticalCenter
                     }

@@ -14,7 +14,7 @@ import  "../../style/Colors.js" as Colors
 Flickable {
     id: pane
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     // "" shows every part; "type", "shape", "place" or "parts" one of them
     property string section: ""
     // the collection whose picker type the Shape part edits (the page's preview shows it)
@@ -284,7 +284,7 @@ Flickable {
             anchors.horizontalCenter: parent.horizontalCenter
             text: tile.label
             color: tile.selected ? pane.theme.textPrimary : pane.theme.textSecondary
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 11
             font.weight: tile.selected ? Font.DemiBold : Font.Normal
         }

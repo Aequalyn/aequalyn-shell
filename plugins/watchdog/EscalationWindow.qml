@@ -24,7 +24,7 @@ Scope {
     // the shell's live theme (Watchdog.qml passes it; the default covers
     // the moment while it loads)
     property var theme: AequalynDefaultTheme {}
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     // the request on show (or null): { requestId, plugin, label, version,
     // source, action, actionLabel, command, about, allowed }

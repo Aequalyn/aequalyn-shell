@@ -1,11 +1,12 @@
 // Label + sublabel on the left, a switch on the right.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 RowLayout {
     id: toggle
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property string sublabel: ""
     property bool checked: false
@@ -20,7 +21,7 @@ RowLayout {
         Text {
             text: toggle.label
             color: toggle.theme.textPrimary
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 13
             Layout.fillWidth: true
         }
@@ -28,7 +29,7 @@ RowLayout {
             visible: toggle.sublabel !== ""
             text: toggle.sublabel
             color: toggle.theme.textMuted
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 11
             wrapMode: Text.WordWrap
             Layout.fillWidth: true

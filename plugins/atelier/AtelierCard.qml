@@ -10,7 +10,7 @@ import "root:/settings"
 Item {
     id: card
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property var item: ({})
     property bool selected: false
     property bool showText: true

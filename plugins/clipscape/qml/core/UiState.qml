@@ -1,5 +1,6 @@
 import QtQuick
 import "../js/Schema.js" as Schema
+import "root:/settings"
 
 // Colors, spacing and what is showing, for the panel, the pop-out window and the
 // picker (`ui.*`). Its own item, so none of these names can clash with the shell's types.
@@ -37,7 +38,7 @@ Item {
     property color barFg: "white"
     property color barBg: "#121217"
     property color themeAccent: "transparent"
-    property string fontName: ""
+    property string fontName: AequalynSettings.monoFont
     // the theme's window border: its colors (#rrggbb) and angle, read by the service
     property var borderColors: []
     property real borderAngle: 0

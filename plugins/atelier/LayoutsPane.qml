@@ -3,11 +3,12 @@
 import QtQuick
 import QtQuick.Layouts
 import "controls"
+import "root:/settings"
 
 Item {
     id: pane
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string searchText: ""
 
     property string group: "all"
@@ -130,7 +131,7 @@ Item {
             Text {
                 text: "WORKSPACE"
                 color: pane.theme.textMuted
-                font.family: "sans-serif"
+                font.family: AequalynSettings.uiFont
                 font.pixelSize: 11
                 font.bold: true
                 font.letterSpacing: 1.4
@@ -165,7 +166,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: wsChip.ws
                         color: wsChip.on ? pane.theme.textPrimary : pane.theme.textSecondary
-                        font.family: "sans-serif"
+                        font.family: AequalynSettings.uiFont
                         font.pixelSize: 13
                         font.bold: true
                     }
@@ -190,7 +191,7 @@ Item {
             Text {
                 text: (pane.current ? pane.current.name : "") + "  ·  " + pane.items.length + " layouts"
                 color: pane.theme.textMuted
-                font.family: "sans-serif"
+                font.family: AequalynSettings.uiFont
                 font.pixelSize: 12
             }
         }
@@ -291,7 +292,7 @@ Item {
                             width: parent.width
                             text: cell.ghost ? "" : cell.entry.name
                             color: pane.theme.textPrimary
-                            font.family: "sans-serif"
+                            font.family: AequalynSettings.uiFont
                             font.pixelSize: 12
                             font.bold: cell.active
                             elide: Text.ElideRight
@@ -301,7 +302,7 @@ Item {
                             width: parent.width
                             text: cell.ghost ? "" : cell.entry.group
                             color: pane.theme.textMuted
-                            font.family: "sans-serif"
+                            font.family: AequalynSettings.uiFont
                             font.pixelSize: 10
                             elide: Text.ElideRight
                             maximumLineCount: 1
@@ -400,7 +401,7 @@ Item {
                     Layout.fillWidth: true
                     text: pane.current ? pane.current.hint : ""
                     color: pane.theme.textSecondary
-                    font.family: "sans-serif"
+                    font.family: AequalynSettings.uiFont
                     font.pixelSize: 12
                     elide: Text.ElideRight
                 }

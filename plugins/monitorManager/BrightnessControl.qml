@@ -6,11 +6,12 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
 import "root:/style/Wheel.js" as Wheel
+import "root:/settings"
 
 ColumnLayout {
   id: ctl
   property var theme
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.monoFont
 
   property bool available: false     // a backlight brightnessctl can set
   property int percent: 0

@@ -7,7 +7,7 @@ import "root:/settings"
 Flickable {
     id: pane
     property var theme          // the live Theme singleton
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     readonly property var cfg: AequalynSettings.paletteCfg
     readonly property bool fromWallpaper: theme.wallpaperMode
@@ -72,7 +72,7 @@ Flickable {
                             Text {
                                 text: srcCard.modelData.title
                                 color: pane.theme.textPrimary
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 14
                                 font.bold: true
                             }
@@ -80,7 +80,7 @@ Flickable {
                                 Layout.fillWidth: true
                                 text: srcCard.modelData.text
                                 color: pane.theme.textMuted
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 11
                                 wrapMode: Text.WordWrap
                             }
@@ -172,7 +172,7 @@ Flickable {
                         Text {
                             text: sc.modelData[1]
                             color: pane.theme.textPrimary
-                            font.family: "sans-serif"
+                            font.family: AequalynSettings.uiFont
                             font.pixelSize: 13
                             font.bold: true
                         }
@@ -180,7 +180,7 @@ Flickable {
                             Layout.fillWidth: true
                             text: sc.modelData[2]
                             color: pane.theme.textMuted
-                            font.family: "sans-serif"
+                            font.family: AequalynSettings.uiFont
                             font.pixelSize: 11
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
@@ -258,7 +258,7 @@ Flickable {
                             Text {
                                 text: modelData[1]
                                 color: pane.theme.textPrimary
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 12
                                 font.bold: true
                             }

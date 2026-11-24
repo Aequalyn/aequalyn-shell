@@ -3,11 +3,12 @@
 import QtQuick
 import  "../../style/Style.js" as Style
 import  "../../style/Paint.js" as Paint
+import "root:/settings"
 
 Rectangle {
     id: tile
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property var look: ({})          // style keys (+ opacity, radius)
     property var pal                 // { bg, fg, ac, hot, spectrum }
     property string edge: "bottom"
@@ -54,7 +55,7 @@ Rectangle {
         elide: Text.ElideRight
         text: tile.label
         color: tile.theme ? (tile.selected ? tile.theme.textPrimary : tile.theme.textSecondary) : "white"
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 11
         font.weight: tile.selected ? Font.DemiBold : Font.Normal
     }

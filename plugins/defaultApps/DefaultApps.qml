@@ -6,11 +6,12 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "root:/plugins/appLauncher"
 import "root:/style/backdrop"
+import "root:/settings"
 
 Scope {
     id: root
     property var theme: DefaultTheme {}
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property bool open: false
     property string activeCategory: "browser"
     property bool appPaneFocused: false

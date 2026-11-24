@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import "root:/theme-switcher" as Aeq
+import "root:/settings"
 
 pragma Singleton
 
@@ -60,7 +61,7 @@ Singleton {
     readonly property int radiusMd: 10
     readonly property int shapeLg: 10
     readonly property int shapeXl: 12
-    readonly property string fontFamily: "sans-serif"
+    readonly property string fontFamily: AequalynSettings.uiFont
     readonly property int fontBody: 13
     readonly property int fontLabel: 11
     readonly property int fontTitle: 14

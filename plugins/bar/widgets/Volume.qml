@@ -35,7 +35,7 @@ Rectangle {
         return bar.inked(ink, bar.theme.accentPrimary);
       }
       font.pixelSize: 14
-      font.family: bar.font
+      font.family: bar.iconFont
     }
     Text {
       readonly property string full: {

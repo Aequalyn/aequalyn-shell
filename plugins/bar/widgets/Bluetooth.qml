@@ -27,7 +27,7 @@ Rectangle {
     text: "󰂯"
     color: BluetoothService.powered ? bar.inked(ink, bar.theme.accentCyan) : bar.theme.textMuted
     font.pixelSize: 14
-    font.family: bar.font
+    font.family: bar.iconFont
   }
   Rectangle {
     visible: BluetoothService.connectedName !== ""

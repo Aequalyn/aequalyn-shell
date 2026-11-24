@@ -6,11 +6,12 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import "root:/settings"
 
 Scope {
   id: root
   property var theme: null
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.monoFont
   property bool showBadge: false
 
   readonly property color cBg: (theme && theme.bgBase) ? theme.bgBase : "#1e1e2e"

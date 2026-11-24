@@ -14,7 +14,7 @@ import "root:/settings"
 Flickable {
     id: pane
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     // The control center shows this pane in tabs: `section` picks the part to show
     // ("" shows all of it), and `showStage` hides the picture on top when the page
@@ -110,7 +110,7 @@ Flickable {
                                 anchors.centerIn: parent
                                 text: dcard.index + 1
                                 color: dcard.on ? pane.theme.bgBase : pane.theme.accentPrimary
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 14
                                 font.bold: true
                             }
@@ -133,7 +133,7 @@ Flickable {
                                 Layout.fillWidth: true
                                 text: pane.lookName(dcard.modelData, dcard.index)
                                 color: pane.theme.textMuted
-                                font.family: "sans-serif"
+                                font.family: AequalynSettings.uiFont
                                 font.pixelSize: 11
                                 elide: Text.ElideRight
                             }
@@ -177,14 +177,14 @@ Flickable {
             wrapMode: Text.WordWrap
             text: pane.svc ? pane.svc.notice : ""
             color: pane.theme.accentOrange
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 12
         }
         Text {
             visible: !pane.svc
             text: "Turn the docks on to set them up."
             color: pane.theme.textMuted
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 13
         }
 

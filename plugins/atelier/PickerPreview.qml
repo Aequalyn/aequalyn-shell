@@ -10,7 +10,7 @@ import "root:/settings"
 Item {
     id: pv
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string wallpaper: ""
     property string collection: "themes"       // "themes" | "wallpapers"
     clip: true

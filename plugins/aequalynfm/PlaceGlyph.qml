@@ -1,6 +1,7 @@
 import QtQuick
 import "root:/plugins/aequalynfm/compat"
 import "root:/plugins/aequalynfm/compat/Icons.js" as Icons
+import "root:/settings"
 
 // Sidebar glyphs are Nerd Font codepoints in the row's own colour, so they
 // follow the palette and the active-row accent the way the settings app's do.
@@ -25,7 +26,7 @@ Item {
         anchors.centerIn: parent
         text: glyph.g
         color: glyph.color
-        font.family: "JetBrainsMono Nerd Font"
+        font.family: AequalynSettings.monoFont
         font.pixelSize: glyph.size
         Behavior on color { enabled: glyph.animateColor; ColorAnimation { duration: 120 } }
     }

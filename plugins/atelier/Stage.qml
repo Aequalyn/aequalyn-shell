@@ -9,7 +9,7 @@ Item {
     id: stage
     clip: true
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property var barLook
     property int barSize: 22
     // [{ look, pal, edge, icons }]

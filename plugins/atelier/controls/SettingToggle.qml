@@ -1,11 +1,12 @@
 // Label and hint with the small on/off switch beside them, like the desktop's settings.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 RowLayout {
     id: toggle
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property string sublabel: ""
     property bool checked: false
@@ -24,7 +25,7 @@ RowLayout {
         Text {
             text: toggle.label
             color: toggle.theme ? toggle.theme.textPrimary : "white"
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 13
             font.weight: Font.DemiBold
             Layout.fillWidth: true
@@ -34,7 +35,7 @@ RowLayout {
             text: toggle.sublabel
             color: toggle.theme ? toggle.theme.textMuted : "white"
             opacity: 0.55
-            font.family: "sans-serif"
+            font.family: AequalynSettings.uiFont
             font.pixelSize: 10
             wrapMode: Text.WordWrap
             Layout.fillWidth: true

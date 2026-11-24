@@ -12,11 +12,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "root:/plugins/docks"
 import "root:/style/backdrop"
+import "root:/settings"
 
 Scope {
   id: root
   property var theme: DefaultTheme {}
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.monoFont
 
   IpcHandler {
     target: "launcher"

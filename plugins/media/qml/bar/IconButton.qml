@@ -1,10 +1,11 @@
 import QtQuick
+import "root:/settings"
 
 Item {
     id: root
     property string iconText: ""
     property color foreground: "white"
-    property string fontFamily: "JetBrainsMono Nerd Font"
+    property string fontFamily: AequalynSettings.monoFont
     property real iconSize: 12
     property real horizontalPadding: 6
     property real verticalPadding: 3

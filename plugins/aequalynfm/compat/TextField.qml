@@ -1,4 +1,5 @@
 import QtQuick
+import "root:/settings"
 
 // Spartan text field: 38px high, 10px radius, thin border, focus accent. Keeps
 // the field API (variant/icon/clearable/containerColor/placeholder/
@@ -46,7 +47,7 @@ Item {
                 visible: tf.icon !== ""
                 text: tf.icon
                 color: Theme.subtext
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: AequalynSettings.monoFont
                 font.pixelSize: 16
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -79,7 +80,7 @@ Item {
                 visible: tf.clearable && tf.text !== ""
                 text: "close"
                 color: Theme.subtext
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: AequalynSettings.monoFont
                 font.pixelSize: 16
                 anchors.verticalCenter: parent.verticalCenter
                 MouseArea {

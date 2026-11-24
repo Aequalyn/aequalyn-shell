@@ -8,6 +8,7 @@ import "js/Schema.js" as Schema
 import "js/Clips.js" as Clips
 import "js/Theme.js" as Border
 import "core"
+import "root:/settings"
 
 // The always-loaded part of Clipscape for Aequalyn: settings, the history, the
 // watcher and ipc. The colors come from the shell's theme singleton, not from
@@ -79,7 +80,7 @@ Item {
         barFg: Theme.textPrimary
         barBg: Theme.bgBase
         themeAccent: Theme.accentPrimary
-        fontName: "JetBrainsMono Nerd Font"
+        fontName: AequalynSettings.monoFont
         borderColors: root.borderColors
         borderAngle: root.borderAngle
         onPickerRequested: root.openPicker("")

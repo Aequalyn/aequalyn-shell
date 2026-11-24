@@ -164,6 +164,8 @@ QtObject {
         root[prop] = next
         if (section === "palette" && ["mode", "scheme", "contrast", "lightFrom", "darkFrom"].indexOf(key) >= 0)
             root.pendingRetheme = true
+        if (section === "appearance" && ["uiFont", "monoFont", "fontSize"].indexOf(key) >= 0)
+            root.pendingFontApply = true
         root.save()
     }
 
@@ -193,23 +195,71 @@ QtObject {
             if (d) root[sec + "Cfg"] = Object.assign({}, d)
         }
         if (sections.indexOf("palette") >= 0) root.pendingRetheme = true
+        if (sections.indexOf("appearance") >= 0) root.pendingFontApply = true
         root.save()
     }
 
     // Set after a change that needs new colours; the retheme runs once the
     // settings file is on disk, so aequalyn-theme never reads stale values.
     property bool pendingRetheme: false
+    property bool writeAgain: false
+    property bool pendingFontApply: false
+
+    // ---- Fonts ------------------------------------------------------------
+    property string uiFont: "Inter"
+    property string monoFont: "JetBrainsMono Nerd Font"
+    property int fontSize: 11
+    property bool fontAntialiasing: true
+    property string fontHinting: "slight"
+    property string fontSubpixel: "rgb"
+    // one font for both: picking either one sets the two of them
+    property bool fontSame: false
+    readonly property string fontKey: JSON.stringify([uiFont, monoFont, fontSize, fontAntialiasing, fontHinting, fontSubpixel])
+
+    // Every font change goes through here: the shell follows the properties at once, and
+    // the apps follow as soon as the file is written. Several in a row are one save.
+    function setFont(which, name) {
+        if (!root.ready) return
+        if (!name) return
+        if (which !== "mono" || root.fontSame) root.uiFont = name
+        if (which === "mono" || root.fontSame) root.monoFont = name
+        root.fontsChanged()
+    }
+    function setFontSame(on) {
+        if (!root.ready) return
+        root.fontSame = on
+        if (on) root.monoFont = root.uiFont
+        root.fontsChanged()
+    }
+    function setFontOption(key, value) {
+        if (!root.ready) return
+        if (["fontSize", "fontAntialiasing", "fontHinting", "fontSubpixel"].indexOf(key) < 0) return
+        root[key] = value
+        root.fontsChanged()
+    }
+    function fontsChanged() {
+        root.pendingFontApply = true
+        Qt.callLater(root.save)
+    }
+    // one run at a time; a change made meanwhile runs it once more, with the last values
+    property bool fontApplyAgain: false
+    function applyFonts() {
+        if (root.fontApplyProc.running) { root.fontApplyAgain = true; return }
+        root.fontApplyProc.command = [Quickshell.env("HOME") + "/.local/bin/aequalyn-apply-fonts"]
+        root.fontApplyProc.running = true
+    }
+
 
     // ---- Plugins / modules ----------------------------------------------
     // Which shell elements are loaded. Missing entries default to all of them.
     property var enabledPlugins: [
         "bar", "appLauncher", "defaultApps", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu", "snap",
-        "docks", "plume", "altscape", "programsMenu", "installMenu", "media", "store", "settings", "lock"
+        "docks", "plume", "altscape", "programsMenu", "installMenu", "media", "store", "settings", "lock", "manual", "fonts", "showcase"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "atelier", "programsMenu", "installMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap", "lock"]
+    readonly property var newPlugins: ["plume", "altscape", "atelier", "programsMenu", "installMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap", "lock", "manual", "fonts", "showcase"]
     property var pluginsKnown: []
     // Plugins that must never run in the supervisor's sandbox, even when marked for
     // it in Plugins.js or by a Store manifest (watchdog.json's noSandbox list ends up
@@ -251,7 +301,7 @@ QtObject {
     // regions and reorder them in Settings -> Top bar.
     property var barLeft: ["appsmenu", "workspaces", "layouts"]
     property var barCenter: ["clock", "media", "title"]
-    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "glance", "barbutton", "settingsbutton"]
+    property var barRight: ["volume", "brightness", "cpu", "network", "bluetooth", "battery", "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "atelier", "plume", "altscape", "clipscape", "showcase", "glance", "barbutton", "settingsbutton"]
 
     // Back-compat derived order (all regions concatenated).
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
@@ -269,6 +319,7 @@ QtObject {
         settingsbutton: "Settings button",
         barbutton: "Bar button",
         clipscape: "Clipscape (clipboard history)",
+        showcase: "Showcase (desktop widgets)",
         caffeine: "Caffeine (idle inhibit)",
         plume: "Cursor effects (Plume)",
         timer: "Timer", focus: "Focus", weather: "Weather", netspeed: "Network speed",
@@ -313,7 +364,7 @@ QtObject {
     function normalizeBarRegions() {
         const defaults = ["appsmenu", "clock", "workspaces", "media", "title", "volume",
             "brightness", "cpu", "network", "bluetooth", "battery",
-            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "clipscape", "glance", "barbutton", "settingsbutton"]
+            "temperature", "caffeine", "tray", "power", "screenrecorder", "screenshot", "layouts", "atelier", "plume", "altscape", "clipscape", "showcase", "glance", "barbutton", "settingsbutton"]
         // Keep every plugin visible in the settings arranger: regions grow to fit
         // instead of silently dropping extras. The bar sections scroll when a
         // region has more plugins than fits on screen.
@@ -446,6 +497,7 @@ QtObject {
     ]
 
     property bool ready: false
+    property bool _loading: false
     readonly property string configPath: Quickshell.env("HOME") + "/.config/aequalyn/settings.json"
     // Keep the full document that was loaded so saving one section cannot drop
     // settings owned by other tools, such as per-workspace layouts.
@@ -510,6 +562,13 @@ QtObject {
             palette: root.paletteCfg,
             atelier: root.atelierCfg,
             backdrop: root.backdropCfg,
+            uiFont: root.uiFont,
+            monoFont: root.monoFont,
+            fontSize: root.fontSize,
+            fontAntialiasing: root.fontAntialiasing,
+            fontHinting: root.fontHinting,
+            fontSubpixel: root.fontSubpixel,
+            fontSame: root.fontSame,
             plugins: root.enabledPlugins,
             pluginsKnown: root.pluginsKnown,
             noSandboxPlugins: root.noSandboxPlugins,
@@ -569,6 +628,9 @@ QtObject {
     // Write the JSON and re-apply the Hyprland half. It's written next to settings.json and
     // moved over it, so the watcher below never reads a half-written file.
     function save() {
+        // a write still running would swallow this one: it is made right after
+        if (root.writeProc.running) { root.writeAgain = true; root.applyHyprland(); return }
+        root.writeAgain = false
         const json = JSON.stringify(root._data(), null, 2)
         writeProc.command = [
             "sh", "-c",
@@ -647,6 +709,7 @@ QtObject {
 
     function load(raw) {
         const wasReady = root.ready
+        root._loading = true
         if (!raw || raw.trim() === "") {
             if (root.ready) return
             root.ready = true
@@ -779,6 +842,16 @@ QtObject {
         }
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })
+        const fontsBefore = root.fontKey
+        root.uiFont = String(d.uiFont || a.uiFont || root.uiFont || "Inter")
+        root.monoFont = String(d.monoFont || a.monoFont || root.monoFont || "JetBrainsMono Nerd Font")
+        root.fontSize = Math.max(8, Math.min(20, Math.round(Number(d.fontSize || a.fontSize || root.fontSize) || 11)))
+        root.fontAntialiasing = d.fontAntialiasing !== false
+        root.fontHinting = ["none","slight","medium","full"].indexOf(d.fontHinting) >= 0 ? d.fontHinting : "slight"
+        root.fontSubpixel = ["rgb","bgr","vrgb","vbgr","none"].indexOf(d.fontSubpixel) >= 0 ? d.fontSubpixel : "rgb"
+        root.fontSame = d.fontSame === undefined ? root.uiFont === root.monoFont : d.fontSame === true
+        // fonts changed outside the shell (aequalyn-settings, a restored profile)
+        if (wasReady && root.fontKey !== fontsBefore) root.applyFonts()
 
         root.dockPosition = pick(dk.position, root.dockPosition)
         root.dockAutohide = pick(dk.autohide, root.dockAutohide)
@@ -832,6 +905,7 @@ QtObject {
             root.applyHyprland()
             root.applyIdle()
         }
+        root._loading = false
         root.ready = true
     }
 
@@ -840,9 +914,14 @@ QtObject {
     property Process writeProc: Process {
         running: false
         onExited: {
+            if (root.writeAgain) { root.save(); return }
             if (root.pendingRetheme) {
                 root.pendingRetheme = false
                 root.retheme()
+            }
+            if (root.pendingFontApply) {
+                root.pendingFontApply = false
+                root.applyFonts()
             }
         }
     }
@@ -850,6 +929,10 @@ QtObject {
     property Process themeProc: Process { running: false }
     property Process idleProc: Process { running: false }
     property Process browserProc: Process { running: false }
+    property Process fontApplyProc: Process {
+        running: false
+        onExited: if (root.fontApplyAgain) { root.fontApplyAgain = false; root.applyFonts() }
+    }
 
     // Optional SDDM lock-screen theme pack: installed marker OR any non-default
     // theme present (covers pre-feature installs and manually added themes).
@@ -890,6 +973,7 @@ QtObject {
         // actually fires for edits made outside the UI (agent, profile import,
         // dotfiles restore).
         onFileChanged: root.watcher.reload()
-        onTextChanged: root.load(root.watcher.text())
+        // (a write of our own still under way: the file is older than what is shown)
+        onTextChanged: if (!root.writeProc.running && !root.pendingFontApply) root.load(root.watcher.text())
     }
 }

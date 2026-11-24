@@ -13,8 +13,8 @@ Singleton {
     readonly property QtObject fallback: AequalynDefaultTheme {}
 
     // words in a plain sans, numbers, keys and icons in the shell's mono
-    readonly property string sans: "sans-serif"
-    readonly property string mono: "JetBrainsMono Nerd Font"
+    readonly property string sans: (AequalynSettings.uiFont && AequalynSettings.uiFont.length) ? AequalynSettings.uiFont : "sans-serif"
+    readonly property string mono: (AequalynSettings.monoFont && AequalynSettings.monoFont.length) ? AequalynSettings.monoFont : "JetBrainsMono Nerd Font"
 
     // the picture on the desktop right now (empty while unknown)
     property string wallpaper: ""

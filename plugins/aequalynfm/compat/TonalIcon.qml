@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import "Icons.js" as Icons
+import "root:/settings"
 
 // Folder and drive types are drawn as Nerd Font glyphs in the theme's accent
 // colour, so they follow the palette the way the settings app's icons do. Other
@@ -33,7 +34,7 @@ Item {
         anchors.centerIn: parent
         text: ic.g
         color: ic.hovered ? Theme.accent : (ic.slot.indexOf("folder") === 0 || ic.slot === "home" || ic.slot === "desktop" ? Theme.accent : Theme.text)
-        font.family: "JetBrainsMono Nerd Font"
+        font.family: AequalynSettings.monoFont
         font.pixelSize: Math.round(ic.size * 0.72)
         Behavior on color { ColorAnimation { duration: 120 } }
     }

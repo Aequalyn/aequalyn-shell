@@ -18,3 +18,4 @@ UpdatesService 1.0 UpdatesService.qml
 BackupService 1.0 BackupService.qml
 CcPluginRows 1.0 CcPluginRows.qml
 PluginSettings 1.0 PluginSettings.qml
+CcSearchableChoice 1.0 CcSearchableChoice.qml

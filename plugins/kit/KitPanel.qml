@@ -16,6 +16,7 @@ import Quickshell
 import Quickshell.Wayland
 import "root:/style/backdrop"
 import "../../Plugins.js" as Registry
+import "root:/settings"
 
 Scope {
     id: kp
@@ -53,7 +54,8 @@ Scope {
     // small buttons at the right of the keys: [{ key, label }], answered by `action`
     property var actions: []
     signal action(string key)
-    readonly property string font: "JetBrainsMono Nerd Font"
+    readonly property string font: AequalynSettings.uiFont
+    readonly property string mono: AequalynSettings.monoFont
     // its name over the search line: `title`, or the plugin's own (Plugins.js)
     readonly property string heading: kp.title !== "" ? kp.title
         : ((Registry.list.find(p => p.id === kp.name) || { label: kp.name }).label)

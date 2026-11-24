@@ -21,7 +21,9 @@ import  "../../style/Colors.js" as Colors
 Scope {
   id: root
   property var theme: DefaultTheme {}
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.uiFont
+  property string monoFont: AequalynSettings.monoFont
+  property string iconFont: AequalynSettings.monoFont
   property bool barVisible: true
   property bool quickPanelVisible: false
   // the quick panel a widget's right click opened ("" for none): one at a time, and
@@ -72,7 +74,8 @@ Scope {
   // every quick panel takes the bar's palette and font
   Component.onCompleted: {
     Quick.theme = Qt.binding(() => root.theme);
-    Quick.mono = Qt.binding(() => root.font);
+    Quick.mono = Qt.binding(() => root.monoFont);
+    Quick.sans = Qt.binding(() => root.font);
   }
 
   // ---- the bar's look (Atelier -> Bar) ------------------------------------
@@ -304,6 +307,8 @@ Scope {
       }
       implicitHeight: root.windowThickness
       implicitWidth: root.windowThickness
+      exclusionMode: ExclusionMode.Auto
+      exclusiveZone: root.barVisible ? root.windowThickness : 0
       // styled: the shapes are the background; plain: one band in the theme
       color: root.styled ? "transparent"
            : Qt.rgba(root.theme.bgBase.r, root.theme.bgBase.g, root.theme.bgBase.b, AequalynSettings.barOpacity / 100)

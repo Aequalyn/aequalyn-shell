@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "root:/plugins/kit"
+import "root:/settings"
 
 Scope {
     id: root
@@ -62,7 +63,7 @@ Scope {
                         wrapMode: TextEdit.Wrap
                         color: panel.c_text
                         selectionColor: panel.tint(panel.c_accent, 0.4)
-                        font.family: "JetBrainsMono Nerd Font"
+                        font.family: AequalynSettings.monoFont
                         font.pixelSize: 13
                         text: root.text
                         readOnly: !root.loaded

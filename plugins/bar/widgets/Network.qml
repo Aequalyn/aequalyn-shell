@@ -33,7 +33,7 @@ Rectangle {
       }
       color: SystemInfo.networkType === "disconnected" ? bar.theme.textMuted : bar.inked(ink, bar.theme.accentGreen)
       font.pixelSize: 14
-      font.family: bar.font
+      font.family: bar.iconFont
     }
     Text {
       readonly property string full: SystemInfo.networkInfo

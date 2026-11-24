@@ -1,11 +1,12 @@
 // A short title with an optional explanation underneath, in the control center's words.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 ColumnLayout {
     id: header
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string text: ""
     property string sub: ""
 
@@ -16,7 +17,7 @@ ColumnLayout {
     Text {
         text: header.text
         color: header.theme.textSecondary
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 14
         font.weight: Font.DemiBold
     }
@@ -24,7 +25,7 @@ ColumnLayout {
         visible: header.sub !== ""
         text: header.sub
         color: header.theme.textMuted
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         wrapMode: Text.WordWrap
         Layout.fillWidth: true

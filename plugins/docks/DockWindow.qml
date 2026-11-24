@@ -42,7 +42,7 @@ PanelWindow {
   // pop-ups (menu, add app, previews) wear the shell's own theme, like the rest of Aequalyn
   AequalynDefaultTheme { id: defaultTheme }
   readonly property var ui: svc.shellTheme ? svc.shellTheme : defaultTheme
-  readonly property string uiFont: "JetBrainsMono Nerd Font"
+  readonly property string uiFont: AequalynSettings.uiFont
 
   // by category: a steady hue per app from its first category (dot + hover). other modes use the accent
   function toneFor(e) {

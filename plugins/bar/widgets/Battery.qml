@@ -34,7 +34,7 @@ Rectangle {
       text: SystemInfo.batteryIcon
       color: parent.parent.batteryColor
       font.pixelSize: 14
-      font.family: bar.font
+      font.family: bar.iconFont
     }
     Text {
       readonly property string full: SystemInfo.batteryLevel

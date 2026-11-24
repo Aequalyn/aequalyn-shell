@@ -1,4 +1,5 @@
 import QtQuick
+import "root:/settings"
 
 // Spartan button: flat rectangle, 10px corners, 120ms colour fade, no spring,
 // no ripple. Keeps the M3-ish variant/size API the dialogs expect.
@@ -71,7 +72,7 @@ Item {
                 visible: btn.icon !== ""
                 text: btn.icon
                 color: btn.content
-                font.family: "JetBrainsMono Nerd Font"
+                font.family: AequalynSettings.monoFont
                 font.pixelSize: btn.iconPx
                 anchors.verticalCenter: parent.verticalCenter
             }

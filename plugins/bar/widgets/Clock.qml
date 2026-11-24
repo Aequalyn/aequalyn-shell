@@ -27,7 +27,7 @@ Rectangle {
       lineHeight: bar.vertical ? 0.9 : 1
       color: bar.inked(ink, bar.theme.textPrimary)
       font.pixelSize: 12
-      font.family: bar.font
+      font.family: bar.iconFont
     }
     Text {
       text: Time.dateString

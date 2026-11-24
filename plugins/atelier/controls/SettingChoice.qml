@@ -1,11 +1,12 @@
 // "Label" above a full-width row of joined buttons: one choice out of a few.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 ColumnLayout {
     id: row
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property var options: []        // values
     property var labels: ({})       // value -> label (else the value itself)
@@ -20,7 +21,7 @@ ColumnLayout {
         visible: row.label !== ""
         text: row.label
         color: row.theme ? row.theme.textSecondary : "white"
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         Layout.fillWidth: true
         elide: Text.ElideRight

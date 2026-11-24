@@ -9,11 +9,12 @@ import Quickshell.Wayland
 import Quickshell.Services.Pipewire
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 Scope {
   id: root
   property var theme: DefaultTheme {}
-  property string font: "JetBrainsMono Nerd Font"
+  property string font: AequalynSettings.monoFont
 
   property bool showVolume: false
   property bool showBrightness: false

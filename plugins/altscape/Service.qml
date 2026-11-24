@@ -6,6 +6,7 @@ import "js/Schema.js" as Schema
 import "js/Model.js" as Model
 import "js/Theme.js" as Theme
 import "core"
+import "root:/settings"
 
 // the always-loaded part. owns settings, keeps the window list fresh from
 // hyprland events (so alt+tab opens instantly), icons, focus/close,
@@ -54,7 +55,7 @@ Item {
         barBg: root.theme ? root.theme.bgBase : "#121217"
         themeAccent: root.theme ? root.theme.accentPrimary : "transparent"
         themeUrgent: root.theme ? root.theme.accentRed : "#e06c75"
-        fontName: "JetBrainsMono Nerd Font"
+        fontName: AequalynSettings.monoFont
         borderColors: root.borderColors
         borderAngle: root.borderAngle
         onOpenSwitcherRequested: root.openSwitcher("open")

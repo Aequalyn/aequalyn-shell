@@ -43,7 +43,7 @@ Rectangle {
         text: button.label
         color: bar.inked(ink, bar.theme.accentPrimary)
         font.pixelSize: 13
-        font.family: bar.font
+        font.family: bar.iconFont
     }
 
     MouseArea {

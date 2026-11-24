@@ -6,6 +6,7 @@ import "js/Visuals.js" as Visuals
 import "js/Schema.js" as Schema
 import "js/Cover.js" as CoverColors
 import "js/Style.js" as PlateStyle
+import "root:/settings"
 
 // Media on the bar: what is playing, a live visualizer, the cover and the buttons, on
 // a plate of its own if you like. Shown by the bar's media widget
@@ -69,7 +70,7 @@ Item {
     // the right one faces the left one when both show, unless told otherwise
     readonly property string rightOrient: cfg.vizRightOrient !== "auto" ? cfg.vizRightOrient
         : (cfg.vizSide === "both" ? "mirrored" : "normal")
-    readonly property string fontName: bar ? bar.font : "JetBrainsMono Nerd Font"
+    readonly property string fontName: bar ? bar.font : AequalynSettings.monoFont
 
     readonly property string label: {
         if (!service || !service.hasMedia) return "Nothing playing"

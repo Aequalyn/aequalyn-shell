@@ -7,15 +7,16 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import ".."
+import "root:/settings"
 
 Singleton {
     readonly property var fallback: DefaultTheme { }
     property var theme: fallback
-    property string mono: "JetBrainsMono Nerd Font"
+    property string mono: AequalynSettings.monoFont
+    property string sans: AequalynSettings.uiFont
     // opened by a key or a command rather than a click: the compositor gives a popup the
     // keyboard only after a click, so then it opens without taking it (closed by the same
     // key or command, or a click on its widget)
     property bool byKey: false
-    readonly property string sans: mono
     function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
 }

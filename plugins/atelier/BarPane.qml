@@ -18,7 +18,7 @@ import "root:/settings"
 Flickable {
     id: pane
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     // The control center shows this pane in tabs: `section` picks the part to show
     // ("" shows all of it), and `showStage` hides the picture on top when the page
@@ -204,7 +204,7 @@ Flickable {
                                     Layout.fillWidth: true
                                     text: shapeCard.modelData[2]
                                     color: pane.theme.textPrimary
-                                    font.family: "sans-serif"
+                                    font.family: AequalynSettings.uiFont
                                     font.pixelSize: 13
                                     font.bold: true
                                 }
@@ -212,7 +212,7 @@ Flickable {
                                     Layout.fillWidth: true
                                     text: shapeCard.modelData[3]
                                     color: pane.theme.textMuted
-                                    font.family: "sans-serif"
+                                    font.family: AequalynSettings.uiFont
                                     font.pixelSize: 11
                                 }
                             }
@@ -788,7 +788,7 @@ Flickable {
                 Text {
                     text: "Button text"
                     color: pane.theme.textSecondary
-                    font.family: "sans-serif"
+                    font.family: AequalynSettings.uiFont
                     font.pixelSize: 12
                     Layout.fillWidth: true
                 }
@@ -996,7 +996,7 @@ Flickable {
                     Layout.fillWidth: true
                     text: "Click an empty place to save, a filled one to load, right click to clear."
                     color: pane.theme.textMuted
-                    font.family: "sans-serif"
+                    font.family: AequalynSettings.uiFont
                     font.pixelSize: 11
                     wrapMode: Text.WordWrap
                 }

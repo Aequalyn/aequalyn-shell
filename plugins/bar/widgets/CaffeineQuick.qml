@@ -42,6 +42,6 @@ QuickPopup {
     }
     QuickWide {
         glyph: "\u{F033E}"; label: "Lock now"
-        onClicked: { q.dismissed(); Quickshell.execDetached(["loginctl", "lock-session"]) }
+        onClicked: { q.dismissed(); Quickshell.execDetached(["aequalyn-lock", "lock"]) }
     }
 }

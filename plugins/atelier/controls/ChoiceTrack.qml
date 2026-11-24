@@ -2,11 +2,12 @@
 // the desktop's other settings use, including Clipboard history.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 Rectangle {
     id: track
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property var options: []
     property var labels: ({})
     property var value
@@ -68,7 +69,7 @@ Rectangle {
                     text: track.labelOf(opt.modelData)
                     color: opt.on ? track.theme.bgBase : track.theme.textPrimary
                     opacity: opt.on ? 1 : 0.8
-                    font.family: "sans-serif"
+                    font.family: AequalynSettings.uiFont
                     font.pixelSize: 11
                     font.weight: opt.on ? Font.DemiBold : Font.Normal
                     horizontalAlignment: Text.AlignHCenter

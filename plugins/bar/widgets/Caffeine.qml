@@ -24,7 +24,7 @@ Rectangle {
     text: CaffeineService.active ? "" : "󰾪"
     color: CaffeineService.active ? bar.inked(ink, bar.theme.accentOrange) : bar.theme.textMuted
     font.pixelSize: 14
-    font.family: bar.font
+    font.family: bar.iconFont
   }
   MouseArea {
     id: caffeineHover

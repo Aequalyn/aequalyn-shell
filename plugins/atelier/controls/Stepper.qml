@@ -1,11 +1,12 @@
 // "Label   ‹ value ›" with bounds; used for hours and durations.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 RowLayout {
     id: stepper
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property real value: 0
     property real from: 0
@@ -19,7 +20,7 @@ RowLayout {
     Text {
         text: stepper.label
         color: stepper.theme.textSecondary
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         Layout.preferredWidth: 90
     }

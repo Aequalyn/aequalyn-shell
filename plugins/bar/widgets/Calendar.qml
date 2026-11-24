@@ -17,7 +17,7 @@ Item {
       anchors.centerIn: parent
       text: "\u{F0ED7}"
       color: bar.inked(ink, bar.theme.accentPrimary)
-      font.family: bar.font
+      font.family: bar.iconFont
       font.pixelSize: 16
     }
     MouseArea {

@@ -33,7 +33,7 @@ Scope {
     // methods like setWallpaperMode/folderTheme), so it must inherit the shared
     // theme from PluginManager even when loaded as a plugin.
     property var theme: null
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
 
     property string collection: "themes"
     property string searchText: ""

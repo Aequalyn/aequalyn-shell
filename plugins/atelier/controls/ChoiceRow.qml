@@ -1,11 +1,12 @@
 // "Label   (a) (b) (c)": one choice out of a few, as chips that wrap.
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 RowLayout {
     id: row
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string label: ""
     property var options: []        // values
     property var labels: ({})       // value -> label (else the value itself)
@@ -20,7 +21,7 @@ RowLayout {
     Text {
         text: row.label
         color: row.theme.textSecondary
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 12
         Layout.preferredWidth: 110
         Layout.alignment: Qt.AlignTop

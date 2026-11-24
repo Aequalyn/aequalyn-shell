@@ -2,11 +2,12 @@
 // control center uses; icons stay in the shell's icon font (`font`).
 import QtQuick
 import QtQuick.Layouts
+import "root:/settings"
 
 Rectangle {
     id: group
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property string icon: ""
     property string title: ""
     property string sub: ""
@@ -45,7 +46,7 @@ Rectangle {
                 Text {
                     text: group.title
                     color: group.theme.textPrimary
-                    font.family: "sans-serif"
+                    font.family: AequalynSettings.uiFont
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                 }
@@ -53,7 +54,7 @@ Rectangle {
                     visible: group.sub !== ""
                     text: group.sub
                     color: group.theme.textMuted
-                    font.family: "sans-serif"
+                    font.family: AequalynSettings.uiFont
                     font.pixelSize: 12
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true

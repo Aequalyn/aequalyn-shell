@@ -25,7 +25,7 @@ Rectangle {
       text: "󰔏"
       color: bar.inked(ink, bar.theme.accentRed)
       font.pixelSize: 14
-      font.family: bar.font
+      font.family: bar.iconFont
     }
     Text {
       readonly property string full: SystemInfo.temperature

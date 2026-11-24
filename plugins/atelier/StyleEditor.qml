@@ -6,11 +6,12 @@ import QtQuick
 import QtQuick.Layouts
 import "controls"
 import  "../../style/Style.js" as Style
+import "root:/settings"
 
 ColumnLayout {
     id: ed
     property var theme
-    property string font: "JetBrainsMono Nerd Font"
+    property string font: AequalynSettings.monoFont
     property var look: ({})          // what is being edited, as drawn
     property var pal
     property string edge: "bottom"
@@ -74,7 +75,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
         text: ed.current && ed.current[2] ? (ed.current[2].abouts[ed.look[ed.part]] || "") : ""
         color: ed.theme.textMuted
-        font.family: "sans-serif"
+        font.family: AequalynSettings.uiFont
         font.pixelSize: 11
     }
     ChoiceRow {
