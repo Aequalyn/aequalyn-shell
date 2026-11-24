@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import QtQuick.Effects
+import "root:/settings"
 
 Item {
   id: root
@@ -46,12 +47,19 @@ Item {
   readonly property color accent: theme && theme.accentPrimary ? theme.accentPrimary : "#7aa2f7"
   readonly property color accent2: theme && theme.accentSecondary ? theme.accentSecondary : accent
   readonly property color error: theme && theme.accentRed ? theme.accentRed : "#f7768e"
-  readonly property string font: "JetBrainsMono Nerd Font"
+  readonly property string font: AequalynSettings.monoFont
 
   readonly property string style: {
     const s = String(root.lockStyle || "classic")
     const known = ["classic","clean","mono","corner","pill","split","stack","dot","frame","glass","line","terminal","neon","poster","orbit","dashboard","zen","vertical","duo","card","nowplaying","binary","words","day","calendar","weather","quote","avatar","battery","custom"]
     return known.indexOf(s) >= 0 ? s : "classic"
+  }
+  // the password field in use: the custom layout has one of its own
+  property Item customField: null
+  function takeFocus() {
+    if (root.preview) return
+    const target = root.style === "custom" ? root.customField : input
+    if (target) target.forceActiveFocus()
   }
   readonly property var defaultCustomItems: [
     { type: "field", x: 0.5, y: 0.72, visible: true }
@@ -60,7 +68,11 @@ Item {
     if (root.style !== "custom") return []
     try {
       const o = JSON.parse(root.customLayout || "{}")
-      if (Array.isArray(o.elements) && o.elements.length) return o.elements
+      if (Array.isArray(o.elements) && o.elements.length) {
+        // a layout without a password field could not be unlocked
+        return o.elements.some(e => e.type === "field" && e.visible !== false)
+          ? o.elements : o.elements.filter(e => e.type !== "field").concat(root.defaultCustomItems)
+      }
     } catch (e) {}
     return root.defaultCustomItems
   }
@@ -109,7 +121,7 @@ Item {
 
   onStyleChanged: refreshInfo()
   onCustomLayoutChanged: if (root.style === "custom") refreshInfo()
-  Component.onCompleted: { refreshInfo(); if (!root.preview) input.forceActiveFocus() }
+  Component.onCompleted: { refreshInfo(); root.takeFocus() }
 
   Process {
     id: infoProc
@@ -534,7 +546,7 @@ Item {
       echoMode: TextInput.Password
       passwordCharacter: "•"
       maximumLength: 512
-      focus: true
+      focus: root.style !== "custom"
       color: root.fg
       font.family: root.font
       font.pixelSize: 16
@@ -586,7 +598,7 @@ Item {
   }
 
   Text {
-    visible: root.settingShowMedia && root.mediaText !== ""
+    visible: root.style !== "custom" && root.settingShowMedia && root.mediaText !== ""
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: parent.bottom; anchors.bottomMargin: root.settingShowBattery && root.batteryText !== "" ? 72 : 52
     text: "󰎆  " + root.mediaText
@@ -598,7 +610,7 @@ Item {
   }
 
   Text {
-    visible: root.settingShowBattery && root.batteryText !== ""
+    visible: root.style !== "custom" && root.settingShowBattery && root.batteryText !== ""
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: parent.bottom; anchors.bottomMargin: 52
     text: root.batteryText
@@ -733,7 +745,9 @@ Item {
           anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 44
           verticalAlignment: TextInput.AlignVCenter
           echoMode: TextInput.Password; passwordCharacter: "•"
-          focus: !root.preview
+          enabled: customItem.kind === "field" && customItem.shown
+          Component.onCompleted: if (enabled) { root.customField = customInput; root.takeFocus() }
+          Component.onDestruction: if (root.customField === customInput) root.customField = null
           color: root.fg; font.family: root.font; font.pixelSize: 16
           onAccepted: { const v = text; text = ""; if (v) root.submitPassword(v) }
           onTextEdited: root.clearFailure()
@@ -774,6 +788,6 @@ Item {
 
   Connections {
     target: LockService
-    function onSessionSecureChanged() { if (root.sessionSecure && !root.preview) input.forceActiveFocus() }
+    function onSessionSecureChanged() { if (root.sessionSecure) root.takeFocus() }
   }
 }

@@ -62,7 +62,11 @@ Singleton {
   property bool strandedLock: false
   property bool strandedCheckResolved: false
 
-  readonly property bool locked: root.lockRequested || sessionLock.locked || sessionLock.secure
+  // Kept by the lock's own signals: a binding on sessionLock.locked and .secure is not
+  // told when they go back to false, and went on saying "locked" after an unlock.
+  property bool sessionHeld: false
+  readonly property bool locked: root.lockRequested || root.sessionHeld
+  function refreshHeld() { root.sessionHeld = sessionLock.locked || sessionLock.secure }
   readonly property bool sessionSecure: sessionLock.secure
   readonly property bool fingerprintAvailable: root.fingerprintPamConfigured && root.fingerprintEnrolled
 
@@ -87,7 +91,8 @@ Singleton {
     stabilizeTimer.restart()
   }
 
-  function beginLock(forSleep: bool) {
+  function beginLock(forSleep: bool): string {
+    root.refreshHeld()
     if (!root.passwordPamConfigured) {
       root.logEvent("missing-pam")
       return "missing-pam"
@@ -128,6 +133,8 @@ Singleton {
     root.blanked = false
     root.sleepRequested = false
     root.resetAuthenticationState()
+    root.refreshHeld()
+    Qt.callLater(root.refreshHeld)
     root.logEvent("unlocked")
     root.runWake()
   }
@@ -231,7 +238,8 @@ Singleton {
     root.glanceScanning = true
     root.logEvent("glance-scan")
     glanceProc.running = false
-    glanceProc.command = ["glancectl", "authenticate", "--json"]
+    // (a scan that never answers is given up, so Space can start another)
+    glanceProc.command = ["timeout", "20", "glancectl", "authenticate", "--json"]
     glanceProc.running = true
   }
 
@@ -243,6 +251,7 @@ Singleton {
       root.finishUnlock()
       return
     }
+    root.failureMessage = "Face not recognised · Space to try again"
     root.logEvent("glance-failed")
   }
 
@@ -320,6 +329,7 @@ Singleton {
     locked: root.lockRequested
 
     onSecureStateChanged: {
+      root.refreshHeld()
       root.logEvent("secure=" + secure)
       if (secure) {
         root.pendingSessionLock = false
@@ -329,6 +339,7 @@ Singleton {
     }
 
     onLockStateChanged: {
+      root.refreshHeld()
       root.logEvent("session-locked=" + locked)
       if (locked) {
         root.pendingSessionLock = false
@@ -481,6 +492,7 @@ Singleton {
     function lock(): string { return root.beginLock(false) }
     function lockForSleep(): string { return root.beginLock(true) }
     function status(): string {
+      root.refreshHeld()
       return JSON.stringify({
         locked: root.locked,
         requested: root.lockRequested,
@@ -496,7 +508,7 @@ Singleton {
         wallpaperPath: root.wallpaperPath
       })
     }
-    function isLocked(): string { return root.locked ? "locked" : "unlocked" }
+    function isLocked(): string { root.refreshHeld(); return root.locked ? "locked" : "unlocked" }
     function check(): string {
       return root.passwordPamConfigured ? "ok" : "missing-pam"
     }

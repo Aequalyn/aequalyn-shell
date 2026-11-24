@@ -272,7 +272,8 @@ CcPage {
     }
     CcSection {
         title: "How it looks when locked"
-        hint: page.lockNow.about + " In your theme's colours, over your wallpaper; it follows when they change."
+        hint: page.lockNow.about + (page.lockNow.key === "custom" ? " Drawn by Aequalyn's own lock."
+            : " Drawn by hyprlock, in your theme's colours over your wallpaper; it follows when they change.")
         CcChoice {
             options: page.lockStyles.map(x => ({ key: x.key, label: x.label }))
             current: page.lockNow.key
@@ -284,6 +285,7 @@ CcPage {
         }
     }
     CcSection {
+        visible: page.lockNow.key === "custom"
         title: "Lock screen editor"
         hint: "Drag elements from the palette onto the wallpaper preview. Drag placed elements to reposition. Save when ready."
 
@@ -332,7 +334,7 @@ CcPage {
                                 readonly property bool placed: { const e = page.readCustomLayout().find(x => x.type === modelData.type); return !!e && e.visible !== false }
                                 color: placed ? Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.18) : Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.05)
                                 border.color: placed ? Cc.theme.accentPrimary : Cc.theme.bgBorder
-                                Text { anchors.centerIn: parent; text: modelData.label; color: placed ? Cc.theme.accentPrimary : Cc.theme.textSecondary; font.pixelSize: 11; font.family: "JetBrainsMono Nerd Font" }
+                                Text { anchors.centerIn: parent; text: modelData.label; color: placed ? Cc.theme.accentPrimary : Cc.theme.textSecondary; font.pixelSize: 11; font.family: Cc.mono }
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: placed ? page.removeCustomElement(modelData.type) : page.addCustomElement(modelData.type)
@@ -416,7 +418,7 @@ CcPage {
                                         anchors.left: parent.left; anchors.top: parent.top; anchors.margins: 4
                                         text: kind
                                         color: Cc.theme.accentPrimary
-                                        font.pixelSize: 10; font.family: "JetBrainsMono Nerd Font"
+                                        font.pixelSize: 10; font.family: Cc.mono
                                     }
                                     MouseArea {
                                         id: dragArea
@@ -465,7 +467,7 @@ CcPage {
                                 readonly property bool placed: { const e = page.readCustomLayout().find(x => x.type === modelData.type); return !!e && e.visible !== false }
                                 color: placed ? Qt.rgba(Cc.theme.accentPrimary.r, Cc.theme.accentPrimary.g, Cc.theme.accentPrimary.b, 0.18) : Qt.rgba(Cc.theme.textPrimary.r, Cc.theme.textPrimary.g, Cc.theme.textPrimary.b, 0.05)
                                 border.color: placed ? Cc.theme.accentPrimary : Cc.theme.bgBorder
-                                Text { anchors.centerIn: parent; text: modelData.label; color: placed ? Cc.theme.accentPrimary : Cc.theme.textSecondary; font.pixelSize: 11; font.family: "JetBrainsMono Nerd Font" }
+                                Text { anchors.centerIn: parent; text: modelData.label; color: placed ? Cc.theme.accentPrimary : Cc.theme.textSecondary; font.pixelSize: 11; font.family: Cc.mono }
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: placed ? page.removeCustomElement(modelData.type) : page.addCustomElement(modelData.type)
