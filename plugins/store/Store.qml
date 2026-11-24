@@ -649,8 +649,9 @@ Scope {
                 newer: m ? m.state === "update available" : true
             });
         });
-        // by what is listed above, not by the catalog's word: one of the two is read first
-        const others = listed.filter(m => !mine.some(i => i.id === m.id && i.market)).map(m => ({
+        // by what is listed above, not by the catalog's word: one of the two is read first.
+        // An id is installed once, wherever it came from: one card for it
+        const others = listed.filter(m => !mine.some(i => i.id === m.id)).map(m => ({
             id: m.id, label: m.name || m.id, about: m.about || m.repo, icon: glyph, installed: false,
             preview: m.preview || "", by: m.by || "", source: m.repo, market: m, newer: false,
             blocked: m.state === "another installed"
@@ -4168,7 +4169,8 @@ Scope {
                                                         Pill { text: mrow.modelData.kind; tone: root.theme.accentPrimary }
                                                         Pill {
                                                             visible: mrow.modelData.state !== "not installed"
-                                                            text: mrow.modelData.state === "installed" ? "Installed" : "Update available"
+                                                            text: mrow.modelData.state === "installed" ? "Installed"
+                                                                : mrow.modelData.state === "another installed" ? "Installed from elsewhere" : "Update available"
                                                             tone: mrow.modelData.state === "installed" ? root.theme.accentGreen : root.theme.accentOrange
                                                         }
                                                     }
@@ -4180,7 +4182,7 @@ Scope {
                                                     }
                                                 }
                                                 Btn {
-                                                    visible: mrow.modelData.state !== "installed"
+                                                    visible: mrow.modelData.state !== "installed" && mrow.modelData.state !== "another installed"
                                                     text: mrow.modelData.state === "update available" ? "Update" : "Install"
                                                     primary: true
                                                     enabled: !root.busy
