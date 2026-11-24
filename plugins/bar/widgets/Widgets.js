@@ -38,6 +38,7 @@ var files = {
     settingsbutton: "SettingsButton.qml",
     barbutton:      "BarButton.qml",
     clipscape:      "ClipscapeButton.qml",
+    showcase:       "ShowcaseButton.qml",
     glance:         "Glance.qml"
 };
 
@@ -51,7 +52,7 @@ function fileFor(id) {
 var plugins = {
     media: "media", timer: "timer", focus: "focus", weather: "weather", netspeed: "netSpeed",
     plume: "plume", altscape: "altscape", atelier: "atelier", layouts: "atelier",
-    caffeine: "idleInhibitor", appsmenu: "appLauncher", power: "powerMenu", clipscape: "clipscape"
+    caffeine: "idleInhibitor", appsmenu: "appLauncher", power: "powerMenu", clipscape: "clipscape", showcase: "showcase"
 };
 function pluginFor(id) { return Object.prototype.hasOwnProperty.call(plugins, id) ? plugins[id] : ""; }
 // the widgets of plugin `pid`, first the one put on the bar when it is turned on
@@ -66,6 +67,7 @@ var quick = {
     network: "left", bluetooth: "left", battery: "left", volume: "right", brightness: "left",
     cpu: "left", temperature: "left", calendar: "left", screenshot: "right", screenrecorder: "right",
     clipscape: "right",
+    showcase: "right",
     glance: "left"
 };
 function quickDefault(id) { return Object.prototype.hasOwnProperty.call(quick, id) ? quick[id] : "none"; }

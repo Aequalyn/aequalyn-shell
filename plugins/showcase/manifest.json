@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "aequalyn.showcase",
+  "name": "Showcase",
+  "version": "1.2.2",
+  "author": "Aequalyn",
+  "license": "MIT",
+  "description": "Desktop widgets behind your windows: clocks, dates, system readings, now playing and notes, on customizable cards.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "qml/Service.qml"
+  },
+  "barWidget": {
+    "displayName": "Showcase",
+    "category": "System",
+    "description": "Desktop widgets and looks",
+    "aliases": ["widgets", "desktop", "clock", "notes"],
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

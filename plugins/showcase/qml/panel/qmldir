@@ -1,0 +1,10 @@
+AboutPage 1.0 AboutPage.qml
+LookSlots 1.0 LookSlots.qml
+Panel 1.0 Panel.qml
+PanelView 1.0 PanelView.qml
+PopoutWindow 1.0 PopoutWindow.qml
+PresetGrid 1.0 PresetGrid.qml
+SettingRow 1.0 SettingRow.qml
+SettingsView 1.0 SettingsView.qml
+TileArt 1.0 TileArt.qml
+WidgetsEditor 1.0 WidgetsEditor.qml
