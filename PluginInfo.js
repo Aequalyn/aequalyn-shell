@@ -76,6 +76,8 @@ var info = {
                       about: "A quick guide to Aequalyn, keybindings, Hyprland, Arch, Neovim, Bash, tmux, Herdr, and the community." },
     fonts:          { icon: "\u{F031C}", group: "key",        keys: "Super + Ctrl + .",     page: "", pack: true,
                       about: "Pick UI and mono fonts for the whole desktop." },
+    quickLooks:     { icon: "\u{F03D8}", group: "key",        keys: "Super + Ctrl + B",     page: "", pack: true,
+                      about: "Switch the bar (B), docks (D), lock screen (K) and login screen (G) with Super + Ctrl." },
     palette:        { icon: "\u{F0349}", group: "key",        keys: "Super + Shift + Space", page: "", pack: true,
                       about: "Every setting, plugin and action in one search." },
     sysmon:         { icon: "\u{F0EE0}", group: "key",        keys: "Super + Shift + Esc",  page: "", pack: true,

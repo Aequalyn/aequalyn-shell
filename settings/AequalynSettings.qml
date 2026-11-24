@@ -255,11 +255,11 @@ QtObject {
     property var enabledPlugins: [
         "bar", "appLauncher", "defaultApps", "notifications", "atelier", "osd",
         "monitorManager", "idleInhibitor", "clipboard", "powerMenu", "snap",
-        "docks", "plume", "altscape", "programsMenu", "installMenu", "media", "store", "settings", "lock", "manual", "fonts", "showcase"
+        "docks", "plume", "altscape", "programsMenu", "installMenu", "media", "store", "settings", "lock", "manual", "fonts", "showcase", "quickLooks"
     ]
     // Plugins added after a settings file was first written: turned on once, the first
     // time the shell sees them (after that, Plugins decides). Saved as pluginsKnown.
-    readonly property var newPlugins: ["plume", "altscape", "atelier", "programsMenu", "installMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap", "lock", "manual", "fonts", "showcase"]
+    readonly property var newPlugins: ["plume", "altscape", "atelier", "programsMenu", "installMenu", "defaultApps", "media", "fm", "keybinds", "store", "snap", "lock", "manual", "fonts", "showcase", "quickLooks"]
     property var pluginsKnown: []
     // Plugins that must never run in the supervisor's sandbox, even when marked for
     // it in Plugins.js or by a Store manifest (watchdog.json's noSandbox list ends up

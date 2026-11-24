@@ -32,6 +32,7 @@ var list = [
     { id: "keyHints",      label: "Key hints",         source: "plugins/keyHints/KeyHints.qml" },
     { id: "manual",        label: "Manual",            source: "plugins/manual/Manual.qml" },
     { id: "fonts",         label: "Fonts",             source: "plugins/fonts/Fonts.qml" },
+    { id: "quickLooks",    label: "Quick looks",       source: "plugins/quickLooks/QuickLooks.qml" },
     { id: "palette",       label: "Command palette",   source: "plugins/palette/Palette.qml" },
     { id: "sysmon",        label: "System monitor",    source: "plugins/sysmon/SystemMonitor.qml" },
     { id: "screenText",    label: "Screen text",       source: "plugins/screenText/ScreenText.qml" },
