@@ -649,7 +649,8 @@ Scope {
                 newer: m ? m.state === "update available" : true
             });
         });
-        const others = listed.filter(m => m.state !== "installed" && m.state !== "update available").map(m => ({
+        // by what is listed above, not by the catalog's word: one of the two is read first
+        const others = listed.filter(m => !mine.some(i => i.id === m.id && i.market)).map(m => ({
             id: m.id, label: m.name || m.id, about: m.about || m.repo, icon: glyph, installed: false,
             preview: m.preview || "", by: m.by || "", source: m.repo, market: m, newer: false,
             blocked: m.state === "another installed"
@@ -892,19 +893,19 @@ Scope {
     property var market: []
     property bool marketLoaded: false
     function loadMarket() { if (!marketProc.running) marketProc.running = true; }
-    // the catalog kept fresh while the Store is used: quietly, at most every ten minutes;
+    // the catalog kept fresh while the Store is used: quietly, at most once a minute;
     // what is already here shows at once
     property double marketFetched: 0
     function freshMarket() {
         root.loadMarket();
-        if (Date.now() - root.marketFetched < 600000 || marketFetch.running) return;
+        if (Date.now() - root.marketFetched < 60000 || marketFetch.running) return;
         root.marketFetched = Date.now();
         marketFetch.running = true;
     }
     Process {
         id: marketFetch
         command: ["aequalyn-store", "refresh"]
-        onExited: code => { if (code !== 0) root.marketFetched = 0; root.loadMarket(); }
+        onExited: code => { if (code !== 0) root.marketFetched = 0; root.refresh(); root.loadMarket(); }
     }
 
     // ---- themes & wallpapers published in Aequalyn/aequalyn-themes ---------------------
@@ -1226,7 +1227,7 @@ Scope {
         else if (name === "snap") root.inTerminal("yay -S --needed snapd && sudo systemctl enable --now snapd.socket && sudo ln -sfn /var/lib/snapd/snap /snap");
     }
     onOpenChanged: {
-        if (open) root.freshMarket();
+        if (open) { root.refresh(); root.freshMarket(); }
         if (open && section === "apps") detectApps();
         if (open && section === "web") loadWebapps();
         if (open && section === "ai") loadAi();
