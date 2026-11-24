@@ -319,11 +319,11 @@ Item {
     // change, the helper restores the file and says so here: the state comes
     // down with it, so the two are never apart.
     function reconcile() {
-        if (!ready || !dirReady || binds.length === 0) return;
+        if (!ready || !dirReady || !state || binds.length === 0) return;
         apply();
     }
     function apply() {
-        if (!ready || !dirReady || binds.length === 0) return;
+        if (!ready || !dirReady || !state || binds.length === 0) return;
         const gen = Binds.blockLua(binds, state);
         const skipped = [];
         for (let s = 0; s < gen.skipped.length; s++)
