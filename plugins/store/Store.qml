@@ -2620,23 +2620,25 @@ Scope {
                         text: "Details"
                         onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "pluginPage", card.modelData.id])
                     }
-                }
-                RowLayout {
-                    visible: !card.builtIn && card.here
-                    Layout.fillWidth: true
-                    spacing: 5
+                    // one row, as the built-in cards: Remove in words, or both as glyphs
+                    // beside the first button when there is an Update too
                     Btn {
-                        visible: card.modelData.newer !== false
-                        Layout.fillWidth: true
+                        visible: !card.builtIn && card.here && card.modelData.newer !== false
+                        Layout.preferredWidth: 28
                         implicitHeight: 24
-                        text: "Update"
+                        icon: "\u{F06B0}"
+                        Accessible.name: "Update"
                         enabled: !root.busy
                         onClicked: root.runJob("Updating " + card.modelData.id, ["update", "plugin", card.modelData.id])
                     }
                     Btn {
-                        Layout.fillWidth: true
+                        visible: !card.builtIn && card.here
+                        Layout.fillWidth: card.modelData.newer === false
+                        Layout.preferredWidth: card.modelData.newer === false ? implicitWidth : 28
                         implicitHeight: 24
-                        text: "Remove"
+                        text: card.modelData.newer === false ? "Remove" : ""
+                        icon: card.modelData.newer === false ? "" : "\u{F0A7A}"
+                        Accessible.name: "Remove"
                         danger: true
                         enabled: !root.busy
                         onClicked: root.runJob("Removing " + card.modelData.id, ["remove", "plugin", card.modelData.id])
@@ -2817,23 +2819,25 @@ Scope {
                         text: "Page"
                         onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "page", gcard.kind === "theme" ? "theme" : "wallpaper"])
                     }
-                }
-                RowLayout {
-                    visible: !gcard.builtIn && gcard.installed
-                    Layout.fillWidth: true
-                    spacing: 5
+                    // one row, as the built-in cards: Remove in words, or both as glyphs
+                    // beside the first button when there is an Update too
                     Btn {
-                        visible: gcard.entry.newer !== false
-                        Layout.fillWidth: true
+                        visible: !gcard.builtIn && gcard.installed && gcard.entry.newer !== false
+                        Layout.preferredWidth: 28
                         implicitHeight: 24
-                        text: "Update"
+                        icon: "\u{F06B0}"
+                        Accessible.name: "Update"
                         enabled: !root.busy
                         onClicked: root.runJob("Updating " + gcard.entry.id, ["update", gcard.kind, gcard.entry.id])
                     }
                     Btn {
-                        Layout.fillWidth: true
+                        visible: !gcard.builtIn && gcard.installed
+                        Layout.fillWidth: gcard.entry.newer === false
+                        Layout.preferredWidth: gcard.entry.newer === false ? implicitWidth : 28
                         implicitHeight: 24
-                        text: "Remove"
+                        text: gcard.entry.newer === false ? "Remove" : ""
+                        icon: gcard.entry.newer === false ? "" : "\u{F0A7A}"
+                        Accessible.name: "Remove"
                         danger: true
                         enabled: !root.busy
                         onClicked: root.runJob("Removing " + gcard.entry.id, ["remove", gcard.kind, gcard.entry.id])
