@@ -4946,7 +4946,8 @@ function badge(name) {
 // into the closest icon slug; url() falls back to a badge when none exists.
 function slugForOption(o) {
     var c = (o && o.cmd) || [];
-    var raw = String(c[6] || o.label || "").toLowerCase();
+    var isPackage = c[0] === "qs" && c[4] === "package";
+    var raw = String((isPackage && c[6]) || o.label || "").toLowerCase();
     var known = {
         "code-oss": "visual-studio-code", "visual-studio-code-bin": "visual-studio-code",
         "vscodium-bin": "vscodium", "microsoft-edge-stable-bin": "microsoft-edge",
@@ -4969,13 +4970,36 @@ function slugForOption(o) {
         "cryptomator": "cryptomator", "typora": "typora", "zettlr": "zettlr", "joplin": "joplin",
         "standardnotes": "standard-notes", "google-earth-pro": "google-earth",
         "stellarium": "stellarium", "marble": "marble", "gcompris": "gcompris",
-        "tuxpaint": "tux-paint", "docker": "docker", "nodejs": "nodejs", "python": "python"
+        "tuxpaint": "tux-paint", "docker": "docker", "nodejs": "nodejs", "python": "python",
+        "code": "visual-studio-code", "jdk-openjdk": "java",
+        "grok-bot-bin": "grok", "claude code": "claude-ai", "codex cli": "openai", "glab": "gitlab",
+        "copilot cli": "github-copilot", "qwen code": "qwen", "aider-chat": "aider",
+        "microsoft 365": "microsoft-365", "teams-for-linux": "microsoft-teams",
+        "zapzap": "whatsapp", "proton-vpn-gtk-app": "proton-vpn", "megasync": "mega-nz",
+        "anythingllm-desktop-bin": "anything-llm", "intellij-idea-oss": "intellij",
+        "intellij-idea-ultimate-edition": "intellij", "xbox cloud gaming": "xbox",
+        "xpadneo-dkms": "xbox", "librewolf": "librewolf", "libreoffice-fresh": "libreoffice",
+        "nextcloud-client": "nextcloud", "google-drive-ocamlfuse": "google-drive"
     };
     if (known[raw]) return known[raw];
     var slug = raw.replace(/^(ttf|otf)-/, "")
         .replace(/-(bin|git|stable|desktop|appimage|cli|sdk|community|gtk|nerd)$/g, "")
         .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     return slug || String(o.label || "app").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+// Logos that are black on nothing: on a dark theme, the same logo in white.
+var whiteLogos = {
+    "grok": "", "github-copilot": "githubcopilot", "github": "github", "rust": "rust", "bun": "bun",
+    "deno": "deno", "symfony": "symfony", "notion": "notion", "openai": "", "gnometerminal": "gnometerminal"
+};
+function onDark(u) {
+    var m = /\/(?:png\/([a-z0-9-]+)\.png|cdn\.simpleicons\.org\/([a-z0-9]+))$/.exec(String(u || ""));
+    var slug = m ? m[1] || m[2] : "";
+    if (!(slug in whiteLogos)) return u;
+    if (whiteLogos[slug] !== "") return "https://cdn.simpleicons.org/" + whiteLogos[slug] + "/white";
+    if (has(slug + "-light")) return "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/" + slug + "-light.png";
+    return "";
 }
 
 // One icon policy for every app card: a real image when the icon set has it,

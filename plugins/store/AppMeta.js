@@ -290,7 +290,6 @@ var icon = {
   "ai-open-webui": "https://dl.flathub.org/media/com/openwebui/open-webui/22e9ac9dc306bb3e75c8e2a1e03d5eb7/icons/128x128/com.openwebui.open-webui.png",
   "ai-openclaw": "https://dashboard.snapcraft.io/site_media/appmedia/2026/06/icon_dRdEuai.png",
   "ai-perplexity": "https://dashboard.snapcraft.io/site_media/appmedia/2025/09/perplexity-ai-icon_l2d4Vsl.png",
-  "ai-whispercpp": "https://dashboard.snapcraft.io/site_media/appmedia/2024/07/icon_hwek6HF.png",
   "ai-windsurf": "https://cdn.simpleicons.org/windsurf",
   "dev-bun": "https://cdn.simpleicons.org/bun",
   "dev-clojure": "https://cdn.simpleicons.org/clojure",
@@ -300,7 +299,6 @@ var icon = {
   "dev-dotnet": "https://dashboard.snapcraft.io/site_media/appmedia/2018/05/msft.net_256_8NLBkoS.png",
   "dev-elixir": "https://cdn.simpleicons.org/elixir",
   "dev-git": "https://cdn.simpleicons.org/git",
-  "dev-glab": "https://dashboard.snapcraft.io/site_media/appmedia/2020/10/glab_2.png",
   "dev-go": "https://dashboard.snapcraft.io/site_media/appmedia/2017/11/gophercolor.png",
   "dev-laravel": "https://cdn.simpleicons.org/laravel",
   "dev-node": "https://cdn.simpleicons.org/nodedotjs",
@@ -383,7 +381,6 @@ var icon = {
   "other-typora": "https://dl.flathub.org/media/io/typora/Typora/d880fb625ea45111756ae7ba3fd9e58f/icons/128x128/io.typora.Typora.png",
   "other-zettlr": "https://dl.flathub.org/media/com/zettlr/Zettlr/ac3f5c27f430d2c25b3bf7215aed073b/icons/128x128/com.zettlr.Zettlr.png",
   "style-numix": "https://dashboard.snapcraft.io/site_media/appmedia/2025/02/numix.png",
-  "style-oxygen": "https://cdn.simpleicons.org/oxygen",
   "svc-1password": "https://dl.flathub.org/media/com/onepassword/OnePassword/59a7c780d9d5d04918329b7fa6a8693b/icons/128x128/com.onepassword.OnePassword.png",
   "svc-bitwarden": "https://dl.flathub.org/media/com/bitwarden/desktop/83d9610d5555193beebbd6ec3d3d2944/icons/128x128/com.bitwarden.desktop.png",
   "svc-borg": "https://cdn.simpleicons.org/borgbackup",
@@ -439,7 +436,7 @@ var ai = {
     "about": "Amp's coding agent for local and remote terminal workspaces.",
     "aur": "ampcode",
     "flatpak": "",
-    "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/amp.png",
+    "icon": "",
     "snap": ""
   },
   "antigravity": {
@@ -467,7 +464,7 @@ var ai = {
     "about": "OpenAI's coding agent for the terminal.",
     "aur": "openai-codex-bin",
     "flatpak": "",
-    "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/codex.png",
+    "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/openai.png",
     "snap": ""
   },
   "copilot": {

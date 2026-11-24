@@ -6,8 +6,10 @@
 // control center page wherever it is used.
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 import "InstallOptions.js" as Options
 import "../store/AppIcons.js" as Icons
+import "../store/AppMeta.js" as Meta
 import "root:/settings"
 
 pragma ComponentBehavior: Bound
@@ -54,6 +56,21 @@ Item {
         const pool = lists.visibleOptions();
         return c.key === "all" ? pool.length : pool.filter(o => o.category === c.key).length;
     }
+    // The app's own icon: the icon theme's, else the one the Store shows. Empty when
+    // there is none; the row keeps the option's glyph then.
+    function imageFor(o) {
+        if (!o) return "";
+        const c = o.cmd || [];
+        const slug = Icons.slugForOption(o);
+        const isPackage = c[0] === "qs" && c[4] === "package";
+        for (const n of isPackage ? [c[6], slug] : [slug]) {
+            const path = n ? Quickshell.iconPath(n, true) : "";
+            if (path) return path;
+        }
+        const u = Icons.url(Meta.iconFor(o.id) || Meta.aiFor(o.id.replace(/^ai-/, "")).icon || slug, "");
+        if (!/^https?:/i.test(u)) return "";
+        return lists.cBase.hslLightness < 0.5 ? Icons.onDark(u) : u;
+    }
     function tint(c, a) { return Qt.rgba(c.r, c.g, c.b, a); }
 
     readonly property var categoryRows: Options.categories.map(c => ({
@@ -70,10 +87,6 @@ Item {
                 : key === "all" || o.category === key))
             .map(o => ({
                 option: o, icon: o.icon, title: o.label,
-                // Every choice gets its own badge in the list, not the group's
-                // shared glyph: initials from the name, a hue from name and id.
-                badge: Icons.initials(o.label),
-                badgeColor: Qt.hsla(Icons.hue(o.label + "|" + o.id) / 360, 0.42, 0.42, 1),
                 sub: Options.categoryLabel(o.category) + " · " + o.source,
                 installed: Options.isInstalled(o, lists.installed),
                 enabled: lists.actionable(o),
@@ -316,6 +329,33 @@ Item {
                                 anchors.leftMargin: 12
                                 anchors.rightMargin: 10
                                 spacing: 10
+                                Item {
+                                    Layout.preferredWidth: 26
+                                    Layout.preferredHeight: 26
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        visible: optImage.status !== Image.Ready
+                                        radius: 7
+                                        color: lists.tint(lists.cAccent, optRow.active ? 0.22 : 0.12)
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: optRow.modelData.icon || ""
+                                            color: lists.cAccent
+                                            font.family: lists.mono
+                                            font.pixelSize: 14
+                                        }
+                                    }
+                                    Image {
+                                        id: optImage
+                                        anchors.fill: parent
+                                        source: lists.imageFor(optRow.modelData.option)
+                                        sourceSize.width: 52
+                                        sourceSize.height: 52
+                                        fillMode: Image.PreserveAspectFit
+                                        asynchronous: true
+                                        smooth: true
+                                    }
+                                }
                                 ColumnLayout {
                                     Layout.fillWidth: true
                                     spacing: 0
