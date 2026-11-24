@@ -307,7 +307,7 @@ QtObject {
     readonly property var pluginOrder: (barLeft || []).concat(barCenter || [], barRight || [])
 
     // Friendly names for the settings list.
-    readonly property var pluginLabels: ({
+    readonly property var pluginLabels: Object.assign({}, root.userWidgetLabels, {
         clock: "Clock & date", calendar: "Calendar", workspaces: "Workspaces", media: "Media",
         title: "Window title", volume: "Audio / volume", brightness: "Brightness",
         cpu: "CPU usage", network: "Network", bluetooth: "Bluetooth",
@@ -327,6 +327,12 @@ QtObject {
         atelier: "Themes and wallpapers",
         layouts: "Window layout"
     })
+
+    // the Store's plugins that have a widget, by their own name
+    readonly property var userWidgetLabels: UserPlugins.list.reduce((o, p) => {
+        if (UserPlugins.widgetOf(p.id) !== "") o[p.id] = p.label
+        return o
+    }, {})
 
     // Maps a plugin id to its visibility toggle (kept for backwards compat
     // with the showX toggles in Settings).
@@ -571,6 +577,7 @@ QtObject {
             fontSame: root.fontSame,
             plugins: root.enabledPlugins,
             pluginsKnown: root.pluginsKnown,
+            userWidgets: root.userWidgets,
             noSandboxPlugins: root.noSandboxPlugins,
             rootAllowed: root.rootAllowed,
             barStyle: root.barStyleCfg,
@@ -677,17 +684,37 @@ QtObject {
         // turned on: its widget onto the bar (right side, before the gear), unless one of
         // its widgets is there already
         if (on) {
-            const ws = Widgets.widgetsOf(id)
-            const placed = root.barLeft.concat(root.barCenter, root.barRight)
-            if (ws.length > 0 && !ws.some(w => placed.indexOf(w) >= 0)) {
-                const right = root.barRight.slice()
-                const gear = right.indexOf("settingsbutton")
-                right.splice(gear >= 0 ? gear : right.length, 0, ws[0])
-                root.barRight = right
-            }
+            root.placeWidget(UserPlugins.widgetOf(id) !== "" ? [id] : Widgets.widgetsOf(id))
         }
         root.save()
     }
+    function placeWidget(ws) {
+        const placed = root.barLeft.concat(root.barCenter, root.barRight)
+        if (ws.length === 0 || ws.some(w => placed.indexOf(w) >= 0)) return false
+        const right = root.barRight.slice()
+        const gear = right.indexOf("settingsbutton")
+        right.splice(gear >= 0 ? gear : right.length, 0, ws[0])
+        root.barRight = right
+        return true
+    }
+    // A plugin the Store just installed is on already: its widget goes onto the bar the
+    // first time the shell sees it there, and where you then move it, or that you take it
+    // off, is kept. Saved as userWidgets.
+    property var userWidgets: []
+    function placeUserWidgets() {
+        if (!root.ready) return
+        const fresh = UserPlugins.list.filter(p => UserPlugins.widgetOf(p.id) !== "" && root.userWidgets.indexOf(p.id) < 0
+            && (root.enabledPlugins || []).indexOf(p.id) >= 0).map(p => p.id)
+        if (fresh.length === 0) return
+        root.userWidgets = root.userWidgets.concat(fresh)
+        for (const id of fresh) root.placeWidget([id])
+        root.save()
+    }
+    property Connections userWidgetWatch: Connections {
+        target: UserPlugins
+        function onListChanged() { root.placeUserWidgets() }
+    }
+    onEnabledPluginsChanged: Qt.callLater(root.placeUserWidgets)
 
     function apply(key, value) {
         root[key] = value
@@ -842,6 +869,7 @@ QtObject {
         }
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })
+        root.userWidgets = Array.isArray(d.userWidgets) ? d.userWidgets.filter(x => /^[a-z][a-z0-9-]{1,39}$/.test(String(x))) : root.userWidgets
         const fontsBefore = root.fontKey
         root.uiFont = String(d.uiFont || a.uiFont || root.uiFont || "Inter")
         root.monoFont = String(d.monoFont || a.monoFont || root.monoFont || "JetBrainsMono Nerd Font")

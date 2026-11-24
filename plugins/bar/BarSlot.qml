@@ -17,8 +17,10 @@ Item {
   property var screen                  // the screen this bar is on
 
   readonly property string file: Widgets.fileFor(modelData)
+  // or the widget of a plugin from the Store, by the plugin's id
+  readonly property string userFile: file === "" ? UserPlugins.widgetOf(modelData) : ""
   // a widget of a plugin that is off is not loaded at all (Widgets.js: plugins)
-  readonly property string plugin: Widgets.pluginFor(modelData)
+  readonly property string plugin: userFile !== "" ? modelData : Widgets.pluginFor(modelData)
   readonly property bool pluginOn: plugin === "" || AequalynSettings.enabledPlugins.indexOf(plugin) >= 0
   readonly property bool beingDragged: band.dragging && band.dragRegion === region && band.dragIndex === index
   // BarDecor measures these slots and only counts the ones that say whether they're hovered
@@ -58,17 +60,24 @@ Item {
   height: bar.vertical ? (loader.item ? itemH + 8 : 32) : band.height
   opacity: beingDragged ? 0.35 : (AequalynSettings.pluginVisible(modelData) ? 1.0 : 0.0)
   // a widget with nothing to show (`wanted: false`) or an unknown id takes no room and gets no shape
-  visible: (file !== "" && pluginOn && AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
+  visible: ((file !== "" || (userFile !== "" && loader.status !== Loader.Error)) && pluginOn && AequalynSettings.pluginVisible(modelData) && !(loader.item && loader.item.wanted === false))
            || beingDragged
 
   Loader {
     id: loader
     anchors.centerIn: parent
-    active: slot.pluginOn
+    active: slot.pluginOn && (slot.file !== "" || slot.userFile !== "")
     visible: AequalynSettings.pluginVisible(slot.modelData)
     HoverHandler { id: hh }
+    // (an update of a Store plugin: its folder is new, so its widget is loaded again)
+    onStatusChanged: if (status === Loader.Error && slot.userFile !== "") console.error("Plugin widget failed to load:", slot.modelData)
+    function loadUser() { if (slot.userFile !== "") setSource(slot.userFile, { bar: slot.bar }); }
+    Connections {
+      target: slot
+      function onUserFileChanged() { if (slot.userFile !== "") loader.loadUser(); else if (slot.file === "") loader.source = ""; }
+    }
     // setSource hands the widget its bar before its bindings first run
-    Component.onCompleted: if (slot.file !== "") {
+    Component.onCompleted: if (slot.userFile !== "") loadUser(); else if (slot.file !== "") {
       const props = { bar: slot.bar };
       if (slot.file === "Workspaces.qml") props.screen = slot.screen;
       setSource(Qt.resolvedUrl("widgets/" + slot.file), props);
