@@ -111,7 +111,9 @@ for (const marker of ["Install Aequalyn", "system-install"]) {
     ok(!menu.includes(marker), "Super + I no longer offers " + marker);
 }
 
-const cli = fs.readFileSync(path.join(root, "../aequalyn/bin/aequalyn-store"), "utf8");
+// the core checkout beside this one
+const core = ["../aequalyn-fix", "../aequalyn"].find(d => fs.existsSync(path.join(root, d, "bin/aequalyn-store")));
+const cli = fs.readFileSync(path.join(root, core, "bin/aequalyn-store"), "utf8");
 ok(cli.includes("^[A-Za-z0-9._+][A-Za-z0-9 ._+ '()-]{0,79}$"),
     "app-info accepts curated display names such as .NET");
 for (const marker of [

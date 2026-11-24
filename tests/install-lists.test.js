@@ -13,16 +13,19 @@ const read = f => fs.readFileSync(here(f), "utf8");
 const lists = read("plugins/installMenu/InstallLists.qml");
 const menu = read("plugins/installMenu/InstallMenu.qml");
 const binds = read("plugins/keybinds/js/Binds.js");
-const keys = read("../aequalyn/config/hypr/keybinds.lua");
-const installMigration = read("../aequalyn/migrations/20261122-5.sh");
-const removeMigration = read("../aequalyn/migrations/20261122-6.sh");
+// the core checkout beside this one
+const core = ["../aequalyn-fix", "../aequalyn"].find(d => fs.existsSync(here(d + "/migrations/20261122-6.sh")));
+const keys = read(core + "/config/hypr/keybinds.lua");
+const installMigration = read(core + "/migrations/20261122-5.sh");
+const removeMigration = read(core + "/migrations/20261122-6.sh");
 
 for (const marker of [
     "readonly property var categoryRows",
     "readonly property var optionRows",
     'import "../store/AppIcons.js" as Icons',
-    "badge: Icons.initials(o.label)",
-    "badgeColor: Qt.hsla(Icons.hue(o.label + \"|\" + o.id) / 360",
+    'import "../store/AppMeta.js" as Meta',
+    "function imageFor(o)",
+    "source: lists.imageFor(optRow.modelData.option)",
     "property var installed: null",
     "property bool ready: false",
     "function canInstall(o)",

@@ -19,6 +19,7 @@ const lockView = read("plugins/lock/LockView.qml");
 const lockService = read("plugins/lock/LockService.qml");
 const lockQml = read("plugins/lock/Lock.qml");
 const sleepPage = read("settings/center/pages/Sleep.qml");
+const designs = require("./jsload.js")(path.join(root, "settings/center/LockDesigns.js")).list;
 
 // LockView interface
 ok(/property bool use24h/.test(lockView), "LockView exposes use24h");
@@ -53,7 +54,7 @@ ok(/LockService.lockStyle/.test(lockQml), "Lock.qml syncs lockStyle");
 
 // Sleep settings page exposes all styles
 for (const style of styles) {
-  ok(sleepPage.includes('key: "' + style + '"'), "Sleep page exposes style: " + style);
+  ok(designs.some(d => d.key === style) && /lockStyles: LockDesigns\.list/.test(sleepPage), "Sleep page exposes style: " + style);
 }
 
 console.log("ok", n, "checks");
