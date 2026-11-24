@@ -133,7 +133,7 @@ function spectrumOf(pal, mine) {
     if (out.length === 0) return [mine, mix(mine, [255, 255, 255], 0.45), mix(mine, [0, 0, 0], 0.4)];
     return out;
 }
-// one color of the theme next to the accent (the second one, like Vitrine's "Next theme color")
+// one color of the theme next to the accent (the second one, like the next theme color)
 function paletteOf(pal, mine) {
     const src = pal && Array.isArray(pal.spectrum) ? pal.spectrum.filter(c => /^#[0-9a-fA-F]{6}$/.test(c)) : [];
     if (src.length === 0) return mix(mine, [255, 255, 255], 0.45);
