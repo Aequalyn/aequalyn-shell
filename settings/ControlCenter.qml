@@ -218,7 +218,7 @@ Scope {
         // a plugin on or off, at once: `qs ipc call aequalyn plugin docks off`
         function plugin(id: string, state: string): string {
             if (id === "settings") return "the control center stays on";
-            if (!PluginRegistry.list.some(p => p.id === id)) return "no plugin " + id;
+            if (!PluginRegistry.list.concat(UserPlugins.list).some(p => p.id === id)) return "no plugin " + id;
             const on = state === "toggle" ? AequalynSettings.enabledPlugins.indexOf(id) < 0 : state === "on";
             if (state !== "on" && state !== "off" && state !== "toggle") return "say on, off or toggle";
             AequalynSettings.togglePlugin(id, on);
