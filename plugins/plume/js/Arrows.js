@@ -28,6 +28,8 @@
 .import "arrows/fin.js" as Fin
 .import "arrows/diamond.js" as Diamond
 .import "arrows/club.js" as Club
+.import "arrows/heart.js" as Heart
+.import "arrows/spade.js" as Spade
 .import "arrows/dot.js" as Dot
 
 // Every arrow a cursor made in Plume can have, in the order the settings show them.
@@ -43,7 +45,8 @@ var list = [Classic.arrow, Slim.arrow, Chunky.arrow, Wedge.arrow, Dart.arrow, Ki
             Needle.arrow, Teardrop.arrow, Leaf.arrow, Bullet.arrow, Crest.arrow, Chevron.arrow,
             Feather.arrow, Spear.arrow, Crystal.arrow, Comet.arrow, Shard.arrow, Pixel.arrow,
             Volt.arrow, Barb.arrow, Rune.arrow, Bloom.arrow, Prism.arrow, Talon.arrow,
-            Orbit.arrow, Glint.arrow, Fin.arrow, Diamond.arrow, Club.arrow, Dot.arrow];
+            Orbit.arrow, Glint.arrow, Fin.arrow, Diamond.arrow, Club.arrow, Heart.arrow,
+            Spade.arrow, Dot.arrow];
 
 var byKey = {};
 var keys = [];
