@@ -1,9 +1,11 @@
 // Updates: which commit this machine runs, whether GitHub has newer ones, and the
 // update itself.
 //
-// Aequalyn on this machine is two git clones, both owned by root: the system tree
-// (/usr/share/aequalyn, from Aequalyn/aequalyn) and the shell inside it (shell/, from
-// Aequalyn/aequalyn-shell). Reading them as the user needs git's safe.directory, given
+// Aequalyn on this machine is a few git clones, all owned by root: the system tree
+// (/usr/share/aequalyn, from Aequalyn/aequalyn), the shell inside it (shell/, from
+// Aequalyn/aequalyn-shell), the lock screens when they are enabled, and the themes,
+// package lists and installer (/var/lib/aequalyn/src; a missing one counts as behind:
+// the next update makes it). Reading them as the user needs git's safe.directory, given
 // per command so nothing has to be set up first.
 import QtQuick
 import Quickshell
@@ -64,7 +66,9 @@ QtObject {
             + 'r=$(git ls-remote "$2" refs/heads/main 2>/dev/null | cut -f1); '
             + 'if [ -z "$r" ]; then echo "$3 failed"; elif [ "$l" = "$r" ]; then echo "$3 same"; else echo "$3 behind"; fi; }; '
             + 'check /usr/share/aequalyn https://github.com/Aequalyn/aequalyn.git system; '
-            + 'check /usr/share/aequalyn/shell https://github.com/Aequalyn/aequalyn-shell.git shell']
+            + 'check /usr/share/aequalyn/shell https://github.com/Aequalyn/aequalyn-shell.git shell; '
+            + 'for r in themes pkgs installer; do check /var/lib/aequalyn/src/aequalyn-$r https://github.com/Aequalyn/aequalyn-$r.git $r; done; '
+            + 'if [ -f /usr/share/aequalyn/lockscreens.enabled ]; then check /usr/share/aequalyn/lockscreens https://github.com/Aequalyn/aequalyn-lockscreens.git lockscreens; fi']
         stdout: StdioCollector {
             onStreamFinished: {
                 const behind = [];
