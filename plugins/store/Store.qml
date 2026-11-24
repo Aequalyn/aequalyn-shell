@@ -4075,7 +4075,7 @@ Scope {
                                                     primary: true
                                                     enabled: !root.busy
                                                     onClicked: root.runJob((mrow.modelData.state === "update available" ? "Updating " : "Installing ") + (mrow.modelData.name || mrow.modelData.id),
-                                                                           ["install-market", mrow.modelData.id])
+                                                                           ["install-market", mrow.modelData.kind + ":" + mrow.modelData.id])
                                                 }
                                             }
                                         }
