@@ -152,9 +152,11 @@ var labels = {
     "SUPER + SHIFT + N": ["Do not disturb", "apps"],
     // the built-in pack
     "SUPER + SLASH": ["Key hints", "pack"],
+    "SUPER + F1": ["Manual", "pack"],
     "SUPER + SHIFT + SPACE": ["Command palette", "pack"],
     "SUPER + EQUAL": ["Calculator", "pack"],
     "SUPER + PERIOD": ["Emoji", "pack"],
+    "SUPER + CTRL + PERIOD": ["Fonts", "pack"],
     "SUPER + SHIFT + P": ["Pick a colour on the screen", "pack"],
     "SUPER + ALT + N": ["Quick notes", "pack"],
     "SUPER + SHIFT + ESCAPE": ["System monitor", "pack"],

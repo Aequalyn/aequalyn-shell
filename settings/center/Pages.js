@@ -12,8 +12,8 @@
 // of the one chosen (two levels, so neither list ever grows long). Home stands apart.
 // (Apps -- default apps, web apps, packages, AI tools -- live in the Store, not here.)
 var categories = [
-    { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "cursor", "lockscreens"] },
-    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "dock", "media", "clipboard"] },
+    { key: "look",    title: "Look",    icon: "\u{F03D8}", pages: ["wallpaper", "theme", "picker", "text", "cursor", "lockscreens"] },
+    { key: "desktop", title: "Desktop", icon: "\u{F10AB}", pages: ["bar", "dock", "media", "clipboard", "showcase"] },
     { key: "windows", title: "Windows", icon: "\u{F05AF}", pages: ["arrange", "windows", "switcher"] },
     { key: "devices", title: "Devices", icon: "\u{F0379}", pages: ["screens", "sound", "input", "keybinds", "bluetooth", "wifi"] },
     { key: "system",  title: "System",  icon: "\u{F0493}", pages: ["sleep", "clock", "plugins", "updates", "backup", "about"] }
@@ -39,6 +39,9 @@ var pages = {
     theme:     { label: "Theme", icon: "\u{F03D8}", file: "Theme",
                  words: ["Choose a theme", "Wallpaper colours", "Colours follow the wallpaper", "A theme brings its wallpapers", "Apps use these colours", "Colour scheme", "Light or dark", "Add your own theme"],
                  also: "color colours palette matugen gtk dark light accent look super t" },
+    text:      { label: "Text", icon: "\u{F031C}", file: "Text",
+                 words: ["Font", "UI font", "Monospace font", "Font size", "Text size", "Hinting", "Antialiasing", "Subpixel rendering", "Aequalyn font"],
+                 also: "fonts typography text size interface mono monospace aequalyn logo font" },
     bar:       { label: "Bar", icon: "\u{F10AB}", file: "Bar",
                  words: ["Bar shape", "Bar look", "Bar height", "Bar see-through", "Widgets on the bar", "Hide a widget", "Bar and docks together"],
                  also: "top panel taskbar widgets opacity size pills islands pebbles" },
@@ -88,6 +91,9 @@ var pages = {
                  words: ["Clear clipboard cache", "Clear clipboard history", "Clipboard shortcut", "Super + Ctrl + V",
                          "Clips kept", "Paste with", "Never keep copies from", "Bar button shows"],
                  also: "clipscape clips copy paste history cache clear keybind super ctrl v pins privacy images picker colors appearance window bar" },
+    showcase:  { label: "Showcase", icon: "\u{F0E6B}", file: "Showcase",
+                 words: ["Desktop widgets", "Arrange widgets", "Widget looks", "Clock faces", "System readings", "Now playing", "Notes", "Countdowns", "Cards"],
+                 also: "showcase desktop widgets wallpaper display case clocks dates system readings music notes looks cards arrange" },
     media:     { label: "Media", icon: "\u{F075A}", file: "Media",
                  words: ["Now playing", "Music visualizer", "Music controls", "Album cover", "Follow a player", "Media looks"],
                  also: "mpris player spotify music song album cover art visualizer spectrum bars audio playback pause next previous" },
