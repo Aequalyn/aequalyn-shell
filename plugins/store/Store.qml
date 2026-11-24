@@ -630,14 +630,38 @@ Scope {
     readonly property var builtInLooks: Looks.ensembles.map(e => ({
         id: e.key, label: e.label, about: e.about, icon: "\u{F0E09}"
     }))
+    // what others made: what is installed here, then what the Market has of it, each with
+    // what the catalog says about it
     function communityEntries(kind) {
         const glyph = (root.sections.find(s => s.key === kind) || {}).glyph || "\u{F0431}";
-        return root.itemsOf(kind).map(i => Object.assign({}, i, {
-            label: i.label || i.id,
-            about: i.source || "",
-            icon: glyph,
-            installed: true
+        const listed = root.market.filter(m => m.kind === kind);
+        const mine = root.itemsOf(kind).map(i => {
+            const m = listed.find(x => x.id === i.id && x.repo === i.source);
+            return Object.assign({}, i, {
+                label: (m && m.name) || i.label || i.id,
+                about: (m && m.about) || i.source || "",
+                icon: glyph,
+                installed: true,
+                preview: (m && m.preview) || "",
+                by: (m && m.by) || "",
+                market: m || null,
+                // from git: whether its repo has anything newer is only known by asking it
+                newer: m ? m.state === "update available" : true
+            });
+        });
+        const others = listed.filter(m => m.state !== "installed" && m.state !== "update available").map(m => ({
+            id: m.id, label: m.name || m.id, about: m.about || m.repo, icon: glyph, installed: false,
+            preview: m.preview || "", by: m.by || "", source: m.repo, market: m, newer: false,
+            blocked: m.state === "another installed"
         }));
+        return mine.concat(others);
+    }
+    function installFromMarket(kind, entry) {
+        if (kind === "app") {
+            root.inTerminal("aequalyn-store install-market app:" + entry.id);
+            return;
+        }
+        root.runJob("Installing " + (entry.label || entry.id), ["install-market", kind + ":" + entry.id]);
     }
     function builtInEntries(kind) {
         if (kind === "theme") return root.themeCatalog
@@ -676,6 +700,10 @@ Scope {
         }
         if (kind === "theme") root.runSide(["qs", "ipc", "call", "theme", "set", entry.id]);
         else if (kind === "cursor") root.runSide(["sh", "-c", 'hyprctl setcursor "$1" 24 && gsettings set org.gnome.desktop.interface cursor-theme "$1"', "sh", entry.id]);
+        // a pack is a folder: its first wallpaper
+        else if (kind === "wallpaper" && !builtIn) root.runSide(["sh", "-c",
+            'f=$(find "$1" -maxdepth 1 -type f ! -name ".*" | LC_ALL=C sort | head -n 1); [ -n "$f" ] && exec aequalyn-wallpaper set "$f"',
+            "sh", root.wallpaperDir + "/" + entry.id]);
         else if (kind === "wallpaper") root.runSide(["aequalyn-wallpaper", "set", root.wallpaperDir + "/" + entry.id]);
         else if (kind === "look") root.runJob("Wearing " + name, ["apply-look", entry.id]);
     }
@@ -684,7 +712,7 @@ Scope {
         const one = root.kindWords[kind] ? root.kindWords[kind].one : kind;
         return root.communityEntries(kind).length === 0
             ? "No community " + one + " from the Store yet. Add one with the form below."
-            : "Installed from git, with update and remove on each tile.";
+            : "Made by others. What comes from the Market was reviewed, and is installed at the exact commit that was.";
     }
     function builtInHint(kind) {
         if (kind === "cursor") return "The cursor designer ships with Aequalyn. Open it here and wear what you make.";
@@ -713,6 +741,7 @@ Scope {
     }
     function previewFor(kind, entry, builtIn) {
         if (entry.preview) return entry.preview;
+        if (!builtIn && entry.installed === false) return "";
         if (kind === "theme") {
             const known = root.themeCatalog.find(t => t.id === entry.id);
             if (known && known.preview) return known.preview;
@@ -831,7 +860,7 @@ Scope {
     function itemsOf(kind) { return root.installed.filter(i => i.kind === kind); }
     // what can update from git: an AppImage is one file with no source to fetch,
     // so the Updates page leaves it to its own page
-    readonly property var updatable: root.installed.filter(i => i.kind !== "appimage")
+    readonly property var updatable: root.installed.filter(i => i.kind !== "appimage" && i.kind !== "app")
     // the plugin grids hold fifteen tiles per page, in rows of five
     function pluginAt(count, page) {
         return Math.min(page, Math.max(0, Math.ceil(count / 15) - 1)) * 15;
@@ -841,7 +870,8 @@ Scope {
         const shown = items.slice(at, at + 15);
         const rows = [];
         for (let i = 0; i < shown.length; i += 5) rows.push(shown.slice(i, i + 5));
-        while (rows.length < 3) rows.push([]);
+        // three rows on every page only where there are pages: the arrows stay put
+        while (items.length > 15 && rows.length < 3) rows.push([]);
         return rows;
     }
     function pluginInfoOf(item, builtIn) {
@@ -862,6 +892,20 @@ Scope {
     property var market: []
     property bool marketLoaded: false
     function loadMarket() { if (!marketProc.running) marketProc.running = true; }
+    // the catalog kept fresh while the Store is used: quietly, at most every ten minutes;
+    // what is already here shows at once
+    property double marketFetched: 0
+    function freshMarket() {
+        root.loadMarket();
+        if (Date.now() - root.marketFetched < 600000 || marketFetch.running) return;
+        root.marketFetched = Date.now();
+        marketFetch.running = true;
+    }
+    Process {
+        id: marketFetch
+        command: ["aequalyn-store", "refresh"]
+        onExited: code => { if (code !== 0) root.marketFetched = 0; root.loadMarket(); }
+    }
 
     // ---- themes & wallpapers published in Aequalyn/aequalyn-themes ---------------------
     readonly property string themeRepoDir: Quickshell.env("HOME") + "/.cache/aequalyn/aequalyn-themes"
@@ -1182,6 +1226,7 @@ Scope {
         else if (name === "snap") root.inTerminal("yay -S --needed snapd && sudo systemctl enable --now snapd.socket && sudo ln -sfn /var/lib/snapd/snap /snap");
     }
     onOpenChanged: {
+        if (open) root.freshMarket();
         if (open && section === "apps") detectApps();
         if (open && section === "web") loadWebapps();
         if (open && section === "ai") loadAi();
@@ -1419,6 +1464,7 @@ Scope {
     }
     onSectionChanged: {
         if (section !== "web") { root.categoryTarget = null; root.renamingCategory = ""; }
+        if (open && section !== "market") root.freshMarket();
         if (section === "market") { loadMarket(); if (!busy) runJob("Refreshing the catalog", ["refresh"]); }
         if (section === "apps") { root.appCategory = "all"; detectApps(); if (root.foundPage === 0) searchApps("", false); }
         if (section === "web") loadWebapps();
@@ -2493,7 +2539,9 @@ Scope {
         id: card
         required property var modelData
         required property bool builtIn
-        readonly property var info: root.pluginInfoOf(card.modelData, card.builtIn)
+        readonly property bool here: card.builtIn || card.modelData.installed !== false
+        readonly property var info: card.here ? root.pluginInfoOf(card.modelData, card.builtIn)
+            : ({ icon: card.modelData.icon, about: card.modelData.about })
         readonly property bool on: (AequalynSettings.enabledPlugins || []).indexOf(card.modelData.id) >= 0
         height: 208
         Layout.fillWidth: true
@@ -2533,7 +2581,7 @@ Scope {
             }
             Text {
                 Layout.fillWidth: true
-                text: card.info.about || card.modelData.source || ""
+                text: card.info.about || card.modelData.about || card.modelData.source || ""
                 color: root.theme.textSecondary
                 font.family: root.sans
                 font.pixelSize: 11
@@ -2549,6 +2597,16 @@ Scope {
                     Layout.fillWidth: true
                     spacing: 5
                     Btn {
+                        visible: !card.here
+                        Layout.fillWidth: true
+                        implicitHeight: 24
+                        text: "Install"
+                        primary: true
+                        enabled: !root.busy && !card.modelData.blocked
+                        onClicked: root.installFromMarket("plugin", card.modelData)
+                    }
+                    Btn {
+                        visible: card.here
                         Layout.fillWidth: true
                         implicitHeight: 24
                         text: card.on ? "Turn off" : "Turn on"
@@ -2564,10 +2622,11 @@ Scope {
                     }
                 }
                 RowLayout {
-                    visible: !card.builtIn
+                    visible: !card.builtIn && card.here
                     Layout.fillWidth: true
                     spacing: 5
                     Btn {
+                        visible: card.modelData.newer !== false
                         Layout.fillWidth: true
                         implicitHeight: 24
                         text: "Update"
@@ -2680,6 +2739,7 @@ Scope {
                 if (gcard.kind === "theme") return gcard.installed ? "Apply" : "Install";
                 if (gcard.kind === "wallpaper") return gcard.installed ? "Set" : "Install";
             }
+            if (!gcard.installed) return "Install";
             if (gcard.kind === "theme") return "Apply";
             if (gcard.kind === "cursor") return "Wear";
             if (gcard.kind === "wallpaper") return "Set";
@@ -2724,7 +2784,7 @@ Scope {
             }
             Text {
                 Layout.fillWidth: true
-                text: gcard.about
+                text: (gcard.entry.by ? "by " + gcard.entry.by + " · " : "") + gcard.about
                 color: root.theme.textSecondary
                 font.family: root.sans
                 font.pixelSize: 11
@@ -2744,8 +2804,11 @@ Scope {
                         implicitHeight: 24
                         text: gcard.actionText
                         primary: true
-                        enabled: !root.busy
-                        onClicked: root.getPrimary(gcard.kind, gcard.entry, gcard.builtIn)
+                        enabled: !root.busy && !gcard.entry.blocked
+                        onClicked: {
+                            if (!gcard.builtIn && !gcard.installed) root.installFromMarket(gcard.kind, gcard.entry);
+                            else root.getPrimary(gcard.kind, gcard.entry, gcard.builtIn);
+                        }
                     }
                     Btn {
                         visible: gcard.builtIn && gcard.installed && (gcard.kind === "theme" || gcard.kind === "wallpaper")
@@ -2756,10 +2819,11 @@ Scope {
                     }
                 }
                 RowLayout {
-                    visible: !gcard.builtIn
+                    visible: !gcard.builtIn && gcard.installed
                     Layout.fillWidth: true
                     spacing: 5
                     Btn {
+                        visible: gcard.entry.newer !== false
                         Layout.fillWidth: true
                         implicitHeight: 24
                         text: "Update"
@@ -3265,10 +3329,8 @@ Scope {
                                 // plugins; each grid is fifteen tiles: five across, three rows
                                 PluginGrid {
                                     entriesTitle: "Community"
-                                    entriesHint: root.itemsOf("plugin").length === 0
-                                        ? "No community plugins from the Store yet. Add one with the form below."
-                                        : "Plugins installed from git, with update and remove on each tile."
-                                    entries: root.itemsOf("plugin")
+                                    entriesHint: root.communityHint("plugin")
+                                    entries: root.communityEntries("plugin")
                                     builtIn: false
                                 }
 
@@ -3333,6 +3395,49 @@ Scope {
                                         visible: !root.backends.yay && !root.backends.snap
                                         text: "Snap comes from the AUR: install the AUR first."
                                         color: root.theme.textMuted; font.family: root.sans; font.pixelSize: 11
+                                    }
+                                }
+                                Box {
+                                    id: communityApps
+                                    readonly property var apps: root.section === "apps" ? root.market.filter(m => m.kind === "app") : []
+                                    visible: root.section === "apps" && root.appCategory === "all" && communityApps.apps.length > 0
+                                    title: "Community"
+                                    hint: "From the Market: built from source here, at the exact commit that was reviewed, in a terminal where sudo asks for your password."
+                                    Repeater {
+                                        model: communityApps.apps
+                                        delegate: RowLayout {
+                                            id: capp
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            spacing: 10
+                                            Image {
+                                                Layout.preferredWidth: 32
+                                                Layout.preferredHeight: 32
+                                                source: capp.modelData.preview || root.appIconUrl("", capp.modelData.name || capp.modelData.id)
+                                                sourceSize.width: 64
+                                                sourceSize.height: 64
+                                                fillMode: Image.PreserveAspectFit
+                                                asynchronous: true
+                                            }
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 1
+                                                Text { text: capp.modelData.name || capp.modelData.id; color: root.theme.textPrimary; font.family: root.sans; font.pixelSize: 13; font.weight: Font.DemiBold }
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: (capp.modelData.by ? "by " + capp.modelData.by + " · " : "") + (capp.modelData.about || "")
+                                                    color: root.theme.textSecondary; font.family: root.sans; font.pixelSize: 11; elide: Text.ElideRight
+                                                }
+                                            }
+                                            Pill { visible: capp.modelData.state === "installed"; text: "Installed"; tone: root.theme.accentGreen }
+                                            Btn {
+                                                visible: capp.modelData.state !== "installed"
+                                                text: capp.modelData.state === "update available" ? "Update" : "Install"
+                                                primary: true
+                                                enabled: !root.anyBusy()
+                                                onClicked: root.installFromMarket("app", capp.modelData)
+                                            }
+                                        }
                                     }
                                 }
                                 Box {
@@ -4074,8 +4179,7 @@ Scope {
                                                     text: mrow.modelData.state === "update available" ? "Update" : "Install"
                                                     primary: true
                                                     enabled: !root.busy
-                                                    onClicked: root.runJob((mrow.modelData.state === "update available" ? "Updating " : "Installing ") + (mrow.modelData.name || mrow.modelData.id),
-                                                                           ["install-market", mrow.modelData.kind + ":" + mrow.modelData.id])
+                                                    onClicked: root.installFromMarket(mrow.modelData.kind, { id: mrow.modelData.id, label: mrow.modelData.name })
                                                 }
                                             }
                                         }
