@@ -12,11 +12,11 @@ fs.writeFileSync(P("home/.config/aequalyn/watchdog.json"), JSON.stringify({ esca
 // what the desktop declares: an ordinary action, a slow one, and one a person starts and stays in
 const act = (id, extra) => Object.assign({ id, label: id, about: "", command: [P("bin/root-" + id)] }, extra);
 fs.writeFileSync(P("home/.config/quickshell/Plugins.js"), `var list = [ { id: "settings", label: "S", needsRoot: ${JSON.stringify([
-    act("colour"), act("slow"), act("wizard", { interactive: true })])} } ];`);
-for (const [id, body] of [["colour", ""], ["slow", "sleep 30"], ["wizard", "sleep 6"]])
-    fs.writeFileSync(P("bin/root-" + id), `#!/bin/sh\necho start >> ${P("ran-" + id)}\n${body}\necho end >> ${P("ran-" + id)}\n`, { mode: 0o755 });
+    act("colour"), act("slow"), act("theme", { quiet: true }), act("wizard", { interactive: true })])} } ];`);
+for (const [id, body] of [["colour", ""], ["slow", "sleep 30"], ["theme", ""], ["wizard", "sleep 6"]])
+    fs.writeFileSync(P("bin/root-" + id), `#!/bin/sh\numask >> ${P("mask")}; echo start >> ${P("ran-" + id)}\n${body}\necho end >> ${P("ran-" + id)}\n`, { mode: 0o755 });
 // sudo: the password "live", on stdin
-fs.writeFileSync(P("bin/sudo"), '#!/bin/sh\nread pw\n[ "$pw" = live ] || { sleep 1; echo "Sorry, try again." >&2; exit 1; }\nwhile [ "$1" != "--" ]; do shift; done; shift\nexec "$@"\n', { mode: 0o755 });
+fs.writeFileSync(P("bin/sudo"), '#!/bin/sh\nif [ "$1" = -n ]; then [ -e ' + P("rules") + ' ] || { echo "sudo: a password is required" >&2; exit 1; }; shift 2; exec "$@"; fi\nread pw\n[ "$pw" = live ] || { sleep 1; echo "Sorry, try again." >&2; exit 1; }\nwhile [ "$1" != "--" ]; do shift; done; shift\nexec "$@"\n', { mode: 0o755 });
 // the shell: answers once it is up, shows what it is asked, runs what the test tells it to
 // (as its own child), and takes its processes with it when it goes
 fs.writeFileSync(P("bin/qs"), `#!/usr/bin/env python3
@@ -76,12 +76,18 @@ try {
     ok(run("start").status === 0, "the supervisor starts");
     until(() => read("ready"), 5);
 
+    // ---- the session's file mode, not the supervisor's private one
+    const mask = pid => (/Umask:\s*(\d+)/.exec(fs.readFileSync(`/proc/${pid}/status`, "utf8")) || [])[1];
+    ok(mask(Number(read("ready"))) === mask(process.pid), "the shell, and what is started from it, has the session's file mode " + mask(Number(read("ready"))));
+    ok(mask(supervisor()) === "0077", "the supervisor's own files are private");
+
     // ---- the plain way
     ask("colour", "a"); let w = window("colour", 0, 8);
     ok(w, "a request opens its window");
     if (w) decide(w.requestId, "once", "live");
     ok(/rc 0/.test(answered("a", 8) || ""), "allowed: it runs " + read("out-a"));
     ok(/end/.test(read("ran-colour")), "as root");
+    ok(/^0?022$/m.test(read("mask")) === (mask(process.pid) === "0022"), "and with the session's file mode " + read("mask"));
     ask("colour", "b"); w = window("colour", 1, 8); if (w) decide(w.requestId, "once", "wrong");
     ok(/rc 1\b/.test(answered("b", 10) || ""), "a wrong password is a failure " + read("out-b"));
     ask("colour", "c"); w = window("colour", 2, 8); if (w) decide(w.requestId, "deny");
@@ -104,6 +110,13 @@ try {
     // (the process that started it went with the old shell; the request did not)
     ok(until(() => /"ok": true/.test(read("out-d")), 8), "the first request gets its answer too " + read("out-d"));
     ok(until(() => /end/.test(read("ran-wizard")), 12), "the wizard is not cut off by the time limit (3 s)");
+
+    // ---- a theme change: asks until the rules are there, and then never again
+    at = asked().length; ask("theme", "q1"); w = window("theme", at, 8); ok(w, "without the rules it asks");
+    if (w) decide(w.requestId, "once", "live"); answered("q1", 8);
+    fs.writeFileSync(P("rules"), ""); at = asked().length; ask("theme", "q2");
+    ok(/rc 0/.test(answered("q2", 8) || "") && asked().length === at && (read("ran-theme").match(/end/g) || []).length === 2, "with them it just runs " + read("out-q2"));
+    ask("colour", "q3"); w = window("colour", at, 8); ok(w, "anything else still asks"); if (w) decide(w.requestId, "deny"); answered("q3", 8);
 
     // ---- an ordinary command is
     at = asked().length; ask("slow", "f"); w = window("slow", at, 8); if (w) decide(w.requestId, "once", "live");

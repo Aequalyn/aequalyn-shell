@@ -86,6 +86,8 @@ AEQUALYN_SETTINGS_QML = CONFIG_DIR / "settings" / "AequalynSettings.qml"
 STORE_DIR = Path(os.environ.get("AEQUALYN_STORE_DIR")
                  or os.path.join(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share")),
                                  "aequalyn", "plugins"))
+# the mask of what is started: -1 leaves it as it is
+CHILD_UMASK = -1
 QS_BIN = os.environ.get("AEQUALYN_QS_BIN") or shutil.which("qs") or shutil.which("quickshell") or "qs"
 
 # folders from the config root that a plugin may import with root:/
@@ -168,7 +170,9 @@ def clean_root_actions(raw, where: str, builtin: bool = False) -> list[dict]:
     The command is what the daemon will run AS ROOT: a fixed argv straight
     from the manifest, never something the plugin passes in, never a shell.
     A built-in's may be `interactive`: a program a person starts and stays in
-    (the installer), which has no time limit and whose window comes first."""
+    (the installer), which has no time limit and whose window comes first. One that
+    takes nothing but a checked value (a colour) may be `quiet`: run without the window
+    when sudo's own rules (aequalyn-gate-rules) let it without the password."""
     out: list[dict] = []
     if not isinstance(raw, list):
         return out
@@ -191,7 +195,8 @@ def clean_root_actions(raw, where: str, builtin: bool = False) -> list[dict]:
         if not argv or os.path.basename(argv[0]) in ROOT_LAUNCHERS:
             continue          # the gate adds sudo itself; nesting it is nonsense
         out.append({"id": str(aid), "label": label or str(aid), "command": argv, "about": about,
-                    "interactive": builtin and a.get("interactive") is True})
+                    "interactive": builtin and a.get("interactive") is True,
+                    "quiet": builtin and a.get("quiet") is True})
     seen: set[str] = set()
     clean = []
     for a in out:
@@ -883,7 +888,7 @@ class Supervisor:
             # with a deleted working directory -- half-broken, in ways a
             # heartbeat cannot see
             unit.popen = subprocess.Popen(args, stdout=logf, stderr=subprocess.STDOUT, env=env,
-                                          cwd=str(Path.home()))
+                                          cwd=str(Path.home()), umask=CHILD_UMASK)
             unit.pid = 0
             unit.started_at = time.time()
             unit.ever_started = True
@@ -1267,6 +1272,13 @@ class Supervisor:
                     "error": f"'{plugin_id}' declares no root action '{action_id}' "
                              "(the command must be pinned in the manifest, not passed in)"})
                 return
+            if act["quiet"]:
+                out = self.run_quiet(act["command"])
+                if out is not None:
+                    log(f"'{plugin_id}' ran '{' '.join(act['command'])}' without asking, as the rules allow, "
+                        f"exit {out['code']}")
+                    self.esc_reply(conn, {"ok": out["code"] == 0, **out})
+                    return
             # one pending request per plugin: it cannot stack windows until someone
             # clicks Allow in a hurry. The shell's own built-ins share one process, so
             # theirs is one per action: the browsers' colour, asked for by itself at
@@ -1355,6 +1367,18 @@ class Supervisor:
         d = read_json(STORE_DIR / pid / "plugin.json", None)
         return str(d.get("version", "")) if isinstance(d, dict) else ""
 
+    def run_quiet(self, argv: list[str]) -> dict | None:
+        """The same without a password, where the rules have it so; None where they do not."""
+        try:
+            r = subprocess.run(["sudo", "-n", "--"] + argv, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                               env=dict(os.environ, LC_ALL="C"), start_new_session=True, umask=CHILD_UMASK,
+                               timeout=int(self.conf["escalationCommandTimeoutSeconds"]))
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if r.returncode != 0 and r.stderr.lstrip().startswith("sudo:"):
+            return None                  # sudo said no, not the command
+        return {"code": r.returncode, "out": (r.stdout or "")[:4096], "err": (r.stderr or "")[:4096]}
+
     def run_interactive(self, argv: list[str], password: str, rid: str) -> dict:
         """The same for a program a person stays in (the installer): told apart from one
         that could not start, a wrong password say, by still being there after a moment,
@@ -1363,7 +1387,8 @@ class Supervisor:
         try:
             with open(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "wb") as logf:
                 proc = subprocess.Popen(["sudo", "-S", "-p", "", "--"] + argv, stdin=subprocess.PIPE,
-                                        stdout=logf, stderr=subprocess.STDOUT, start_new_session=True)
+                                        stdout=logf, stderr=subprocess.STDOUT, start_new_session=True,
+                                        umask=CHILD_UMASK)
         except OSError as e:
             return {"code": 127, "out": "", "err": f"could not run sudo: {e}"}
         try:
@@ -1393,7 +1418,7 @@ class Supervisor:
             proc = subprocess.Popen(
                 ["sudo", "-S", "-p", "", "--"] + argv,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, text=True, start_new_session=True)
+                stderr=subprocess.PIPE, text=True, start_new_session=True, umask=CHILD_UMASK)
         except OSError as e:
             return {"code": 127, "out": "", "err": f"could not run sudo: {e}"}
         try:
@@ -1770,7 +1795,11 @@ def cmd_start(args) -> int:
     os.setsid()
     if os.fork() > 0:
         os._exit(0)
-    os.umask(0o077)
+    # the supervisor's own files are its user's alone; what it starts (the shell, and so every
+    # program started from it, the installer too) keeps the session's mask: under this one
+    # pacman's database would be root's alone, and "of an incorrect version" to everyone else
+    global CHILD_UMASK
+    CHILD_UMASK = os.umask(0o077)
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     fd = os.open(DAEMON_LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     os.dup2(fd, 1)
