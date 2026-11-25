@@ -56,8 +56,9 @@ Right-click any dock for its settings.
 | --- | --- |
 | ![](docs/screenshots/quick-panel-battery.jpg) | ![](docs/screenshots/quick-panel-clipscape.jpg) |
 
-**Quick looks** change the bar, the docks, the lock screen and the login screen from a list,
-without opening the control center:
+**Quick looks** change the bar, the docks, the lock screen, the login screen, the cursor
+(`Super + Ctrl + C`), Showcase's widgets (`Super + Ctrl + W`) and one look for all of them
+(`Super + Ctrl + M`) from a list, without opening the control center:
 
 | Bar · `Super + Ctrl + B` | Docks · `Super + Ctrl + D` |
 | --- | --- |
@@ -122,7 +123,7 @@ qs ipc call theme set tidal              # a theme's id
 qs ipc call theme follow                 # colours follow the wallpaper again
 qs ipc call dock add                     # toggle | show | hide | add | settings <n>
 qs ipc call store section plugin         # a page of the Store
-qs ipc call quickLooks bar               # bar | dock | lock | login
+qs ipc call quickLooks bar               # bar | dock | lock | login | cursor | showcase | all
 ```
 
 ### Adding a layout
