@@ -63,6 +63,14 @@ CcPage {
         CcSlider { setting: "gapsOut"; title: "Space at the screen's edges"; from: 0; to: 30; step: 1; unit: " px" }
         CcSlider { setting: "rounding"; title: "Rounded corners"; from: 0; to: 24; step: 1; unit: " px"; zeroText: "Square" }
         CcSlider { setting: "borderSize"; title: "Border"; from: 0; to: 8; step: 1; unit: " px"; zeroText: "None" }
+        CcToggle {
+            title: "Lighter desktop"
+            sub: AequalynSettings.performance === "auto"
+                ? (AequalynSettings.weak ? "On by itself, for this machine: no blur, shadows or pointer effects." : "Off by itself: this machine does well without. For old hardware: no blur, shadows or pointer effects.")
+                : "No blur, shadows or pointer effects: faster on old hardware."
+            checked: AequalynSettings.light
+            onToggled: v => AequalynSettings.apply("performance", v === AequalynSettings.weak ? "auto" : (v ? "light" : "full"))
+        }
         CcToggle { setting: "blurEnabled"; title: "Blur behind see-through windows"; sub: "The bar, menus and see-through windows soften what is behind them." }
         CcToggle { setting: "animationsEnabled"; title: "Animations"; sub: "Windows glide when they open, close and move." }
     }

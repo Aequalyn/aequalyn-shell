@@ -54,7 +54,7 @@ Item {
     property point origin: Qt.point(width / 2, height / 2)   // where Iris and Maelstrom start
 
     readonly property var cfg: AequalynSettings.backdropCfg
-    readonly property string kind: Styles.valid(style !== "" ? style : cfg.style)
+    readonly property string kind: Styles.valid(style !== "" ? style : (AequalynSettings.light ? "dim" : cfg.style))
     readonly property real power: Math.max(0, Math.min(100, strength >= 0 ? strength : Number(cfg.strength))) / 100
     readonly property real shade: Math.min(0.92, tintAlpha * Math.max(0, Math.min(100, darkness >= 0 ? darkness : Number(cfg.dim))) / 50)
     readonly property real px: width / 2560               // blur sizes are set for a large screen

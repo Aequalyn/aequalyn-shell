@@ -351,12 +351,12 @@ PanelWindow {
       z: -1
       opacity: bar.bgFade
       readonly property string key: JSON.stringify([Style.styleOf(win.cfg), win.cfg.opacity, win.cfg.radius,
-                                                    win.cfg.edge, win.pal, width, height, AequalynSettings.blurEnabled, svc.barShown])
+                                                    win.cfg.edge, win.pal, width, height, AequalynSettings.softened, svc.barShown])
       onKeyChanged: requestPaint()
       onVisibleChanged: if (visible) requestPaint()
       onPaint: {
         const ctx = getContext("2d");
-        Paint.paint(ctx, Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge, blur: AequalynSettings.blurEnabled && svc.barShown, barHidden: !svc.barShown, blurEnabled: AequalynSettings.blurEnabled }));
+        Paint.paint(ctx, Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge, blur: AequalynSettings.softened && svc.barShown, barHidden: !svc.barShown, blurEnabled: AequalynSettings.softened }));
       }
     }
     // an app asking for attention: the outline pulses in the attention color
@@ -375,7 +375,7 @@ PanelWindow {
       onPaint: {
         const ctx = getContext("2d");
         ctx.reset();
-        const p = Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge, blur: AequalynSettings.blurEnabled && svc.barShown, barHidden: !svc.barShown, blurEnabled: AequalynSettings.blurEnabled });
+        const p = Style.params(win.cfg, win.pal, width, height, win.glow, { edge: win.cfg.edge, blur: AequalynSettings.softened && svc.barShown, barHidden: !svc.barShown, blurEnabled: AequalynSettings.softened });
         p.surface = "clear"; p.lines = "solid"; p.ornament = "none"; p.line = String(win.pal.hot);
         p.lineGrad = []; p.lineWidth = 2; p.shadowBlur = 0; p.fill2 = ""; p.glass = false; p.pattern = ""; p.depth = "";
         Paint.paint(ctx, p);

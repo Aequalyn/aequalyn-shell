@@ -492,6 +492,21 @@ QtObject {
     property real activeOpacity: 1.0
     property real inactiveOpacity: 0.95
     property bool blurEnabled: true
+    // "auto" | "full" | "light". Light leaves out what costs most (blur and shadows behind
+    // windows and panels, the pointer's trail and halo): auto is light on a machine with
+    // little memory or at most two cores
+    property string performance: "auto"
+    // the painted shadows and glows of the bar and docks
+    readonly property bool softened: root.blurEnabled && !root.light
+    property bool weak: false
+    readonly property bool light: root.performance === "light" || (root.performance === "auto" && root.weak)
+    property FileView memFile: FileView { path: "/proc/meminfo"; printErrors: false; onLoaded: root.weigh() }
+    property FileView cpuFile: FileView { path: "/proc/cpuinfo"; printErrors: false; onLoaded: root.weigh() }
+    function weigh() {
+        const m = /^MemTotal:\s+(\d+)/m.exec(root.memFile.text() || "")
+        const cores = ((root.cpuFile.text() || "").match(/^processor\s*:/gm) || []).length
+        root.weak = (!!m && Number(m[1]) < 4300000) || (cores > 0 && cores <= 2)
+    }
     property int blurSize: 6
     property bool animationsEnabled: true
     property string layout: "dwindle"
@@ -643,6 +658,7 @@ QtObject {
                 activeOpacity: root.activeOpacity,
                 inactiveOpacity: root.inactiveOpacity,
                 blurEnabled: root.blurEnabled,
+                performance: root.performance,
                 blurSize: root.blurSize,
                 animationsEnabled: root.animationsEnabled,
                 layout: root.layout,
@@ -943,6 +959,7 @@ QtObject {
         root.activeOpacity = pick(h.activeOpacity, root.activeOpacity)
         root.inactiveOpacity = pick(h.inactiveOpacity, root.inactiveOpacity)
         root.blurEnabled = pick(h.blurEnabled, root.blurEnabled)
+        root.performance = ["full", "light"].indexOf(h.performance) >= 0 ? h.performance : "auto"
         root.blurSize = pick(h.blurSize, root.blurSize)
         root.animationsEnabled = pick(h.animationsEnabled, root.animationsEnabled)
         root.layout = pick(h.layout, root.layout)

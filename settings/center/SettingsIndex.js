@@ -56,6 +56,7 @@ var entries = [
     {"page": "windows", "title": "Space at the screen's edges", "kind": "slider", "setting": "gapsOut", "from": 0.0, "to": 30.0, "step": 1.0, "unit": " px"},
     {"page": "windows", "title": "Rounded corners", "kind": "slider", "setting": "rounding", "from": 0.0, "to": 24.0, "step": 1.0, "unit": " px"},
     {"page": "windows", "title": "Border", "kind": "slider", "setting": "borderSize", "from": 0.0, "to": 8.0, "step": 1.0, "unit": " px"},
+    {"page": "windows", "title": "Lighter desktop", "kind": "toggle"},
     {"page": "windows", "title": "Blur behind see-through windows", "kind": "toggle", "sub": "The bar, menus and see-through windows soften what is behind them.", "setting": "blurEnabled"},
     {"page": "windows", "title": "Animations", "kind": "toggle", "sub": "Windows glide when they open, close and move.", "setting": "animationsEnabled"},
     {"page": "windows", "title": "Blur strength", "kind": "slider", "setting": "blurSize", "from": 1.0, "to": 20.0, "step": 1.0},
