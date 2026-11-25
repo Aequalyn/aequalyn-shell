@@ -82,6 +82,6 @@ var list = [
           "command": ["/usr/local/bin/aequalyn-sddm", "gate-autologin"] },
         { "id": "install-aequalyn", "label": "Run the Aequalyn installer",
           "about": "Starts the install wizard (its Quickshell GUI) as root, on this session's Wayland. The live ISO's 'Install Aequalyn' launcher.",
-          "command": ["/usr/local/bin/aequalyn-install", "--gate"] }
+          "command": ["/usr/local/bin/aequalyn-install", "--gate"], "interactive": true }
       ] }
 ];

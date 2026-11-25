@@ -74,6 +74,8 @@ Scope {
     property int timeoutSeconds: 120
     property int secondsLeft: 0
 
+    readonly property bool typing: root.request !== null && pwInput.text !== ""
+
     function showRequest(req) {
         root.request = req || null
         if (root.request) {

@@ -136,6 +136,14 @@ The gate is the only door, and it has three locks on it, in this order:
    password is asked again, because sudo wants it); the run and its exit
    code are logged.
 
+A request belongs to whoever made it, not to one window. A shell that is starting
+is waited for, one that is restarted is asked again, and a request whose asker is
+gone, or that nobody answered, is taken back with its window. A plugin has one
+request at a time, a built-in one per action. An action marked `interactive` (built-ins
+only: the installer) is a program a person stays in: its window comes first, it has
+no time limit, and the answer is that it is running. `tests/watchdog-gate.test.js`
+goes through all of it with a stand-in shell.
+
 And under all of it, a tripwire: the supervisor walks every unit's process
 tree on every RAM pass, and anything that looks like `sudo`, `pkexec`,
 `su` or `doas` -- directly, in a shell script argument, behind `env` or

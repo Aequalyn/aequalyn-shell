@@ -89,6 +89,13 @@ Item {
             catch (e) { return "bad json: " + e }
             return "ok"
         }
+
+        // a request that is over (its asker is gone, nobody answered in time): its
+        // window goes with it
+        function escalationGone(requestId: string): string {
+            wd.dropEscalation(requestId)
+            return "ok"
+        }
     }
 
     // ---- the escalation window --------------------------------------------
@@ -99,8 +106,23 @@ Item {
     property var escQueue: []
     property var escCurrent: null
     function queueEscalation(req) {
-        wd.escQueue = wd.escQueue.concat([req])
+        // asked again after a restart it may have missed
+        const id = req && req.requestId
+        if (!id || (wd.escCurrent && wd.escCurrent.requestId === id)
+            || wd.escQueue.some(r => r.requestId === id)) return
+        // what the person just started comes before what asked by itself, unless its
+        // window is being answered
+        if (req.interactive === true && wd.escCurrent && wd.escCurrent.interactive !== true && !escWindow.typing) {
+            wd.escQueue = [req, wd.escCurrent].concat(wd.escQueue)
+            nextEscalation()
+            return
+        }
+        wd.escQueue = req.interactive === true ? [req].concat(wd.escQueue) : wd.escQueue.concat([req])
         if (!wd.escCurrent) nextEscalation()
+    }
+    function dropEscalation(id) {
+        wd.escQueue = wd.escQueue.filter(r => r.requestId !== id)
+        if (wd.escCurrent && wd.escCurrent.requestId === id) nextEscalation()
     }
     function nextEscalation() {
         wd.escCurrent = wd.escQueue.length ? wd.escQueue[0] : null

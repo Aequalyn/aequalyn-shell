@@ -44,6 +44,7 @@ import errno
 import fcntl
 import json
 import os
+import queue
 import re
 import secrets
 import shutil
@@ -162,10 +163,12 @@ SHELL_LAUNCHERS = {"sh", "bash", "dash", "ash", "zsh", "fish", "ksh"}
 PASS_THROUGH = {"env", "nohup", "setsid", "xargs", "nice", "stdbuf"}
 
 
-def clean_root_actions(raw, where: str) -> list[dict]:
+def clean_root_actions(raw, where: str, builtin: bool = False) -> list[dict]:
     """Validate a manifest's needsRoot into safe actions, or [] if broken.
     The command is what the daemon will run AS ROOT: a fixed argv straight
-    from the manifest, never something the plugin passes in, never a shell."""
+    from the manifest, never something the plugin passes in, never a shell.
+    A built-in's may be `interactive`: a program a person starts and stays in
+    (the installer), which has no time limit and whose window comes first."""
     out: list[dict] = []
     if not isinstance(raw, list):
         return out
@@ -187,7 +190,8 @@ def clean_root_actions(raw, where: str) -> list[dict]:
             argv.append(s)
         if not argv or os.path.basename(argv[0]) in ROOT_LAUNCHERS:
             continue          # the gate adds sudo itself; nesting it is nonsense
-        out.append({"id": str(aid), "label": label or str(aid), "command": argv, "about": about})
+        out.append({"id": str(aid), "label": label or str(aid), "command": argv, "about": about,
+                    "interactive": builtin and a.get("interactive") is True})
     seen: set[str] = set()
     clean = []
     for a in out:
@@ -241,7 +245,7 @@ def builtin_root_actions() -> dict[str, list[dict]]:
             raw = json.loads(text[j:end + 1])
         except ValueError:
             continue
-        acts = clean_root_actions(raw, "Plugins.js")
+        acts = clean_root_actions(raw, "Plugins.js", builtin=True)
         if acts:
             out[pid] = acts
     return out
@@ -671,9 +675,11 @@ class Supervisor:
         self.hb_at = 0.0
         self.shutting_down = False
         self.listen: socket.socket | None = None
-        # the escalation gate: requestId -> {event, decision, password, unit}
+        # the escalation gate: requestId -> {event, decision, password, unit, what}
         self.esc_lock = threading.Lock()
         self.pending: dict[str, dict] = {}
+        # commands that steer the supervisor, for its own loop: (conn, peer, req)
+        self.commands: queue.Queue = queue.Queue()
 
     # ------------------------------------------------------------- utils --
 
@@ -1089,57 +1095,61 @@ class Supervisor:
             s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.bind(str(SOCK_PATH))
             os.chmod(SOCK_PATH, 0o600)
-            s.listen(4)
-            s.setblocking(False)
+            s.listen(32)
             self.listen = s
+            threading.Thread(target=self.serve_socket, daemon=True).start()
         except OSError as e:
             log(f"could not open control socket: {e}")
             self.listen = None
 
     def serve_socket(self) -> None:
-        if self.listen is None:
-            return
-        while True:
+        """Takes every caller in at once, on a thread of its own: the loop may be busy for
+        seconds (a shell that does not answer, a unit being stopped), and neither a root
+        request nor its answer may wait for that, let alone be told nobody is there."""
+        while not self.shutting_down and self.listen is not None:
             try:
                 conn, _ = self.listen.accept()
-            except BlockingIOError:
-                return
             except OSError as e:
-                if e.errno != errno.EINTR:
-                    return
-                continue
-            req: dict = {}
-            try:
-                conn.settimeout(5)
-                data = b""
-                while b"\n" not in data:
-                    chunk = conn.recv(4096)
-                    if not chunk:
-                        break
-                    data += chunk
-                req = json.loads(data.decode("utf-8", "replace") or "{}")
-                peer = peer_pid(conn)
-                # exec-root runs in its own thread: it waits out the whole
-                # approval window, and the loop must keep answering
-                # heartbeats and CLI calls while it does
-                if req.get("cmd") == "exec-root":
-                    threading.Thread(target=self.handle_exec_root,
-                                     args=(conn, peer, req), daemon=True).start()
+                if e.errno in (errno.EINTR, errno.ECONNABORTED):
                     continue
+                return
+            threading.Thread(target=self.serve_caller, args=(conn,), daemon=True).start()
+
+    def serve_caller(self, conn: socket.socket) -> None:
+        try:
+            # who it is, before anything else: by the time it is answered its parents may be gone
+            peer = peer_pid(conn)
+            unit = self.unit_of_caller(peer)
+            conn.settimeout(5)
+            data = b""
+            while b"\n" not in data:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+            req = json.loads(data.decode("utf-8", "replace") or "{}")
+            cmd = req.get("cmd")
+            if cmd == "exec-root":
+                self.handle_exec_root(conn, peer, req, unit)
+            elif cmd in ("decide", "status"):
+                self.esc_reply(conn, self.handle(conn, req, peer))
+            else:
+                # starts and stops things: the loop's own work
+                self.commands.put((conn, peer, req))
+        except (OSError, ValueError, AttributeError) as e:
+            self.esc_reply(conn, {"ok": False, "error": f"bad request: {e}"})
+
+    def run_commands(self) -> None:
+        while True:
+            try:
+                conn, peer, req = self.commands.get_nowait()
+            except queue.Empty:
+                return
+            try:
                 reply = self.handle(conn, req, peer)
-                conn.sendall((json.dumps(reply) + "\n").encode("utf-8"))
             except (OSError, ValueError) as e:
                 reply = {"ok": False, "error": f"bad request: {e}"}
-                try:
-                    conn.sendall((json.dumps(reply) + "\n").encode("utf-8"))
-                except OSError:
-                    pass
-            finally:
-                if req.get("cmd") != "exec-root":
-                    try:
-                        conn.close()
-                    except OSError:
-                        pass
+            self.esc_reply(conn, reply)
 
     def unit_of_caller(self, peer: tuple[int, int]) -> Unit | None:
         """Which supervised unit the socket caller belongs to, by its real
@@ -1149,7 +1159,7 @@ class Supervisor:
         if uid != os.getuid() or pid <= 0:
             return None
         chain = set(ancestors(pid))
-        for unit in self.units.values():
+        for unit in list(self.units.values()):
             if unit.current_pid and unit.current_pid in chain:
                 return unit
         return None
@@ -1179,7 +1189,53 @@ class Supervisor:
             pass
         return pid
 
-    def handle_exec_root(self, conn: socket.socket, peer: tuple[int, int], req: dict) -> None:
+    def caller_unit(self, peer: tuple[int, int]) -> Unit | None:
+        """The caller's unit. A shell that was started outside the supervisor (a login's
+        fallback) is taken over within a few seconds: its requests wait for that."""
+        until = time.monotonic() + 20
+        while True:
+            unit = self.unit_of_caller(peer)
+            if unit is not None or time.monotonic() > until:
+                return unit
+            if peer[1] != os.getuid() or find_shell_pid() not in ancestors(peer[0]):
+                return None
+            time.sleep(0.5)
+
+    def shell_pid(self) -> int:
+        unit = self.units.get("shell")
+        return unit.current_pid if unit and unit.alive else 0
+
+    def ask_shell(self, payload: str, wait: float = 45) -> int:
+        """Has the shell open the approval window: the pid that was asked, 0 when none
+        answered. A shell that is starting (a login, a restart) is waited for."""
+        until = time.monotonic() + wait
+        while True:
+            pid = self.shell_pid()
+            if pid and self.shell_ipc(["escalationRequest", payload]) is not None:
+                return pid
+            if time.monotonic() > until or self.shutting_down:
+                return 0
+            time.sleep(0.5)
+
+    def withdraw(self, rid: str, why: str) -> None:
+        with self.esc_lock:
+            self.pending.pop(rid, None)
+        log(f"escalation {rid}: {why}")
+        self.shell_ipc(["escalationGone", rid], timeout=3)
+
+    @staticmethod
+    def hung_up(conn: socket.socket) -> bool:
+        """Is the one who asked gone? (It sends its request, then only waits.)"""
+        try:
+            conn.setblocking(False)
+            return conn.recv(1, socket.MSG_PEEK) == b""
+        except (BlockingIOError, InterruptedError):
+            return False
+        except OSError:
+            return True
+
+    def handle_exec_root(self, conn: socket.socket, peer: tuple[int, int], req: dict,
+                         unit: Unit | None = None) -> None:
         """The whole escalation flow, on its own thread (it waits out the
         approval window). The argv that runs is pinned in the plugin's
         manifest; the caller is pinned by its process; the user is asked
@@ -1188,7 +1244,7 @@ class Supervisor:
         claim = str(args[0]) if args else ""       # only used by in-process built-ins
         action_id = str(args[1]) if len(args) > 1 else ""
         try:
-            unit = self.unit_of_caller(peer)
+            unit = unit or self.caller_unit(peer)
             if unit is None:
                 self.esc_reply(conn, {"ok": False,
                     "error": "not a supervised process: the gate is for plugins "
@@ -1211,73 +1267,122 @@ class Supervisor:
                     "error": f"'{plugin_id}' declares no root action '{action_id}' "
                              "(the command must be pinned in the manifest, not passed in)"})
                 return
+            # one pending request per plugin: it cannot stack windows until someone
+            # clicks Allow in a hurry. The shell's own built-ins share one process, so
+            # theirs is one per action: the browsers' colour, asked for by itself at
+            # login, must not stand in the way of the installer
+            what = unit.name if unit.kind == "plugin" else f"{plugin_id}/{action_id}"
             with self.esc_lock:
-                # one pending request per unit: a plugin cannot stack
-                # windows until someone clicks Allow in a hurry
-                if any(p["unit"] == unit.name for p in self.pending.values()):
+                if any(p["what"] == what for p in self.pending.values()):
                     rid = ""
                 else:
                     rid = f"{time.time_ns():x}-{secrets.token_hex(4)}"
-                    pend = {"unit": unit.name, "event": threading.Event(),
+                    pend = {"unit": unit.name, "what": what, "event": threading.Event(),
                             "decision": "", "password": ""}
                     self.pending[rid] = pend
             if not rid:
                 # the reply is sent outside the lock: socket IO must never
                 # hold up the supervisor (a stuck client would otherwise
-                # freeze every decide coming through the main loop)
+                # freeze every decide coming in)
                 self.esc_reply(conn, {"ok": False,
                     "error": "another root request from this plugin is already waiting"})
                 return
-            cmd_text = " ".join(act["command"])
-            log(f"escalation {rid}: '{plugin_id}' asks to run as root: {cmd_text}")
-            allowed = action_id in allowed_root().get(plugin_id, set())
-            payload = json.dumps({
-                "requestId": rid, "plugin": plugin_id,
-                "label": self.label_of(plugin_id),
-                "version": self.store_version(plugin_id),
-                "source": "store" if (STORE_DIR / plugin_id / "plugin.json").is_file() else "built-in",
-                "action": action_id, "actionLabel": act["label"],
-                "command": cmd_text, "about": act["about"], "allowed": allowed,
-            })
-            if self.shell_ipc(["escalationRequest", payload]) is None:
+            try:
+                self.escalate(conn, rid, pend, plugin_id, act)
+            finally:
                 with self.esc_lock:
                     self.pending.pop(rid, None)
-                log(f"escalation {rid}: denied -- the shell could not be reached to ask")
-                self.esc_reply(conn, {"ok": False,
-                    "error": "the shell could not be reached, so no one could approve"})
-                return
-            if not pend["event"].wait(timeout=float(self.conf["escalationTimeoutSeconds"])):
-                with self.esc_lock:
-                    self.pending.pop(rid, None)
-                log(f"escalation {rid}: denied by timeout")
-                self.esc_reply(conn, {"ok": False, "error": "denied: no answer in time"})
-                return
-            with self.esc_lock:
-                self.pending.pop(rid, None)
-            decision = pend["decision"]
-            if decision == "deny":
-                log(f"escalation {rid}: denied by the user")
-                self.esc_reply(conn, {"ok": False, "error": "denied by the user"})
-                return
-            if decision == "always":
-                # consent remembered; the window still opens next time,
-                # because sudo still needs the password
-                log(f"escalation {rid}: allowed, always, for '{action_id}'")
-            else:
-                log(f"escalation {rid}: allowed once")
-            out = self.run_sanctioned(act["command"], pend["password"])
-            log(f"escalation {rid}: ran '{cmd_text}', exit {out.get('code')}")
-            self.esc_reply(conn, {"ok": out.get("code") == 0, **out})
         except Exception as e:              # never take the daemon down
             log(f"escalation flow failed: {e!r}")
-            try:
-                self.esc_reply(conn, {"ok": False, "error": f"internal error: {e}"})
-            except OSError:
-                pass
+            self.esc_reply(conn, {"ok": False, "error": f"internal error: {e}"})
+
+    def escalate(self, conn: socket.socket, rid: str, pend: dict, plugin_id: str, act: dict) -> None:
+        action_id = act["id"]
+        cmd_text = " ".join(act["command"])
+        log(f"escalation {rid}: '{plugin_id}' asks to run as root: {cmd_text}")
+        payload = json.dumps({
+            "requestId": rid, "plugin": plugin_id,
+            "label": self.label_of(plugin_id),
+            "version": self.store_version(plugin_id),
+            "source": "store" if (STORE_DIR / plugin_id / "plugin.json").is_file() else "built-in",
+            "action": action_id, "actionLabel": act["label"],
+            "command": cmd_text, "about": act["about"], "interactive": act["interactive"],
+            "allowed": action_id in allowed_root().get(plugin_id, set()),
+        })
+        wait = float(self.conf["escalationTimeoutSeconds"])
+        asked = self.ask_shell(payload)
+        until = time.monotonic() + wait
+        while asked and not pend["event"].wait(timeout=0.5):
+            if self.hung_up(conn):
+                self.withdraw(rid, "taken back: whoever asked is gone")
+                self.esc_reply(conn, {"ok": False, "error": "taken back"})
+                return
+            if time.monotonic() > until:
+                self.withdraw(rid, "denied by timeout")
+                self.esc_reply(conn, {"ok": False, "error": "denied: no answer in time"})
+                return
+            # the shell was restarted, and its window went with it: ask the new one
+            if self.shell_pid() != asked:
+                log(f"escalation {rid}: the shell was restarted, asking again")
+                asked = self.ask_shell(payload)
+                until = time.monotonic() + wait
+        if not asked and not pend["event"].is_set():
+            log(f"escalation {rid}: denied -- the shell could not be reached to ask")
+            self.esc_reply(conn, {"ok": False,
+                "error": "the shell could not be reached, so no one could approve"})
+            return
+        with self.esc_lock:
+            self.pending.pop(rid, None)
+        if pend["decision"] == "deny":
+            log(f"escalation {rid}: denied by the user")
+            self.esc_reply(conn, {"ok": False, "error": "denied by the user"})
+            return
+        if pend["decision"] == "always":
+            # consent remembered; the window still opens next time,
+            # because sudo still needs the password
+            log(f"escalation {rid}: allowed, always, for '{action_id}'")
+        else:
+            log(f"escalation {rid}: allowed once")
+        if act["interactive"]:
+            out = self.run_interactive(act["command"], pend["password"], rid)
+        else:
+            out = self.run_sanctioned(act["command"], pend["password"])
+        log(f"escalation {rid}: ran '{cmd_text}', "
+            + ("still running" if out.get("started") else f"exit {out.get('code')}"))
+        self.esc_reply(conn, {"ok": out.get("code") == 0, **out})
 
     def store_version(self, pid: str) -> str:
         d = read_json(STORE_DIR / pid / "plugin.json", None)
         return str(d.get("version", "")) if isinstance(d, dict) else ""
+
+    def run_interactive(self, argv: list[str], password: str, rid: str) -> dict:
+        """The same for a program a person stays in (the installer): told apart from one
+        that could not start, a wrong password say, by still being there after a moment,
+        and then left alone, with no time limit. What it says goes to a log."""
+        path = LOGS_DIR / f"root-{os.path.basename(argv[0])}.log"
+        try:
+            with open(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "wb") as logf:
+                proc = subprocess.Popen(["sudo", "-S", "-p", "", "--"] + argv, stdin=subprocess.PIPE,
+                                        stdout=logf, stderr=subprocess.STDOUT, start_new_session=True)
+        except OSError as e:
+            return {"code": 127, "out": "", "err": f"could not run sudo: {e}"}
+        try:
+            proc.stdin.write(((password or "") + "\n").encode("utf-8"))
+            proc.stdin.close()
+        except (OSError, ValueError):
+            pass                         # sudo may not even need a password
+        try:
+            code = proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            def reap() -> None:
+                log(f"escalation {rid}: '{argv[0]}' ended, exit {proc.wait()}")
+            threading.Thread(target=reap, daemon=True).start()
+            return {"code": 0, "started": True, "out": "", "err": ""}
+        try:
+            said = path.read_text(encoding="utf-8", errors="replace")[-4096:]
+        except OSError:
+            said = ""
+        return {"code": code, "out": "", "err": said}
 
     def run_sanctioned(self, argv: list[str], password: str) -> dict:
         """The one place root is ever handed out: `sudo -S` with the
@@ -1503,11 +1608,11 @@ class Supervisor:
                          "budgetMiB": self.budget_mb(u),
                          "failures": self.failures_in_window(u.name),
                          "test": u.test_mode}
-                        for u in self.units.values() if u.kind == "plugin"],
+                        for u in list(self.units.values()) if u.kind == "plugin"],
             "disabled": dict(self.disabled),
             "sandboxed": sorted(self.sandbox_ids()),
             "escalations": {rid: {"unit": p["unit"]}
-                            for rid, p in self.pending.items()},
+                            for rid, p in list(self.pending.items())},
         }
 
     # ------------------------------------------------------------ main ----
@@ -1559,7 +1664,7 @@ class Supervisor:
             self.reap()
             self.start_due()
             self.sync_units()
-            self.serve_socket()
+            self.run_commands()
             now = time.monotonic()
             if now >= next_ram:
                 self.check_ram()
@@ -1818,14 +1923,26 @@ def cmd_exec_root(args) -> int:
     """A plugin's only door to root. The daemon pins the caller by its real
     process, the shell shows the window (plugin, action, exact command),
     and the outcome comes back as JSON on stdout."""
-    if not daemon_alive():
-        print("aequalyn-watchdog is not running", file=sys.stderr)
-        return 127
     conf = read_json(WATCHDOG_CONF, {})
-    wait = 30 + int(conf.get("escalationTimeoutSeconds", 120)) \
+    # the answer may take a while: a shell that is restarted is asked again
+    wait = 120 + 3 * int(conf.get("escalationTimeoutSeconds", 120)) \
         + int(conf.get("escalationCommandTimeoutSeconds", 300))
-    out = send_to_daemon({"cmd": "exec-root", "args": [args.as_id, args.action]},
-                         timeout=wait)
+    # a supervisor that is just starting (a login) is waited for; one that is there but
+    # busy takes the request in and answers when it can
+    until = time.monotonic() + 30
+    while True:
+        try:
+            out = send_to_daemon({"cmd": "exec-root", "args": [args.as_id, args.action]},
+                                 timeout=wait)
+            break
+        except socket.timeout:
+            print("aequalyn-watchdog did not answer", file=sys.stderr)
+            return 124
+        except (OSError, ValueError):
+            if time.monotonic() > until:
+                print("aequalyn-watchdog is not running", file=sys.stderr)
+                return 127
+            time.sleep(0.5)
     print(json.dumps(out, indent=2))
     if not out.get("ok"):
         return out.get("code", 126) if isinstance(out.get("code"), int) else 126
@@ -1845,7 +1962,7 @@ def cmd_decide(args) -> int:
     except OSError:
         pwd = ""
     out = send_to_daemon({"cmd": "decide", "args": [args.request, args.decision],
-                          "password": pwd[:256]})
+                          "password": pwd[:256]}, timeout=60)
     if out.get("ok"):
         return 0
     print(out.get("error", "failed"), file=sys.stderr)
