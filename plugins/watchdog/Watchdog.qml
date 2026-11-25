@@ -7,6 +7,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import "root:/settings"
 
 Item {
@@ -38,6 +39,14 @@ Item {
             return JSON.stringify({ pid: Quickshell.processId,
                                    uptime: Math.round((Date.now() - wd.startedAt) / 1000),
                                    plugins: rows })
+        }
+
+        // Hyprland's monitors, workspaces and windows, read again as at the start: after its
+        // titlebar plugin was loaded they are numbered anew
+        function resync(): string {
+            try { Hyprland.refreshMonitors(); Hyprland.refreshWorkspaces(); Hyprland.refreshToplevels() }
+            catch (e) { return "failed: " + e }
+            return "ok"
         }
 
         // turn a plugin off the same way the Plugins page does: the loader
