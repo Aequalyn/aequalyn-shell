@@ -14,6 +14,7 @@ import "js/Util.js" as Util
 import "core"
 import "js/Theme.js" as Colors
 import "js/Look.js" as Look
+import "root:/style/Follow.js" as Follow
 
 // The always-loaded part: settings, colors, the readings, the desktop widgets and ipc.
 Item {
@@ -33,12 +34,32 @@ Item {
     readonly property var cfg: Schema.resolve(settingsStore.values)
     readonly property var widgets: cfg.widgets
 
+    // the settings as the widgets wear them: yours, with the theme's, the bar's or a dock's
+    // on top where they follow (the Follow tab)
+    readonly property var followPal: KitFollow.colors("showcase", root.cfg.followColors)
+    readonly property var followSource: KitFollow.source("showcase", root.cfg.followStyle)
+    readonly property var worn: {
+        const out = Object.assign({}, root.cfg)
+        if (root.followSource) Object.assign(out, Follow.card(root.followSource))
+        if (root.followPal) out.colorMode = root.followPal.mode === "palette" ? "palette" : "theme"
+        return out
+    }
+    readonly property var wornTheme: {
+        const p = root.followPal
+        if (!p) return root.theme
+        return { fg: Look.hex3(p.fg), barText: Look.hex3(p.fg), accent: Look.hex3(p.ac), urgent: Look.hex3(p.hot),
+                 bg: Look.hex3(p.bg), palette: p.spectrum, borders: p.borders, borderAngle: root.borderAngle }
+    }
+
     function setValue(key, value) {
         const v = Schema.clean(key, value)
         if (v === undefined) return
         if (key === "colorMode" && root.cfg.presetColors !== "") settingsStore.setMany({ colorMode: v, presetColors: "" })
+        // a font picked by hand is for everything: the styles with lettering of their own too
+        else if (key === "font") settingsStore.setMany({ font: v, fontScope: "same" })
         else settingsStore.set(key, v)
         if (key === "enabled" && v === true) root.replay()
+        if (Schema.cardKeys.indexOf(key) >= 0) AequalynSettings.touched("showcase")
     }
 
     UiState {
@@ -186,8 +207,15 @@ Item {
     readonly property bool fontsReady: [fInter, fPlayfair, fCormorant, fGrotesk, fMono, fBebas, fFraktur]
         .every(function(f) { return f.status !== FontLoader.Loading })
     function nameOr(f, fallback) { return f.status === FontLoader.Ready && f.name ? f.name : fallback }
-    readonly property string mainFont: root.cfg.font === "" ? AequalynSettings.uiFont : root.cfg.font
-    readonly property var fonts: ({
+    readonly property string monoFont: AequalynSettings.monoFont
+    // one look everywhere has the text too: the shell's font, unless it is Showcase's that leads
+    readonly property bool textJoins: KitFollow.match.on && KitFollow.match.text && KitFollow.lead !== "showcase"
+    readonly property string mainFont: root.textJoins || root.cfg.font === "" ? AequalynSettings.uiFont
+        : (root.cfg.font === Schema.MONO_FONT ? AequalynSettings.monoFont : root.cfg.font)
+    readonly property var fonts: root.textJoins || root.cfg.fontScope === "same" ? ({
+        sans: root.mainFont, serif: root.mainFont, display: root.mainFont, script: root.mainFont,
+        mono: root.textJoins || root.cfg.font === "" ? AequalynSettings.monoFont : root.mainFont
+    }) : ({
         sans: root.nameOr(fInter, "sans-serif"),
         serif: root.cfg.font === "Cormorant Garamond" ? root.nameOr(fCormorant, "serif") : root.nameOr(fPlayfair, "serif"),
         mono: root.nameOr(fMono, "monospace"),
@@ -384,6 +412,7 @@ Item {
         look.lastLook = p.key
         look.enabled = true
         settingsStore.setMany(look)
+        AequalynSettings.touched("showcase")
         root.selected = ""
         root.replay()
         return true
@@ -423,6 +452,7 @@ Item {
         look.undoLook = Schema.lookOf(root.cfg)
         look.enabled = true
         settingsStore.setMany(look)
+        AequalynSettings.touched("showcase")
         root.replay()
         return true
     }

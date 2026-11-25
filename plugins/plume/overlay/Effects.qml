@@ -11,7 +11,7 @@ Canvas {
     property real originX: 0            // where this screen starts in layout coordinates
     property real originY: 0
 
-    readonly property var cfg: svc ? svc.cfg : null
+    readonly property var cfg: svc ? svc.worn : null
     property var mem: ({})              // what the trail keeps between frames (particles)
     property bool painted: false        // something is on the canvas right now
 
@@ -38,7 +38,7 @@ Canvas {
         ctx.reset()
         const busy = Paint.frame(ctx, {
             cfg: root.cfg, pts: pts, x: px, y: py, here: here, w: width, h: height,
-            colors: s.colorCtx, time: s.now / 1000, dt: s.dt, moved: here ? s.moved : 0,
+            colors: s.wornColors, time: s.now / 1000, dt: s.dt, moved: here ? s.moved : 0,
             speed: Motion.speed01(st), still: Motion.stillFor(st, s.now), findAge: (s.now - s.findAt) / 1000,
             mem: root.mem
         })

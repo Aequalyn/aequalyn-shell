@@ -1,4 +1,5 @@
 singleton KitHost 1.0 KitHost.qml
+singleton KitFollow 1.0 KitFollow.qml
 KitPanel 1.0 KitPanel.qml
 KitStore 1.0 KitStore.qml
 KitRun 1.0 KitRun.qml

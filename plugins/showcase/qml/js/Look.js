@@ -5,6 +5,7 @@
 .import "parts/Frames.js" as Frames
 .import "parts/Surfaces.js" as Surfaces
 .import "parts/Lines.js" as Lines
+.import "../../../../style/Style.js" as Style
 
 // How each widget looks: its colors, its card and its box, from the settings and the
 // theme. Colors are [r, g, b] from 0 to 255.
@@ -23,6 +24,11 @@ function grey(l) { const v = Math.round(l * 255); return [v, v, v]; }
 function contrast(c) { return lum(c) > 0.5 ? [20, 20, 20] : [245, 245, 245]; }
 function css(c, a) {
     return "rgba(" + Math.round(c[0]) + "," + Math.round(c[1]) + "," + Math.round(c[2]) + "," + (typeof a === "number" ? Math.max(0, Math.min(1, a)) : 1) + ")";
+}
+function hex(c) {
+    let out = "#";
+    for (let i = 0; i < 3; i++) out += ("0" + Math.max(0, Math.min(255, Math.round(c[i]))).toString(16)).slice(-2);
+    return out;
 }
 // readable on bg: c itself, or black or white when it isn't
 function readable(c, bg) { return Math.abs(lum(c) - lum(bg)) >= 0.35 ? c : contrast(bg); }
@@ -56,13 +62,16 @@ function colorsFor(cfg, th, w, index, xFrac) {
         if (k >= 0) { accent = hex3(pal[k % pal.length]); accent2 = hex3(pal[(k + 1) % pal.length]); }
     }
     const card = w ? hasCard(cfg, w) : false;
+    // a followed bar's accent tint is in its fill: what is written on it has to read on that
+    const base = bg;
+    if (cfg.followed) bg = mix(bg, accent, Math.min(0.6, (cfg.followed.barTint || 0) / 100 + (cfg.followed.paletteUse === "fill" ? 0.22 : 0)));
     let ink;
     // Custom: your text color exactly as picked, on a card or not
     if (card) ink = mode === "custom" ? fg : readable(fg, bg);
     else if (mode === "monochrome") ink = fg;
     // without a card: the text color (yours in Custom), the bar's, or the accent (yours in Custom)
     else ink = cfg.bareInk === "bar" ? th.barText : (cfg.bareInk === "accent" ? accent : fg);
-    return { ink, accent, accent2, bg, card };
+    return { ink, accent, accent2, bg, card, fg, base };
 }
 
 // a few colors of the theme for a gradient that runs through several of them, spread along
@@ -152,8 +161,28 @@ function gradientEnd(cfg, th, c) {
     return mix(c.bg, c.accent, 0.35);
 }
 
+// the same for a card that follows the bar or a dock: the parameters that one is painted
+// with (style/Style.js), in the card's shape
+function followedParams(cfg, th, c, width, height, margin) {
+    const own = cfg.colorMode === "custom" || cfg.colorMode === "monochrome";
+    const S = Surfaces.byKey[cfg.surface] || Surfaces.byKey.filled;
+    const s = Object.assign({}, cfg.followed, { shadow: "none" });
+    const p = Style.params(s, { bg: hex(c.base || c.bg), fg: hex(c.fg || c.ink), ac: hex(c.accent),
+                                spectrum: own ? [] : (th.palette || []), borders: own ? [] : (th.borders || []) },
+                           width, height, margin, { edge: cfg.followedEdge });
+    p.frame = cfg.frame; p.r = cfg.radius;
+    p.pointing = cfg.pointing; p.flat = cfg.flatCorners; p.railSide = cfg.railSide;
+    if (p.line === "") p.line = p.mark;
+    p.lineWidth = cfg.lines === "none" ? 0 : (cfg.borderWidth || 1);
+    if (cfg.followed.outlineGradientDir === "theme") p.lineAngle = th.borderAngle || 0;
+    // the shadow under a card is drawn around it (shadowOf)
+    p.shadow = S.ownShadow ? "rgba(0,0,0,0.8)" : ""; p.shadowBlur = S.ownShadow ? 14 : 0;
+    return p;
+}
+
 // what Card.paint needs for this widget's card
 function cardParams(cfg, th, colors, width, height, margin) {
+    if (cfg.followed) return followedParams(cfg, th, colors, width, height, margin);
     const c = colors, lc = lineColors(cfg, th, colors);
     const S = Surfaces.byKey[cfg.surface] || Surfaces.byKey.filled;
     let alpha = (cfg.cardOpacity || 0) / 100 * (typeof S.fill === "number" ? S.fill : 1);

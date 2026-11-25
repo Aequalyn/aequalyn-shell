@@ -6,6 +6,7 @@
 .import "parts/Surfaces.js" as Surfaces
 .import "parts/Lines.js" as Lines
 .import "parts/Ornaments.js" as Ornaments
+.import "../../../style/Follow.js" as Follow
 
 // A cursor of your own: the settings become a design, the design becomes one SVG per
 // cursor, and those become a Hyprcursor theme (core/CursorForge.qml writes it).
@@ -117,7 +118,11 @@ function design(cfg, theme) {
     else lineColor = pick(cfg.cursorLineColor, cfg.cursorLineCustom, theme);
     // a cursor with nothing inside needs a line to be seen at all
     if ((surf === "clear" || surf === "shadow") && line === "none") { line = "solid"; lineColor = c1; }
-    return {
+    // a followed bar's or dock's gradients run through the colors its own do
+    const F = cfg.followed || null;
+    const t = F ? { accent: acc, palette: (theme && theme.palette) || [], border: (theme && theme.border) || [] } : null;
+    const stops = F ? { fill: Follow.fillStops(F, c1, t).map(toHex), line: Follow.lineStops(F, lineColor, t).map(toHex) } : null;
+    return Object.assign(stops ? { stops } : {}, {
         arrow: Arrows.byKey[cfg.cursorShape] ? cfg.cursorShape : "classic",
         tilt: cfg.cursorTilt,
         round: cfg.cursorRound / 100 * 2,
@@ -146,7 +151,7 @@ function design(cfg, theme) {
         detail: cfg.cursorDetail,
         hand: cfg.cursorHand, beam: cfg.cursorBeam, busy: cfg.cursorBusy,
         delay: speeds[cfg.cursorBusySpeed] || speeds.normal
-    };
+    });
 }
 
 // ---- drawing ------------------------------------------------------------------------------------
@@ -232,6 +237,12 @@ function across(box, dir, tip, tail, angle) {
     return [box[0], box[1], box[2], box[3]];
 }
 
+// colors as a gradient's stops, evenly: the list, or two colors when there is none
+function spread(list, two) {
+    const c = list && list.length > 1 ? list : two;
+    return c.map((h, i) => [i / (c.length - 1), h]);
+}
+
 // the far end of a shape from its tip
 function tailOf(glyph, layer) {
     const pg = layer.pieces.length === 1 ? Geo.polygonOf(layer.pieces[0]) : null;
@@ -281,7 +292,7 @@ function render(glyph, d) {
         let base = d.c1;
         if (d.fill === "gradient") {
             const g = across(b, d.gradDir, tip, tail, d.borderAngle);
-            base = "url(#" + k.lin(g[0], g[1], g[2], g[3], [[0, d.c1], [1, d.gradTo]]) + ")";
+            base = "url(#" + k.lin(g[0], g[1], g[2], g[3], spread(d.stops && d.stops.fill, [d.c1, d.gradTo])) + ")";
         }
         let lower = "";
         const rnd = Geo.rng(seedOf(glyph, li));
@@ -331,9 +342,9 @@ function render(glyph, d) {
                 + '" stroke-linejoin="round"' + (extra || "") + '/>',
             walk: Geo.walk, displaced: Geo.displaced, wobble: Geo.wobble
         };
-        if (d.lineFade && d.line !== "none") {
+        if ((d.lineFade || (d.stops && d.stops.line.length > 1)) && d.line !== "none") {
             const g = across(b, d.lineFadeDir, tip, tail, d.borderAngle);
-            Lc.paint = "url(#" + k.lin(g[0], g[1], g[2], g[3], [[0, d.lineColor], [1, d.lineFadeTo]]) + ")";
+            Lc.paint = "url(#" + k.lin(g[0], g[1], g[2], g[3], spread(d.stops && d.stops.line, [d.lineColor, d.lineFadeTo])) + ")";
         }
         if (line.traced) {
             // parts drawn as plain strokes have no outline to follow: a plain line for them

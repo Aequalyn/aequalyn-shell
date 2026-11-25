@@ -46,7 +46,7 @@ Item {
     readonly property bool vertical: position === "left" || position === "right"
     readonly property real zoom: Math.max(0.6, Math.min(1.4, (Number(cfg.size) || 100) / 100))
     // "bar": the bar's own ends, pointing the way the bar's do
-    readonly property var barLook: AequalynSettings.barStyleCfg || ({})
+    readonly property var barLook: AequalynSettings.barStyleWorn || ({})
     readonly property string shape: sharedShapeCfg.shape !== undefined ? sharedShapeCfg.shape : cfg.shape
     readonly property string ends: shape && shape !== "bar" && shape !== "original" ? shape : (barLook.ends || "slant")
     readonly property string dir: shape && shape !== "bar" && shape !== "original" ? "right"

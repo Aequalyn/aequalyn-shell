@@ -20,7 +20,7 @@ CcPage {
     sub: "Click any part of your desktop below, or just start typing."
 
     readonly property var svc: AtelierHost.docks
-    readonly property var look: BarLooks.clean(AequalynSettings.barStyleCfg)
+    readonly property var look: BarLooks.clean(AequalynSettings.barStyleWorn)
     readonly property var stageDocks: svc ? svc.docks.map((d, i) => {
         const e = svc.effective(i);
         return { look: e, pal: svc.palette(e), edge: d.edge, icons: Math.max(3, Math.min(6, d.apps.length)) };

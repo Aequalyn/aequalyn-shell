@@ -78,13 +78,15 @@ CcPage {
         }
     }
     function offHere(item) { return false; }
+    // a row waits while what it depends on does not fit: is, not, or any of several
+    function fails(c) {
+        if (c.any) return c.any.every(a => page.fails(a));
+        const v = String(val(c.key));
+        if (c.is && c.is.map(String).indexOf(v) < 0) return true;
+        return !!c.not && c.not.map(String).indexOf(v) >= 0;
+    }
     function dimmed(item) {
-        if (!item.when) return false;
-        for (let i = 0; i < item.when.length; i++) {
-            const c = item.when[i];
-            if (c.is.map(String).indexOf(String(val(c.key))) < 0) return true;
-        }
-        return false;
+        return !!item.when && item.when.some(c => page.fails(c));
     }
     function matches(item) {
         const f = page.filter.trim().toLowerCase();
@@ -111,6 +113,10 @@ CcPage {
 
     readonly property var noRow: ({ item: { key: "", label: "", kind: "" }, head: "" })
 
+    CcNote {
+        visible: !!page.svc && KitFollow.ledBy("showcase") !== ""
+        text: "One look everywhere is on: the look here comes from " + KitFollow.ledBy("showcase") + " (Theme page). What you set is kept."
+    }
     CcNote {
         visible: !page.svc
         text: "Showcase is off. Turn it on above, and your desktop widgets come back."

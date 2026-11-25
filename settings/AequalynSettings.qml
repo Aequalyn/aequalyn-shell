@@ -145,8 +145,51 @@ QtObject {
     // A whole look at once (a ready made look, or an edited copy).
     function setBarStyle(next) {
         const chips = next && next.chips !== undefined ? next.chips : root.barStyleCfg.chips
+        const before = root.barStyleCfg
         root.barStyleCfg = Object.assign(BarLooks.clean(next), { chips: chips !== false })
+        if (root.matchKeys.some(k => before[k] !== root.barStyleCfg[k])) root.touched("bar")
         root.save()
+    }
+
+    // the bar as it is drawn: its own look, with another's on top while it matches that one
+    // (plugins/kit/KitFollow.qml sets it)
+    property var barStyleOver: null
+    readonly property var barStyleWorn: root.barStyleOver ? Object.assign({}, root.barStyleCfg, root.barStyleOver) : root.barStyleCfg
+
+    // ---- one look everywhere (Theme page, Super + Ctrl + M) --------------------
+    // on: the bar, docks, Showcase's cards, the cursor and the text match. lead: which of
+    // them the others take their look from, or "last", the one changed last (`now`; a dock
+    // by its place, `nowDock`). Each of them joins or not, and the colors do or don't.
+    // perTheme: each theme "remember"s the look worn with it, or "auto" picks one for a
+    // theme that has none yet. font: the UI font from before Showcase's was put on.
+    readonly property var matchDefaults: ({
+        on: false, lead: "last", now: "bar", nowDock: 0,
+        bar: true, dock: true, showcase: true, cursor: true, text: true, colors: true,
+        perTheme: "off", fontBefore: "", fontSet: ""
+    })
+    property var matchCfg: matchDefaults
+    readonly property var matchLeads: ["bar", "dock", "showcase", "cursor"]
+    readonly property var matchKeys: Object.keys(BarLooks.styleOf(BarLooks.defaults())).filter(k => k !== "style").concat(["colorMode", "barTint", "paletteUse", "outlineGradientDir", "shadowDir", "accentCap"])
+    function cleanMatch(m) {
+        const out = root._merge(root.matchDefaults, m)
+        for (const k of ["on", "bar", "dock", "showcase", "cursor", "text", "colors"]) out[k] = out[k] === true
+        if (out.lead !== "last" && root.matchLeads.indexOf(out.lead) < 0) out.lead = "last"
+        if (root.matchLeads.indexOf(out.now) < 0) out.now = "bar"
+        out.nowDock = Math.max(0, Math.min(15, Math.round(Number(out.nowDock) || 0)))
+        if (["off", "remember", "auto"].indexOf(out.perTheme) < 0) out.perTheme = "off"
+        for (const k of ["fontBefore", "fontSet"]) out[k] = String(out[k] || "").slice(0, 80)
+        return out
+    }
+    function setMatch(set) {
+        root.matchCfg = root.cleanMatch(Object.assign({}, root.matchCfg, set))
+        root.save()
+    }
+    // something got another look by hand: the others take theirs from it
+    function touched(what, dock) {
+        const m = root.matchCfg
+        if (!root.ready || !m[what]) return
+        if (m.now === what && (what !== "dock" || m.nowDock === dock)) return
+        root.setMatch(what === "dock" ? { now: what, nowDock: dock } : { now: what })
     }
 
     function _merge(defaults, value) {
@@ -581,6 +624,7 @@ QtObject {
             noSandboxPlugins: root.noSandboxPlugins,
             rootAllowed: root.rootAllowed,
             barStyle: root.barStyleCfg,
+            match: root.matchCfg,
             dock: {
                 enabled: (Array.isArray(root.enabledPlugins) ? root.enabledPlugins : []).indexOf("docks") >= 0,
                 position: root.dockPosition,
@@ -869,6 +913,7 @@ QtObject {
         }
         root.barStyleCfg = Object.assign(BarLooks.clean(d.barStyle || {}),
             { chips: !d.barStyle || d.barStyle.chips !== false })
+        root.matchCfg = root.cleanMatch(d.match)
         root.userWidgets = Array.isArray(d.userWidgets) ? d.userWidgets.filter(x => /^[a-z][a-z0-9-]{1,39}$/.test(String(x))) : root.userWidgets
         const fontsBefore = root.fontKey
         root.uiFont = String(d.uiFont || a.uiFont || root.uiFont || "Inter")

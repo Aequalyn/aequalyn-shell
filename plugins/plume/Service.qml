@@ -9,6 +9,9 @@ import "js/Motion.js" as Motion
 import "js/Pointer.js" as Pointer
 import "js/Ink.js" as Ink
 import "js/Cursor.js" as Cursor
+import "root:/plugins/kit"
+import "root:/settings"
+import "root:/style/Follow.js" as Follow
 
 // Shared brain of Plume, one for the whole shell:
 //   * the settings and the saved looks
@@ -43,7 +46,27 @@ Item {
     readonly property var shellSettings: ({})
     readonly property var cfg: Schema.resolve(root.shellSettings, store.values)
 
-    function setSetting(key, value) { store.set(key, Schema.cleanValue(key, value)) }
+    function setSetting(key, value) {
+        const v = Schema.cleanValue(key, value)
+        // the bar's look can only be worn by the cursor made here: it is put on with it
+        if (key === "followStyle" && v !== "own" && !root.ownCursor) store.setMany({ followStyle: v, pointerTheme: Schema.MINE })
+        else store.set(key, v)
+        if (Schema.SHAPED.indexOf(key) >= 0) AequalynSettings.touched("cursor")
+    }
+
+    // The settings as they are worn: yours, with the theme's, the bar's or a dock's on top
+    // where they follow (the Follow tab). Everything drawn is drawn from these.
+    readonly property var followPal: KitFollow.colors("cursor", root.cfg.followColors)
+    readonly property var followSource: KitFollow.source("cursor", root.cfg.followStyle)
+    readonly property var worn: {
+        const out = Object.assign({}, root.cfg)
+        if (root.followSource) Object.assign(out, Follow.cursor(root.followSource))
+        if (root.followPal) {
+            Object.assign(out, Follow.cursorColors(root.cfg, root.followSource !== null))
+            out.colorMode = Follow.effectColors(root.followPal.mode, root.cfg.colorMode)
+        }
+        return out
+    }
 
     // ---- looks --------------------------------------------------------------------
     function current() { return Schema.resolve(root.shellSettings, store.values) }
@@ -72,7 +95,9 @@ Item {
         const set = Schema.cursorLookSet(key)
         if (!set) return false
         looksStore.set("undo", Schema.settingsOf(current()))
-        store.setMany(set)
+        // a cursor picked by hand is worn as it is, not in the bar's shape
+        store.setMany(Object.assign({ followStyle: "own" }, set))
+        AequalynSettings.touched("cursor")
         return true
     }
     function stepLook(d) {
@@ -187,6 +212,17 @@ Item {
         custom2: Ink.hex(root.cfg.customColor2),
         borderAngle: root.borderAngle
     })
+
+    // the same, as they are worn
+    readonly property var wornColors: {
+        const p = root.followPal
+        if (!p) return root.colorCtx
+        const own = hexes(p.spectrum), bor = hexes(p.borders)
+        return Object.assign({}, root.colorCtx, {
+            accent: Ink.hex(p.ac), foreground: Ink.hex(p.fg), background: Ink.hex(p.bg),
+            palette: own, border: bor.length > 0 ? bor : (own.length > 0 ? own.slice(0, 2) : [Ink.hex(p.ac)])
+        })
+    }
 
     // ---- the pointer: where it is -------------------------------------------------------
     // Hyprland answers `j/cursorpos` on its request socket with {"x": .., "y": ..}, in
@@ -325,7 +361,7 @@ Item {
     // ~/.local/share/icons/plume-a (or plume-b, the two taking turns so Hyprland always
     // loads it fresh), and then worn. Theme colors in it follow the shell's theme.
     readonly property bool ownCursor: root.cfg.pointerTheme === Schema.MINE
-    readonly property var cursorDesign: Cursor.design(root.cfg, root.colorCtx)
+    readonly property var cursorDesign: Cursor.design(root.worn, root.wornColors)
     readonly property string cursorKey: Cursor.key(root.cursorDesign)
     readonly property string cursorArrow: Cursor.svgFor("left_ptr", root.cursorDesign)
     readonly property var cursorHot: Cursor.hotspot(Cursor.glyphFor("left_ptr", root.cursorDesign), root.cursorDesign)

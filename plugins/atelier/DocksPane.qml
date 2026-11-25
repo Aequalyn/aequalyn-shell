@@ -64,7 +64,7 @@ Flickable {
             Layout.fillWidth: true
             Layout.preferredHeight: 170
             theme: pane.theme; font: pane.font
-            barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+            barLook: BarLooks.clean(AequalynSettings.barStyleWorn)
             docks: AequalynSettings.dockEnabled ? pane.stageDocks : []
             marked: pane.sel
             caption: AequalynSettings.dockEnabled ? pane.list.length + " of 16 docks" : "Docks are off"

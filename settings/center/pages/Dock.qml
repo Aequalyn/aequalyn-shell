@@ -31,7 +31,7 @@ CcPage {
         theme: Cc.theme
         font: Cc.mono
         wallpaper: Cc.wallpaper
-        barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+        barLook: BarLooks.clean(AequalynSettings.barStyleWorn)
         barSize: Math.round(AequalynSettings.barHeight * 0.75)
         docks: AequalynSettings.dockEnabled ? page.stageDocks : []
         marked: page.svc ? Math.max(0, Math.min(page.svc.docks.length - 1, AtelierHost.dockFocus)) : -1

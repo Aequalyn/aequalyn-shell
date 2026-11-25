@@ -81,7 +81,7 @@ Scope {
   // ---- the bar's look (Atelier -> Bar) ------------------------------------
   // Shapes painted behind the widgets (BarDecor): one band, a pill, an island
   // per group or a pill per widget, floating or stuck to the edge.
-  readonly property var look: BarLooks.clean(AequalynSettings.barStyleCfg)
+  readonly property var look: BarLooks.clean(AequalynSettings.barStyleWorn)
   readonly property bool styled: look.enabled
   readonly property int barSize: AequalynSettings.barHeight
   // widgets keep their own chips unless every widget already sits in a pill

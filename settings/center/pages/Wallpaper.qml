@@ -29,7 +29,7 @@ CcPage {
         theme: Cc.theme
         font: Cc.mono
         wallpaper: Cc.wallpaper
-        barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+        barLook: BarLooks.clean(AequalynSettings.barStyleWorn)
         barSize: Math.round(AequalynSettings.barHeight * 0.75)
     }
     CcSection {

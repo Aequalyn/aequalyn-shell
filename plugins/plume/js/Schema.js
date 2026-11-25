@@ -25,6 +25,16 @@ function own(more) { return OWN.concat(more || []); }
 
 var tabs = [
     { key: "looks", title: "Looks", kind: "looks", groups: [] },
+    { key: "follow", title: "Follow", groups: [
+        { title: "Follow Aequalyn", items: [
+            { key: "followColors", label: "Colors", kind: "enum", fallback: "own",
+              options: ["own", "theme", "bar", "dock"], labels: { own: "My own", theme: "Theme", bar: "Bar", dock: "Dock" },
+              hint: "The colors of the cursor made in Plume, its trail and its halo. Theme takes your theme's. Bar and Dock take the colors that one has, whichever way you set them. They change with it." },
+            { key: "followStyle", label: "Shape and surface", kind: "enum", fallback: "own",
+              options: ["own", "bar", "dock"], labels: { own: "My own", bar: "Bar", dock: "Dock" },
+              hint: "The cursor gets the surface, fill, texture, depth, lines, ornaments, shadow and opacity of the bar or of your first dock, with the arrow nearest to its ends, and is made again when it changes. Puts on the cursor made in Plume. Without a dock, Dock is the bar." }
+        ] }
+    ] },
     { key: "trail", title: "Trail", groups: [
         { title: "Style", items: [
             { key: "trail", label: "Trail", kind: "trail", fallback: "comet",
@@ -245,6 +255,13 @@ var tabs = [
     { key: "about", title: "About", kind: "about", groups: [] }
 ];
 
+// what is followed is not yours to set: those rows wait, with everything in them kept
+var SHAPED = ["cursorShape", "cursorRound", "cursorSurface", "cursorFill", "cursorGradientTo", "cursorGradientDir", "cursorPattern",
+              "cursorDepth", "cursorOpacity", "cursorTint", "cursorLine", "cursorLineColor", "cursorLineCustom", "cursorLineWidth",
+              "cursorLineGradient", "cursorLineFadeTo", "cursorLineFadeDir", "cursorOrnament", "cursorCap", "cursorShadow",
+              "cursorShadowColor", "cursorShadowDir"];
+var COLORED = ["colorMode", "customColor", "customColor2", "cursorColorCustom", "cursorColor2Custom", "cursorColor", "cursorColor2"];
+
 // ---- every item, by key --------------------------------------------------------------
 
 var items = [];
@@ -256,6 +273,8 @@ for (let ti = 0; ti < tabs.length; ti++) {
             const it = grp.items[ii];
             it.tab = tabs[ti].key;
             it.group = grp.title;
+            if (SHAPED.indexOf(it.key) >= 0) it.when = (it.when || []).concat([{ key: "followStyle", is: ["own"] }]);
+            if (COLORED.indexOf(it.key) >= 0) it.when = (it.when || []).concat([{ key: "followColors", is: ["own"] }]);
             items.push(it);
             byKey[it.key] = it;
         }

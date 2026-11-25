@@ -51,7 +51,7 @@ Flickable {
     }
 
     // the bar's look: the shape tiles are painted in it, like the bar and dock ones
-    readonly property var barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+    readonly property var barLook: BarLooks.clean(AequalynSettings.barStyleWorn)
     readonly property var pal: Colors.forMode(theme, barLook.colorMode, barLook)
 
     readonly property var types: [

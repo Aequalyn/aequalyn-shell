@@ -13,7 +13,7 @@ Item {
     id: root
     property var theme
 
-    readonly property var cfg: BarLooks.clean(AequalynSettings.barStyleCfg)
+    readonly property var cfg: BarLooks.clean(AequalynSettings.barStyleWorn)
     readonly property var pal: Colors.fromTheme(theme)
     readonly property int size: cfg.cornerSize
     readonly property color paint: cfg.cornerColor === "bar" ? pal.bg : "black"

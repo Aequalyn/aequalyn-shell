@@ -8,6 +8,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import "root:/settings"
+import "root:/plugins/kit"
 import "root:/plugins/plume"
 import "root:/plugins/plume/panel"
 import "root:/plugins/plume/core"
@@ -42,8 +43,8 @@ CcPage {
             anchors.fill: parent
             anchors.margins: 4
             visible: !!page.svc
-            values: page.cfg
-            colors: page.svc ? page.svc.colorCtx : ({})
+            values: page.svc ? page.svc.worn : page.cfg
+            colors: page.svc ? page.svc.wornColors : ({})
             scale: 0.8
             live: page.visible && !!page.svc
             cursorSvg: page.svc && page.svc.ownCursor ? page.svc.cursorArrow : ""
@@ -74,6 +75,10 @@ CcPage {
         }
     ]
 
+    CcNote {
+        visible: !!page.svc && KitFollow.ledBy("cursor") !== ""
+        text: "One look everywhere is on: the look here comes from " + KitFollow.ledBy("cursor") + " (Theme page). What you set is kept."
+    }
     CcNote {
         visible: !page.svc
         text: "Plume draws your cursor and the trails and halos around it. Turn it on above, and it starts at once."

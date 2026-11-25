@@ -49,7 +49,7 @@ Item {
 
     // ---- a shape other than the plain slant: the bar's painter cuts the cards ------------
     readonly property bool custom: shape !== "" && shape !== "original"
-    readonly property var barLook: AequalynSettings.barStyleCfg || ({})
+    readonly property var barLook: AequalynSettings.barStyleWorn || ({})
     readonly property string ends: shape === "bar" ? (barLook.ends || "slant") : shape
     readonly property string dir: shape === "bar" && ["left", "both"].indexOf(barLook.pointingBar) >= 0 ? barLook.pointingBar : "right"
     readonly property real cornerR: Math.max(4, Math.min(40, Number(barLook.radius) || 12))

@@ -16,6 +16,7 @@ import  "../../style/BarLooks.js" as BarLooks
 import  "../../style/Colors.js" as Colors
 import  "../../style/AequalynLooks.js" as AequalynLooks
 import "root:/plugins/atelier"
+import "root:/plugins/kit"
 import "root:/settings"
 
 Scope {
@@ -117,7 +118,7 @@ Scope {
 
   // ---- the bar --------------------------------------------------------------
   // the bar's look, and how far it reaches in from the top of every screen
-  readonly property var barStyle: BarLooks.clean(AequalynSettings.barStyleCfg)
+  readonly property var barStyle: BarLooks.clean(AequalynSettings.barStyleWorn)
   readonly property int barThickness: {
     const size = AequalynSettings.barHeight;
     if (!barStyle.enabled) return size;
@@ -141,6 +142,9 @@ Scope {
   function effective(i) {
     const d = docks[i];
     if (!d) return defaults;
+    // one look everywhere: what every dock wears but the one it comes from
+    const match = KitFollow.dockOver(i);
+    if (match) return Object.assign({}, d, match);
     return d.followBar ? Object.assign({}, d, BarLooks.styleOf(barStyle)) : d;
   }
 
@@ -309,6 +313,7 @@ Scope {
     // a dock that gets a look of its own stops following the bar
     if (Object.keys(set).some(k => root.barKeys.indexOf(k) >= 0) && set.followBar === undefined)
       set = Object.assign({ followBar: false }, set);
+    const look = Object.keys(set).some(k => root.barKeys.indexOf(k) >= 0);
     const n = docks.map((d, j) => (j === i || (scope === "all") || (scope === "edge" && sameGroup(d, ref)))
       ? cleanDock(Object.assign({}, unlinked(j, set), set)) : d);
     // deeper ends take room from the icons (a layout that already didn't fit, say from a
@@ -318,6 +323,7 @@ Scope {
       return false;
     }
     commit(n);
+    if (look) AequalynSettings.touched("dock", i);
     return true;
   }
 
@@ -466,11 +472,21 @@ Scope {
   function applyEnsemble(key) {
     const e = AequalynLooks.byKey(AequalynLooks.ensembles, key);
     if (!e) return;
-    AequalynSettings.setBarStyle(Object.assign(BarLooks.applyLook(barStyle, e.bar),
+    AequalynSettings.setBarStyle(Object.assign(BarLooks.applyLook(AequalynSettings.barStyleCfg, e.bar),
       { enabled: true, chips: AequalynSettings.barStyleCfg.chips }));
     if (docks.length === 0) return;
     if (e.dock === "follow") setFollow(0, true, "all");
     else applyLook(0, e.dock, "all");
+  }
+  // the looks a theme's docks had (KitMatch), by their place; the rest stay as they are
+  function wearLooks(list) {
+    const n = docks.map((d, j) => {
+      if (!list[j]) return d;
+      const set = { followBar: list[j].followBar !== false };
+      for (const k of barKeys) if (list[j][k] !== undefined) set[k] = list[j][k];
+      return cleanDock(Object.assign({}, d, set));
+    });
+    if (layoutOk(n) || !layoutOk(docks)) commit(n);
   }
   // the ensemble the bar and docks are wearing right now, or ""
   function ensembleOf() {

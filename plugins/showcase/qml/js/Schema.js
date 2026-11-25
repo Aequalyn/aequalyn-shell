@@ -43,7 +43,11 @@ function keysWith(mod, flag, value) {
 
 // the fonts that come with Showcase, as the name each file registers
 var bundledFonts = ["Inter", "Playfair Display", "Cormorant Garamond", "Space Grotesk", "JetBrains Mono", "Bebas Neue", "UnifrakturMaguntia"];
-var fontLabels = { "": "Theme font", "Inter": "Inter", "Playfair Display": "Playfair", "Cormorant Garamond": "Cormorant",
+// the shell's fonts, followed live: "" is the UI font, MONO_FONT the mono one
+var MONO_FONT = "*mono";
+// a font picked by name, "" for the shell's own
+function ownFont(f) { return f === "" || f === MONO_FONT ? "" : f; }
+var fontLabels = { "": "UI font", "*mono": "Mono font", "Inter": "Inter", "Playfair Display": "Playfair", "Cormorant Garamond": "Cormorant",
                    "Space Grotesk": "Space Grotesk", "JetBrains Mono": "JetBrains Mono", "Bebas Neue": "Bebas Neue",
                    "UnifrakturMaguntia": "Blackletter" };
 
@@ -147,6 +151,17 @@ var groups = [
     ]
   },
   {
+    title: "Follow",
+    items: [
+      { key: "followColors", section: "Follow Aequalyn", label: "Colors", kind: "enum", fallback: "own", control: "seg",
+        options: ["own", "theme", "bar", "dock"], labels: { own: "My own", theme: "Theme", bar: "Bar", dock: "Dock" },
+        hint: "Theme takes your theme's colors. Bar and Dock take the colors that one has, whichever way you set them. They change with it, and the Colors tab waits until you choose My own." },
+      { key: "followStyle", section: "Follow Aequalyn", label: "Shape and surface", kind: "enum", fallback: "own", control: "seg",
+        options: ["own", "bar", "dock"], labels: { own: "My own", bar: "Bar", dock: "Dock" },
+        hint: "Every card gets the shape, surface, fill, texture, depth, lines, ornaments, shadow and opacity of the bar or of your first dock, and changes with it. The tabs for those wait until you choose My own. Without a dock, Dock is the bar." }
+    ]
+  },
+  {
     title: "Shape",
     items: [
       { key: "frame", section: "Card", label: "Shape", kind: "enum", fallback: "none", control: "tiles",
@@ -164,7 +179,7 @@ var groups = [
       { key: "radius", section: "Size", label: "Roundness", kind: "int", fallback: 14, min: 0, max: 48, step: 2,
         hint: "For the shapes with round corners.", when: [{ key: "frame", not: ["none"] }] },
       { key: "padding", section: "Size", label: "Room inside", kind: "int", fallback: 12, min: 0, max: 30, step: 1,
-        hint: "Space between the card's edge and the widget, as a part of the widget's size.", when: [{ key: "frame", not: ["none"] }] }
+        hint: "Space between the card's edge and the widget, as a part of the widget's size.", when: [{ any: [{ key: "frame", not: ["none"] }, { key: "followStyle", not: ["own"] }] }] }
     ]
   },
   {
@@ -242,8 +257,11 @@ var groups = [
     title: "Type",
     items: [
       { key: "font", section: "Font", label: "Font", kind: "font", fallback: "Inter",
-        options: [""].concat(bundledFonts), labels: fontLabels,
-        hint: "The fonts here come with Showcase. Theme font follows your Aequalyn font. Search finds every font on your computer." },
+        options: ["", MONO_FONT].concat(bundledFonts), labels: fontLabels,
+        hint: "UI font and Mono font follow the ones you choose in Text, live. The others come with Showcase. Search finds every font on your computer." },
+      { key: "fontScope", section: "Font", label: "Styles with their own lettering", kind: "enum", fallback: "own", control: "seg",
+        options: ["own", "same"], labels: { own: "Keep theirs", same: "Use this font too" },
+        hint: "Some widgets bring a serif, a mono or a display font of their own. Use this font too writes those in your font as well; with the UI font, mono lettering is in the Mono font. Picking a font turns it on." },
       { key: "weight", section: "Font", label: "Weight", kind: "int", fallback: 300, min: 100, max: 900, step: 100,
         hint: "100 is hairline thin, 900 is black. Fonts without that weight use the nearest one." },
       { key: "textEffect", section: "On the wallpaper", label: "Text effect", kind: "enum", fallback: "soft", control: "tiles",
@@ -358,6 +376,26 @@ var groups = [
   }
 ];
 
+// a change to one of these gives the cards another look (one look everywhere)
+var cardKeys = ["cardOpacity", "customBg", "customFg", "accentColor", "colorMode"];
+for (let cg = 0; cg < groups.length; cg++)
+    if (["Shape", "Surface", "Lines", "Ornaments"].indexOf(groups[cg].title) >= 0)
+        for (let ci = 0; ci < groups[cg].items.length; ci++)
+            if (cardKeys.indexOf(groups[cg].items[ci].key) < 0 && groups[cg].items[ci].key !== "padding") cardKeys.push(groups[cg].items[ci].key);
+
+// what is followed is not yours to set: those rows wait, with everything in them kept
+var followed = { "Shape": "followStyle", "Surface": "followStyle", "Lines": "followStyle", "Ornaments": "followStyle" };
+var followedKeys = { colorMode: "followColors", customColors: "followColors" };
+for (let fg = 0; fg < groups.length; fg++) {
+    for (let fi = 0; fi < groups[fg].items.length; fi++) {
+        const it = groups[fg].items[fi];
+        const by = it.key === "padding" ? "" : (followedKeys[it.key] || followed[groups[fg].title] || "");
+        if (!by) continue;
+        // a card that follows has a shape, whatever the Shape tab says
+        it.when = (it.when || []).concat([{ key: by, is: ["own"] }]);
+    }
+}
+
 // a look brought colors along (Bauhaus' palette); kept so the next look can drop them
 var hiddenItems = [
   { key: "presetColors", kind: "string", fallback: "", maxLength: 16 },
@@ -422,7 +460,7 @@ function clean(key, value) {
     if (item.kind === "widgets") return value === null || value === undefined ? copyWidgets(item.fallback) : Kinds.cleanList(value);
     if (item.kind === "looks") return cleanLooks(value);
     if (item.kind === "undo") return value && typeof value === "object" ? cleanLookAll(value) : null;
-    if (item.kind === "font") return Check.value({ kind: "font", fallback: item.fallback }, value);
+    if (item.kind === "font") return value === MONO_FONT ? MONO_FONT : Check.value({ kind: "font", fallback: item.fallback }, value);
     return Check.value(item, value);
 }
 

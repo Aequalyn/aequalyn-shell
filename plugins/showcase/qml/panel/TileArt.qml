@@ -40,7 +40,7 @@ Item {
         width: 68
         height: 40
         readonly property string sig: root.key + "|" + root.opt + "|" + root.on + "|" + root.ink + "|" + root.soft
-            + "|" + (root.context ? root.context.kind : "") + "|" + (root.svc ? root.svc.fontsReady : false)
+            + "|" + (root.context ? root.context.kind : "") + "|" + (root.svc ? root.svc.fontsReady + root.svc.mainFont + root.svc.fonts.serif + root.svc.fonts.mono : false)
             + "|" + (root.svc ? root.svc.cfg.pointing + root.svc.cfg.flatCorners + root.svc.cfg.railSide : "")
         onSigChanged: requestPaint()
         Component.onCompleted: requestPaint()

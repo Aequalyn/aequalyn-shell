@@ -23,7 +23,7 @@ Item {
     property real dragY: NaN
     property real dragSize: NaN
 
-    readonly property var cfg: svc ? svc.cfg : null
+    readonly property var cfg: svc ? svc.worn : null
     readonly property var kind: w ? Kinds.kindOf(w.kind) : null
     readonly property var style: w ? Kinds.styleOf(w) : null
     readonly property var shown: {
@@ -31,7 +31,7 @@ Item {
         if (isFinite(root.dragSize)) { const c = JSON.parse(JSON.stringify(w)); c.size = root.dragSize; return c }
         return w
     }
-    readonly property var colors: cfg && shown ? Look.colorsFor(cfg, svc.theme, shown, index, shown.x / 1000) : null
+    readonly property var colors: cfg && shown ? Look.colorsFor(cfg, svc.wornTheme, shown, index, shown.x / 1000) : null
     readonly property var box: cfg && shown ? Look.boxOf(cfg, shown, screenK) : ({ w: 10, h: 10, content: { x: 0, y: 0, w: 10, h: 10 }, captionH: 0, card: false })
 
     width: box.w
@@ -96,7 +96,8 @@ Item {
     readonly property string cardKey: !cfg || !colors || !box.card ? "" : JSON.stringify([
         cfg.frame, cfg.surface, cfg.lines, cfg.ornaments, cfg.cardOpacity, cfg.fill, cfg.pattern, cfg.depth, cfg.radius,
         cfg.border, cfg.borderWidth, cfg.outlineGradient, cfg.outlineGradientTo, colors.bg, colors.accent, colors.ink,
-        cfg.pointing, cfg.flatCorners, cfg.railSide, cfg.gradientTo, cfg.gradientDir, svc.themePalette,
+        cfg.pointing, cfg.flatCorners, cfg.railSide, cfg.gradientTo, cfg.gradientDir, cfg.followed, cfg.followedEdge,
+        svc.wornTheme.palette, svc.wornTheme.borders, colors.fg,
         Math.round(box.w), Math.round(box.h), svc.borderColors, svc.borderAngle])
 
     Canvas {
@@ -116,7 +117,7 @@ Item {
             const ctx = getContext("2d")
             ctx.reset()
             if (root.cardKey === "") return
-            Card.paint(ctx, Look.cardParams(root.cfg, root.svc.theme, root.colors, width, height, root.margin))
+            Card.paint(ctx, Look.cardParams(root.cfg, root.svc.wornTheme, root.colors, width, height, root.margin))
         }
         layer.enabled: root.box.card && root.shadow !== null
         layer.effect: MultiEffect {
@@ -156,7 +157,7 @@ Item {
         return tt.y + "-" + tt.doy + " " + tt.h + ":" + tt.m
     }
     // everything else that changes how it is drawn
-    readonly property string lookKey: !cfg || !colors || !w ? "" : JSON.stringify([w, colors, cfg.font, cfg.weight, svc.fontsReady, Math.round(c.w), Math.round(c.h)])
+    readonly property string lookKey: !cfg || !colors || !w ? "" : JSON.stringify([w, colors, svc.mainFont, svc.fonts, cfg.weight, svc.fontsReady, Math.round(c.w), Math.round(c.h)])
 
     // Flip and Odometer animate from the digits they showed before
     property var prevTexts: []

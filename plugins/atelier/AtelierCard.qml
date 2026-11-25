@@ -24,7 +24,7 @@ Item {
     readonly property string pickerCollection: collection
     readonly property string pickerLayout: (AequalynSettings.atelierCfg.layouts || {})[pickerCollection] || "slices"
     readonly property var pickerCardCfg: AequalynSettings.pickerCfg("cards", pickerCollection)
-    readonly property var barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+    readonly property var barLook: BarLooks.clean(AequalynSettings.barStyleWorn)
     readonly property string cardEnds: pickerLayout !== "slices" && pickerLayout !== "showcase"
         ? (pickerCardCfg.shape === "original" ? "" : pickerCardCfg.shape === "bar" || !pickerCardCfg.shape ? barLook.ends : pickerCardCfg.shape)
         : ""

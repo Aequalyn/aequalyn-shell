@@ -567,7 +567,7 @@ Item {
                             anchors.centerIn: parent
                             textFormat: Text.PlainText
                             text: typeof root.labels[modelData] === "string" ? root.labels[modelData] : modelData
-                            font.family: modelData === "" ? ui.fontName : modelData
+                            font.family: modelData === "" ? ui.fontName : (modelData === "*mono" ? (root.svc ? root.svc.monoFont : "monospace") : modelData)
                             font.pixelSize: ui.fs(13)
                             color: parent.on ? ui.onText(ui.accent) : ui.fg
                         }
