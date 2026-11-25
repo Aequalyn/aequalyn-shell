@@ -444,7 +444,10 @@ Item {
     anchors.left: root.style === "split" ? parent.left : undefined
     anchors.leftMargin: root.style === "split" ? parent.width * 0.084 : 0
     anchors.verticalCenter: parent.verticalCenter
-    anchors.verticalCenterOffset: root.style === "classic" ? -100 : (root.style === "dot" ? -40 : (root.style === "split" ? 50 : -100))
+    // Classic: over the clock, clear of it whatever the font's size
+    anchors.verticalCenterOffset: root.style === "classic" && clockText.visible && !clockText.customPos
+        ? clockText.anchors.verticalCenterOffset - (clockText.height + height) / 2 - 10
+        : (root.style === "dot" ? -40 : (root.style === "split" ? 50 : -100))
   }
 
   // terminal prompt
