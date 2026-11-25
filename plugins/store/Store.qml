@@ -667,7 +667,6 @@ Scope {
     }
     function builtInEntries(kind) {
         if (kind === "theme") return root.themeCatalog
-            .filter(i => (i.label || "Built-in") !== "Community")
             .map(i => ({ id: i.id, label: i.name || i.id, about: "A theme shipped with Aequalyn.",
                          icon: "\u{F03D8}", installed: !!i.installed, preview: i.preview || "",
                          source: i.source }));
@@ -960,11 +959,10 @@ Scope {
             + "  id=$(basename \"$(dirname \"$t\")\"); "
             + "  name=$(jq -r '.name // \"'\"$id\"'\"' \"$t\" 2>/dev/null || echo \"$id\"); "
             + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ] || printf '%s\\n' \"$listed\" | grep -qx \"$id\"; then inst=1; else inst=0; fi; "
-            + "  if [ \"$id\" = \"spectral\" ]; then lab=Community; else lab=Built-in; fi; "
             + "  dir=$(dirname \"$t\"); "
             + "  preview=$(find \"$dir/backgrounds\" -maxdepth 1 -type f 2>/dev/null | sort | head -1); "
             + "  [ -n \"$preview\" ] || preview=\"$dir/preview.jpg\"; "
-            + "  printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$lab\" \"$preview\" \"$dir\"; "
+            + "  printf '%s\\t%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$preview\" \"$dir\"; "
             + "done"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -973,7 +971,7 @@ Scope {
                     if (line.trim() === "") continue;
                     const p = line.split("\t");
                     out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1",
-                               label: p[3] || "Built-in", preview: p[4] || "", source: p[5] || "" });
+                               preview: p[3] || "", source: p[4] || "" });
                 }
                 root.themeCatalog = out;
             }
