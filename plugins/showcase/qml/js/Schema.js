@@ -59,14 +59,15 @@ function W(id, kind, style, x, y, size, extra) {
     return Kinds.make(kind, id, set);
 }
 
+// above the mark of Aequalyn's own wallpapers, which is a little over the middle
 var defaultWidgets = [
-    W("w1", "clock", "plain", 500, 220, 170),
-    W("w2", "date", "line", 500, 325, 40)
+    W("w1", "clock", "plain", 500, 125, 170),
+    W("w2", "date", "line", 500, 235, 40)
 ];
 
 var presets = [
   { key: "quiet", label: "Quiet", set: { frame: "none", font: "Inter", weight: 200, textEffect: "soft",
-      widgets: [W("w1", "clock", "plain", 500, 220, 170), W("w2", "date", "line", 500, 325, 40)] } },
+      widgets: [W("w1", "clock", "plain", 500, 125, 170), W("w2", "date", "line", 500, 235, 40)] } },
   { key: "salon", label: "Salon", set: { frame: "cartouche", surface: "velvet", lines: "gilded", ornaments: "rosettes",
       font: "Playfair Display", weight: 400, cardOpacity: 90, textEffect: "none", padding: 14,
       widgets: [W("w1", "clock", "ornate", 500, 330, 300, { seconds: true }), W("w2", "date", "letter", 500, 560, 80),
