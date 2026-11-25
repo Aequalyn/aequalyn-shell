@@ -1,16 +1,13 @@
 pragma Singleton
 // System metrics polling singleton for bar widgets.
-// Periodically samples CPU, memory, network, battery, and temperature via
-// helper commands and exposes results as reactive properties.
+// Samples CPU, memory, network, battery, and temperature and exposes the results as
+// reactive properties.
 
 import Quickshell
 import Quickshell.Io
 import QtQuick
 
-// Singleton that polls system metrics for bar widgets (CPU, memory, network,
-// battery, temperature). Each metric is sampled by a shell Process and
-// refreshed periodically by a shared Timer. Values are plain properties so the
-// bar can bind to them reactively.
+// Values are plain properties so the bar can bind to them reactively.
 Singleton {
   id: root
 
@@ -24,30 +21,28 @@ Singleton {
   property bool batteryCharging: false
   property string temperature: "0°C"
 
-  // CPU Usage
-  Process {
-    id: cpuProc
-    command: ["sh", "-c", "top -bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1\"%\"}'"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.cpuUsage = text.trim()
-      }
-    }
+  // CPU, memory, battery and temperature come straight from the kernel's files: no
+  // program is started for them, which is most of what a resting bar used to cost.
+  FileView { id: statFile; path: "/proc/stat"; blockLoading: true; printErrors: false }
+  FileView { id: memFile; path: "/proc/meminfo"; blockLoading: true; printErrors: false }
+  function fresh(file) {
+    file.reload()
+    file.waitForJob()
+    return file.text() || ""
   }
-
-  // Memory Usage
-  Process {
-    id: memProc
-    command: ["sh", "-c", "free | grep Mem | awk '{printf \"%.1f%%\", ($3/$2) * 100.0}'"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.memoryUsage = text.trim()
-      }
-    }
+  property var cpuBefore: null            // [busy, all], from the last time
+  function readCpu() {
+    const t = root.fresh(statFile).split("\n")[0].trim().split(/\s+/).slice(1, 9).map(Number)
+    if (t.length < 4 || t.some(v => !isFinite(v))) return
+    const all = t.reduce((x, y) => x + y, 0), idle = t[3] + (t[4] || 0), was = root.cpuBefore
+    root.cpuBefore = [all - idle, all]
+    if (was && all > was[1]) root.cpuUsage = Math.round(1000 * Math.max(0, all - idle - was[0]) / (all - was[1])) / 10 + "%"
+  }
+  function readMemory() {
+    const t = root.fresh(memFile)
+    const of = k => { const m = new RegExp("^" + k + ":\\s+(\\d+)", "m").exec(t); return m ? Number(m[1]) : 0 }
+    const total = of("MemTotal")
+    if (total > 0) root.memoryUsage = ((total - of("MemAvailable")) / total * 100).toFixed(1) + "%"
   }
 
   // Network Info (ethernet takes priority over wifi). Read from the devices' connection
@@ -71,62 +66,91 @@ Singleton {
     }
   }
 
-  // Battery
+  // which batteries and thermal zones there are, asked once
+  property var batteries: []
+  property var zones: []
   Process {
-    id: batteryProc
-    command: ["sh", "-c", "printf '%s\\n%s' \"$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null || echo '99')\" \"$(cat /sys/class/power_supply/BAT*/status 2>/dev/null || echo 'Discharging')\""]
     running: true
-
+    command: ["sh", "-c", "ls -d /sys/class/power_supply/BAT* /sys/class/thermal/thermal_zone*/temp 2>/dev/null"]
     stdout: StdioCollector {
       onStreamFinished: {
-        const lines = text.trim().split("\n")
-        const level = parseInt(lines[0]) || 0
-        const status = (lines[1] || "Discharging").trim()
-
-        root.batteryLevelRaw = level
-        root.batteryLevel = level + "%"
-        root.batteryCharging = status === "Charging"
-
-        if (root.batteryCharging) root.batteryIcon = ""
-        else if (level >= 90) root.batteryIcon = "󰁹"
-        else if (level >= 80) root.batteryIcon = "󰂂"
-        else if (level >= 70) root.batteryIcon = "󰂁"
-        else if (level >= 60) root.batteryIcon = "󰂀"
-        else if (level >= 50) root.batteryIcon = "󰁿"
-        else if (level >= 40) root.batteryIcon = "󰁾"
-        else if (level >= 30) root.batteryIcon = "󰁽"
-        else if (level >= 20) root.batteryIcon = "󰁼"
-        else if (level >= 10) root.batteryIcon = "󰁻"
-        else root.batteryIcon = "󰁺"
+        const all = text.trim().split("\n")
+        root.batteries = all.filter(p => p.indexOf("/power_supply/") > 0).slice(0, 1)
+        root.zones = all.filter(p => p.indexOf("/thermal/") > 0)
+        root.readSlow()
       }
     }
   }
+  Instantiator {
+    id: zoneFiles
+    model: root.zones
+    delegate: FileView { required property string modelData; path: modelData; blockLoading: true; printErrors: false }
+  }
+  FileView { id: levelFile; path: root.batteries.length ? root.batteries[0] + "/capacity" : ""; blockLoading: true; printErrors: false }
+  FileView { id: stateFile; path: root.batteries.length ? root.batteries[0] + "/status" : ""; blockLoading: true; printErrors: false }
 
-  // Temperature -- aequalyn-temperature reads /sys thermal zones directly, so it
-  // works without lm_sensors installed. Falls back to `sensors` if needed.
+  function readBattery() {
+    const has = root.batteries.length > 0
+    const level = has ? parseInt(root.fresh(levelFile)) || 0 : 99
+    const status = has ? root.fresh(stateFile).trim() : "Discharging"
+    root.batteryLevelRaw = level
+    root.batteryLevel = level + "%"
+    root.batteryCharging = status === "Charging"
+    if (root.batteryCharging) root.batteryIcon = ""
+    else if (level >= 90) root.batteryIcon = "󰁹"
+    else if (level >= 80) root.batteryIcon = "󰂂"
+    else if (level >= 70) root.batteryIcon = "󰂁"
+    else if (level >= 60) root.batteryIcon = "󰂀"
+    else if (level >= 50) root.batteryIcon = "󰁿"
+    else if (level >= 40) root.batteryIcon = "󰁾"
+    else if (level >= 30) root.batteryIcon = "󰁽"
+    else if (level >= 20) root.batteryIcon = "󰁼"
+    else if (level >= 10) root.batteryIcon = "󰁻"
+    else root.batteryIcon = "󰁺"
+  }
+
+  // the hottest zone; where the kernel has none that say anything, aequalyn-temperature
+  // asks `sensors`
+  function readTemperature() {
+    let max = 0
+    for (let i = 0; i < zoneFiles.count; i++) {
+      const f = zoneFiles.objectAt(i)
+      const t = f ? parseInt(root.fresh(f)) : 0
+      if (t > max) max = t
+    }
+    if (max > 1000) root.temperature = Math.round(max / 1000) + "°C"
+    else if (!tempProc.running) tempProc.running = true
+  }
   Process {
     id: tempProc
     command: ["aequalyn-temperature"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        root.temperature = text.trim() || "N/A"
-      }
-    }
+    stdout: StdioCollector { onStreamFinished: root.temperature = text.trim() || "N/A" }
   }
 
-  // Periodic refresh: re-run all collectors every 2 seconds.
+  // The network is NetworkManager's to say, which takes a program: asked when the routes
+  // change, and now and then.
+  FileView { id: routeFile; path: "/proc/net/route"; blockLoading: true; printErrors: false }
+  property string routes: ""
+  property int round: 0
+  function readSlow() {
+    root.readBattery()
+    root.readTemperature()
+  }
   Timer {
     interval: 2000
     running: true
     repeat: true
+    triggeredOnStart: true
     onTriggered: {
-      cpuProc.running = true
-      memProc.running = true
-      netProc.running = true
-      batteryProc.running = true
-      tempProc.running = true
+      root.readCpu()
+      root.readMemory()
+      const routes = root.fresh(routeFile)
+      if (routes !== root.routes || root.round % 8 === 0) {
+        root.routes = routes
+        if (!netProc.running) netProc.running = true
+      }
+      if (root.round % 2 === 0) root.readSlow()
+      root.round++
     }
   }
 }

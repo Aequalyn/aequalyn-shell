@@ -69,7 +69,7 @@ Item {
         }
         const tone = toneFor(index, region);
         const p = Style.params(d, pal, w, h, deco.margin, { edge: deco.screenEdge, tone: tone !== "" ? tone : undefined,
-            blur: AequalynSettings.blurEnabled, blurEnabled: AequalynSettings.blurEnabled,
+            blur: AequalynSettings.softened, blurEnabled: AequalynSettings.softened,
             floating: Shapes.floating(look), edgeAtStart: deco.edgeAtStart,
             tinted: region === "center" && look.centerStyle === "tinted" });
         p.dir = BarLooks.dirFor(look, region);
@@ -128,7 +128,27 @@ Item {
     // A picture of the bar (fakeSlots) has no timer to catch up: one made while hidden
     // (a tab not shown yet, a page made in the background) draws when it is shown.
     onVisibleChanged: if (visible) { lastKey = ""; refresh(); }
-    Timer { interval: 200; repeat: true; running: deco.visible && !deco.fakeSlots; onTriggered: deco.refresh() }
+    // what the shapes depend on: read here, so a widget that moves, grows, hides or is
+    // hovered redraws them at once and a resting bar costs nothing. The timer is for what
+    // no property tells.
+    readonly property string watched: {
+        if (!deco.visible || deco.fakeSlots) return "";
+        let out = "";
+        for (let s = 0; s < deco.sections.length; s++) {
+            const row = deco.sections[s], view = deco.viewports[s];
+            if (!row) continue;
+            out += "|" + row.x + "," + row.y + "," + row.width + "," + row.height;
+            if (view) out += ";" + view.x + "," + view.y + "," + view.width + "," + view.height + "," + (view.contentX || 0) + "," + (view.contentY || 0);
+            for (let i = 0; i < row.children.length; i++) {
+                const it = row.children[i];
+                if (!it) continue;
+                out += ":" + it.x + "," + it.y + "," + it.width + "," + it.height + "," + it.visible + "," + it.hovered + "," + it.open;
+            }
+        }
+        return out;
+    }
+    onWatchedChanged: Qt.callLater(deco.refresh)
+    Timer { interval: 1000; repeat: true; running: deco.visible && !deco.fakeSlots; onTriggered: deco.refresh() }
     Component.onCompleted: refresh()
 
     // models are updated in place so shapes glide instead of jumping
