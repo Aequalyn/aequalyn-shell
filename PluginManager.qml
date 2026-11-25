@@ -8,6 +8,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "root:/settings"
+import "root:/plugins/kit"
 import "Plugins.js" as PluginRegistry
 
 Item {
@@ -17,6 +18,9 @@ Item {
 
     // plugin id -> loaded instance, for cross-plugin wiring
     property var items: ({})
+
+    // one look everywhere, and a look for each theme: there whatever plugins are on
+    readonly property var oneLook: KitMatch
 
     function pluginItem(id) { return pm.items[id] || null; }
 

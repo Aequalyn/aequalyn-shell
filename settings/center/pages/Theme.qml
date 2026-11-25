@@ -7,6 +7,7 @@ import QtQuick.Layouts
 import Quickshell
 import "root:/settings"
 import "../../../plugins/atelier"
+import "root:/plugins/kit"
 import "../../../style/BarLooks.js" as BarLooks
 import ".."
 
@@ -29,7 +30,7 @@ CcPage {
         theme: Cc.theme
         font: Cc.mono
         wallpaper: Cc.wallpaper
-        barLook: BarLooks.clean(AequalynSettings.barStyleCfg)
+        barLook: BarLooks.clean(AequalynSettings.barStyleWorn)
         barSize: Math.round(AequalynSettings.barHeight * 0.75)
         docks: page.svc && AequalynSettings.dockEnabled ? page.svc.docks.map((d, i) => {
             const e = page.svc.effective(i);
@@ -65,6 +66,63 @@ CcPage {
         sub: "On: picking a theme also puts on its first wallpaper. Off: only its colours; your wallpaper stays."
         checked: AequalynSettings.atelierCfg.themeWallpapers !== false
         onToggled: v => AequalynSettings.setIn("atelier", "themeWallpapers", v)
+    }
+
+    // ---- one look everywhere ------------------------------------------------------------
+    readonly property var match: AequalynSettings.matchCfg
+    CcSection {
+        visible: page.tab === 0
+        title: "One look everywhere"
+        hint: page.match.on ? "The bar, docks, Showcase and cursor match. Turning it off brings back the look each had. Super + Ctrl + M."
+                            : "The bar, docks, Showcase, cursor and text can all have the same look. Super + Ctrl + M."
+        CcToggle {
+            title: "Everything matches"
+            sub: "Shape, surface, lines, ornaments and shadow, the same on all of them."
+            checked: page.match.on
+            onToggled: v => AequalynSettings.setMatch({ on: v })
+        }
+        Repeater {
+            model: [{ key: "bar", title: "The bar joins" }, { key: "dock", title: "The docks join" }, { key: "showcase", title: "Showcase joins" },
+                    { key: "cursor", title: "The cursor joins", sub: "The one made in Plume." },
+                    { key: "text", title: "The text joins", sub: "One font: Showcase is in the UI font, or the UI font is Showcase's while Showcase leads." },
+                    { key: "colors", title: "Their colours too", sub: "Off: only the look; each keeps its own colours." }]
+            delegate: CcToggle {
+                required property var modelData
+                visible: page.match.on
+                title: modelData.title
+                sub: modelData.sub || ""
+                checked: page.match[modelData.key] === true
+                onToggled: v => AequalynSettings.setMatch({ [modelData.key]: v })
+            }
+        }
+    }
+    CcSection {
+        visible: page.tab === 0 && page.match.on
+        title: "They take the look of"
+        hint: page.match.lead === "last" ? "Pick a look for any of them and the others take it." : "The others always take their look from it."
+        CcChoice {
+            options: [{ key: "last", label: "Whichever I change last" }, { key: "bar", label: "The bar" }, { key: "dock", label: "The dock" },
+                      { key: "showcase", label: "Showcase" }, { key: "cursor", label: "The cursor" }]
+            current: page.match.lead
+            onChosen: key => AequalynSettings.setMatch({ lead: key })
+        }
+    }
+    CcSection {
+        visible: page.tab === 0
+        title: "Each theme's look"
+        hint: page.match.perTheme === "off" ? "A theme brings its colours and wallpapers; the look stays."
+            : "A theme brings back the bar, docks, Showcase, cursor and fonts you last wore with it"
+              + (page.match.perTheme === "auto" ? ", and a ready-made look the first time." : ".")
+        CcChoice {
+            options: [{ key: "off", label: "The same with every theme" }, { key: "remember", label: "Its own" }, { key: "auto", label: "Its own, picked for new ones" }]
+            current: page.match.perTheme
+            onChosen: key => AequalynSettings.setMatch({ perTheme: key })
+        }
+        CcButton {
+            visible: page.match.perTheme !== "off" && KitMatch.count > 0
+            text: "Forget the looks"; icon: "\u{F0450}"
+            onClicked: KitMatch.forget()
+        }
     }
 
     // ---- the themes -----------------------------------------------------------------------
