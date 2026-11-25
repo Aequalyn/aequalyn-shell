@@ -29,6 +29,7 @@ import "center"
 import "center/Pages.js" as Pages
 import "../Plugins.js" as PluginRegistry
 import "../PluginInfo.js" as PluginInfo
+import "../style/BarLooks.js" as BarLooks
 import "root:/plugins/kit"
 import "root:/style/backdrop"
 
@@ -234,6 +235,27 @@ Scope {
             root.revealWhat = label || "";
             root.revealPage = target.page;
             revealTimer.restart();
+        }
+        // a Store look's pieces that are settings (aequalyn-store apply-look): through the
+        // shell, whose own settings would otherwise be written over them
+        function importLook(piece: string, json: string): string {
+            let v = null;
+            try { v = JSON.parse(json); } catch (e) { return "not a look"; }
+            if (!v || typeof v !== "object" || Array.isArray(v)) return "not a look";
+            if (piece === "bar") {
+                const next = BarLooks.fromLook(AequalynSettings.barStyleCfg, v);
+                if (!next) return "not a look";
+                AequalynSettings.setBarStyle(Object.assign(next, { chips: AequalynSettings.barStyleCfg.chips }));
+                return "ok";
+            }
+            if (piece === "sleep") {
+                for (const k of ["lockEnabled", "screenOffEnabled", "suspendEnabled"])
+                    if (typeof v[k] === "boolean") AequalynSettings.apply(k, v[k]);
+                for (const k of ["lockMinutes", "screenOffMinutes", "suspendMinutes"])
+                    if (typeof v[k] === "number") AequalynSettings.apply(k, Math.max(1, Math.min(240, Math.round(v[k]))));
+                return "ok";
+            }
+            return "unknown piece";
         }
         // the live ISO's "Install Aequalyn" launcher calls this: the gate's
         // window opens (the password feeds sudo on a pipe), and the installer

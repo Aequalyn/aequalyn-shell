@@ -97,6 +97,15 @@ function clean(d) {
     return out;
 }
 
+// A published look's values, as this shell has them: "glass" is a fill here, and was
+// written as a surface (it is frost under a glass fill)
+function fromLook(set) {
+    var out = {};
+    for (var k in (set || {})) out[k] = set[k];
+    if (out.surface === "glass") { out.surface = "frost"; if (out.fill === undefined) out.fill = "glass"; }
+    return out;
+}
+
 // just the style part of a dock (for undo)
 function styleOf(d) {
     var out = {};

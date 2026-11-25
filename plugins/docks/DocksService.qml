@@ -553,15 +553,19 @@ Scope {
     function importLook(json: string): string {
       let set = null;
       try { set = JSON.parse(json); } catch (e) { return "not a look"; }
-      if (!set || typeof set !== "object" || Array.isArray(set) || root.docks.length === 0) return "not a look";
-      const picked = {};
-      for (const k of root.barKeys) if (set[k] !== undefined) picked[k] = set[k];
-      if (Object.keys(picked).length === 0) return "not a look";
+      if (!set || typeof set !== "object" || Array.isArray(set)) return "not a look";
+      if (root.docks.length === 0) return "no docks";
+      set = Style.fromLook(set);
+      const named = root.barKeys.filter(k => set[k] !== undefined);
+      if (named.length === 0) return "not a look";
+      // on a plain dock, so it is the same whatever was worn before
+      const picked = Style.defaults();
+      for (const k of named) picked[k] = set[k];
       return root.patchManyScope(0, Object.assign({ followBar: false }, picked), "all") ? "ok" : "does not fit";
     }
-    function toggle(): void { AequalynSettings.apply("dockEnabled", !root.enabled); }
-    function show(): void { AequalynSettings.apply("dockEnabled", true); }
-    function hide(): void { AequalynSettings.apply("dockEnabled", false); }
+    function toggle(): void { AequalynSettings.togglePlugin("docks", !root.enabled); }
+    function show(): void { AequalynSettings.togglePlugin("docks", true); }
+    function hide(): void { AequalynSettings.togglePlugin("docks", false); }
     function add(): void { root.addDock(0); }
     function settings(n: int): void { root.openSettings(Math.max(0, Math.min(root.docks.length - 1, n - 1)), ""); }
   }

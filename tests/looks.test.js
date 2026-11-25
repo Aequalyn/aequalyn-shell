@@ -50,4 +50,16 @@ for (const l of Looks.bar) {
   }
 }
 
+// a published look (Store): the same on any bar, and "glass" as the guidelines once had it
+const LICHEN = { shape: "islands", surface: "glass", ends: "capsule", radius: 14 };
+const worn = Bar.fromLook(Bar.defaults(), LICHEN);
+ok(worn.surface === "frost" && worn.fill === "glass" && worn.shape === "islands" && worn.ends === "capsule" && worn.radius === 14 && worn.enabled, "Lichen's bar");
+const before = Bar.clean(Object.assign(Bar.applyLook(Bar.defaults(), Looks.bar[Looks.bar.length - 1].key), { colorMode: "custom", customBg: "#112233" }));
+const onAnother = Bar.fromLook(before, LICHEN);
+for (const k in worn) if (["undoLook", "colorMode", "customBg", "customFg", "accentColor", "savedLooks"].indexOf(k) < 0)
+  ok(JSON.stringify(worn[k]) === JSON.stringify(onAnother[k]), "a look is the same whatever was worn before: " + k);
+ok(onAnother.colorMode === "custom" && onAnother.customBg === "#112233", "with your own colors kept");
+ok(Bar.withUndo(onAnother).surface === before.surface && Bar.withUndo(onAnother).shape === before.shape, "and it can be undone");
+ok(Bar.fromLook(Bar.defaults(), { nonsense: 1, enabled: false, undoLook: {} }) === null && Bar.fromLook(Bar.defaults(), { surface: "nonsense" }).surface === "filled", "nothing else is taken");
+ok(Style.fromLook({ surface: "glass", fill: "solid" }).fill === "solid" && Style.fromLook({ surface: "wood" }).surface === "wood", "glass only where it was meant");
 console.log("ok", n, "checks");

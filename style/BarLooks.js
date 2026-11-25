@@ -188,6 +188,23 @@ function applyLook(c, key) {
     return clean(out);
 }
 
+// a look from outside (a Store look's bar piece): its own keys on a plain bar, so it is the
+// same whatever was worn before; your colors stay yours
+function fromLook(c, set) {
+    var look = Style.fromLook(set), out = defaults(), any = false;
+    for (var i = 0; i < KEEP.length; i++) if (c && c[KEEP[i]] !== undefined) out[KEEP[i]] = c[KEEP[i]];
+    for (var k in look) {
+        if (HISTORY.indexOf(k) >= 0 || k === "enabled" || !(k in out)) continue;
+        out[k] = look[k];
+        any = true;
+    }
+    if (!any) return null;
+    out.enabled = true;
+    out.undoLook = snapshot(c);
+    out.lastLook = "";
+    return clean(out);
+}
+
 // remember where we came from, so one change can be undone
 function withLook(c, key) {
     if (!lookByKey[key]) return clean(c || {});
