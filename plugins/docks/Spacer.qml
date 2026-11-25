@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import "root:/plugins/atelier"
 
 // invisible 1x1 window carrying the exclusive zone for one edge of one monitor.
 // the compositor only honours zones from single-edge windows, so the docks can't do it
@@ -34,7 +35,7 @@ PanelWindow {
   // hidden, or never got it back. change an invisible pixel to make it draw, and once
   // more a moment later in case that frame went out before the zone did
   property bool flip: false
-  onZoneChanged: { flip = !flip; redraw.restart(); }
+  onZoneChanged: { flip = !flip; redraw.restart(); AtelierHost.roomChanged(); }
   Timer {
     id: redraw
     interval: 80

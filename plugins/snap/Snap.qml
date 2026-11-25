@@ -10,6 +10,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Wayland
 import "root:/settings"
+import "root:/plugins/atelier"
 
 Scope {
     id: root
@@ -32,7 +33,7 @@ Scope {
     property real cursorX: -1
     property real cursorY: -1
     // Hyprland 0.57 no longer puts a focused flag in `clients`, and Quickshell's
-    // activeToplevel can be null in Lua mode, so poll the active window too.
+    // activeToplevel can be null in Lua mode, so the active window is asked for too.
     property string focusedAddress: ""
     property var clients: []
     property var monitors: []
@@ -42,7 +43,6 @@ Scope {
     // previous per-monitor geometry/reservation, to map free floaters across a bar move
     property var monitorState: ({})
     property string reservedKey: ""
-    property double lastLayoutPoll: 0
 
     // pointer position captured when the picker opens; it preselects the zone
     // inside the layout, which can then be changed before applying.
@@ -98,10 +98,21 @@ Scope {
                  w: Number(size[0]) || 0, h: Number(size[1]) || 0 }
     }
 
+    // Nothing is asked of Hyprland while the picker is closed, but where the bars and docks
+    // leave room (below): every question is a program started. Opening asks for all of it.
     function refresh() {
         if (!clientsProc.running) clientsProc.running = true
         if (!monitorsProc.running) monitorsProc.running = true
     }
+    property bool opening: false
+    function answered() {
+        if (!root.opening || clientsProc.running || monitorsProc.running || cursorProc.running || activeProc.running) return
+        root.opening = false
+        openLate.stop()
+        root.showNow()
+    }
+    Timer { id: answerSoon; interval: 15; onTriggered: root.answered() }     // what they said is read by then
+    Timer { id: openLate; interval: 600; onTriggered: if (root.opening) { root.opening = false; root.showNow() } }
     function refreshLayout() { layoutProc.running = true }
 
     function activeIndex() {
@@ -391,8 +402,14 @@ Scope {
     }
 
     function show() {
-        refresh()
         refreshLayout()
+        refresh()
+        activeProc.exec(activeProc.command)
+        cursorProc.exec(cursorProc.command)
+        root.opening = true
+        openLate.restart()
+    }
+    function showNow() {
         root.active = root.clients[activeIndex()] || null
         const i = activeIndex()
         if (i >= 0 && root.active) {
@@ -420,16 +437,9 @@ Scope {
     Timer {
         interval: 90
         repeat: true
-        running: true
-        triggeredOnStart: true
+        running: root.open
         onTriggered: {
             root.ask()
-            // Layout changes made outside the shell must reach the picker.
-            if (Date.now() - root.lastLayoutPoll > 2000) {
-                root.lastLayoutPoll = Date.now()
-                root.refreshLayout()
-            }
-            root.refresh()
             root.active = root.clients[activeIndex()] || null
             if (root.open) {
                 const g = root.targetGeometry()
@@ -450,8 +460,38 @@ Scope {
     }
 
     // ---- data --------------------------------------------------------------
+    // A shell that just started finds the screen without its bar, and then with it: that is no
+    // bar that moved, and the windows are where they belong already. Nothing counts as a move
+    // until the bars and docks have been there for a while.
+    readonly property double bornAt: Date.now()
+    property double barsAt: 0
+    function settled(monitors) {
+        const now = Date.now()
+        if (root.barsAt === 0 && monitors.some(m => (m.reserved || []).some(r => Number(r) > 0))) root.barsAt = now
+        return (root.barsAt > 0 && now - root.barsAt > 6000) || now - root.bornAt > 40000
+    }
+    // where the bars and docks leave room: after something that may change it, and now and
+    // then for what says nothing
+    Timer { id: roomSoon; interval: 250; onTriggered: if (!monitorsProc.running) monitorsProc.running = true }
+    // a dock or the bar just came or went: the windows go along with it, so it is looked at
+    // at once and a few times more, until Hyprland has taken it in
+    property var looks: []
+    function roomNow() { root.looks = [20, 70, 90, 140, 250]; roomQuick.restart() }
+    Timer {
+        id: roomQuick
+        interval: root.looks.length ? root.looks[0] : 1000
+        onTriggered: {
+            root.looks = root.looks.slice(1)
+            if (!monitorsProc.running) monitorsProc.running = true
+            if (root.looks.length) restart()
+        }
+    }
+    Connections { target: AtelierHost; function onRoomChanged() { root.roomNow() } }
+    Timer { interval: 10000; repeat: true; running: true; onTriggered: roomSoon.restart() }
+    property var reflow: null               // a move whose windows are being asked for
     Process {
         id: clientsProc
+        onExited: answerSoon.restart()
         command: ["sh", "-c", "hyprctl -j clients 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -459,6 +499,13 @@ Scope {
                     const v = JSON.parse(text || "[]")
                     if (Array.isArray(v)) root.clients = v
                 } catch (e) {}
+                const m = root.reflow
+                root.reflow = null
+                if (!m) return
+                // snapped windows get their exact zones back; every other
+                // floater is mapped out from under the new bar position
+                root.reflowFloating(m.previous, m.changed)
+                root.reapplySnap()
             }
         }
     }
@@ -476,6 +523,7 @@ Scope {
     }
     Process {
         id: monitorsProc
+        onExited: answerSoon.restart()
         command: ["sh", "-c", "hyprctl -j monitors 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -496,15 +544,15 @@ Scope {
                         const now = current[id].usable
                         if (!was || !root.sameRect(was, now)) changed.push(id)
                     }
-                    const moved = root.reservedKey !== "" && key !== root.reservedKey
+                    const moved = root.settled(v) && root.reservedKey !== "" && key !== root.reservedKey
                     root.monitors = v
                     root.monitorState = current
                     root.reservedKey = key
                     if (moved) {
-                        // snapped windows get their exact zones back; every other
-                        // floater is mapped out from under the new bar position
-                        root.reflowFloating(previous, changed)
-                        root.reapplySnap()
+                        // a second move before the first is dealt with keeps the first's start
+                        root.reflow = root.reflow ? { previous: root.reflow.previous, changed: Object.keys(current) }
+                                                  : { previous: previous, changed: changed }
+                        clientsProc.exec(clientsProc.command)
                     }
                 } catch (e) {}
             }
@@ -512,6 +560,7 @@ Scope {
     }
     Process {
         id: cursorProc
+        onExited: answerSoon.restart()
         command: ["sh", "-c", "hyprctl -j cursorpos 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -527,6 +576,7 @@ Scope {
     }
     Process {
         id: activeProc
+        onExited: answerSoon.restart()
         command: ["sh", "-c", "hyprctl activewindow -j 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -536,13 +586,6 @@ Scope {
                 } catch (e) {}
             }
         }
-    }
-    Timer {
-        interval: 300
-        repeat: true
-        running: true
-        triggeredOnStart: true
-        onTriggered: activeProc.exec(activeProc.command)
     }
     Process {
         id: decoProc
@@ -561,10 +604,20 @@ Scope {
     Connections {
         target: Hyprland
         ignoreUnknownSignals: true
-        function onFocusedWorkspaceChanged() { root.refresh(); root.refreshLayout() }
-        function onActiveToplevelChanged() { root.refresh() }
+        function onRawEvent(event) {
+            const n = event ? String(event.name) : ""
+            if (["openlayer", "closelayer", "configreloaded", "monitoradded", "monitorremoved", "monitoraddedv2"].indexOf(n) >= 0)
+                roomSoon.restart()
+            if (n === "configreloaded" && !decoProc.running) decoProc.running = true
+        }
     }
-    Component.onCompleted: { decoProc.running = true; root.refresh(); root.refreshLayout() }
+    Connections {
+        target: AequalynSettings
+        ignoreUnknownSignals: true
+        function onBarPositionChanged() { roomSoon.restart() }
+        function onBarStyleWornChanged() { roomSoon.restart() }
+    }
+    Component.onCompleted: { decoProc.running = true; root.refresh() }
 
     IpcHandler {
         target: "snap"

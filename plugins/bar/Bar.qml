@@ -17,6 +17,7 @@ import "widgets/Widgets.js" as Widgets
 import  "../../style/Shapes.js" as Shapes
 import  "../../style/BarLooks.js" as BarLooks
 import  "../../style/Colors.js" as Colors
+import "root:/plugins/atelier"
 
 Scope {
   id: root
@@ -309,6 +310,7 @@ Scope {
       implicitWidth: root.windowThickness
       exclusionMode: ExclusionMode.Auto
       exclusiveZone: root.barVisible ? root.windowThickness : 0
+      onExclusiveZoneChanged: AtelierHost.roomChanged()
       // styled: the shapes are the background; plain: one band in the theme
       color: root.styled ? "transparent"
            : Qt.rgba(root.theme.bgBase.r, root.theme.bgBase.g, root.theme.bgBase.b, AequalynSettings.barOpacity / 100)

@@ -22,6 +22,10 @@ Singleton {
     property var docks: null
     property int dockFocus: 0
 
+    // The bar or a dock takes another strip of the screen, or gives it back: said here as it
+    // happens, since Hyprland has no event for it (Snap moves the floating windows along).
+    signal roomChanged()
+
     // Set by Atelier.qml: what is showing right now, for the buttons' look.
     property bool shown: false
     property string shownCollection: ""

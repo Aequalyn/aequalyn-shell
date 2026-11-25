@@ -13,6 +13,7 @@ Singleton {
 
     property var catalogue: []
     property var status: ({})   // aequalyn-layout status
+    property string lastWorkspace: ""
     readonly property var groups: ["Focus", "Panes", "Grids", "Flow", "Hyprland"]
     readonly property string focusedWorkspace: Hyprland.focusedWorkspace ? String(Hyprland.focusedWorkspace.id) : (status.focused || "1")
 
@@ -86,6 +87,12 @@ Singleton {
 
     Connections {
         target: Hyprland
-        function onFocusedWorkspaceChanged() { root.refresh(); }
+        // Hyprland says so for every event that has a workspace in it: only another one counts
+        function onFocusedWorkspaceChanged() {
+            const id = Hyprland.focusedWorkspace ? String(Hyprland.focusedWorkspace.id) : "";
+            if (id === root.lastWorkspace) return;
+            root.lastWorkspace = id;
+            root.refresh();
+        }
     }
 }
