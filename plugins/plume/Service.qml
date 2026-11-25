@@ -235,7 +235,9 @@ Item {
         return run + "/hypr/" + sig + "/.socket.sock"
     }
 
-    readonly property bool tracking: root.cfg.enabled && root.socketPath !== ""
+    // on a light desktop the effects are off until you turn them on yourself
+    readonly property bool effectsOn: root.cfg.enabled && (!AequalynSettings.light || root.local.enabled === true)
+    readonly property bool tracking: root.effectsOn && root.socketPath !== ""
     property var motion: Motion.fresh()
     property bool asking: false
     property double askedAt: 0
@@ -312,7 +314,9 @@ Item {
                                     && !root.overlayBusy && root.now - root.findAt > 1600
     Timer {
         id: ticker
-        interval: root.resting ? 125 : Math.round(1000 / Number(root.cfg.fps))
+        // an effect that moves on its own around a resting pointer needs no more than 30
+        interval: root.resting ? 125
+            : (Motion.stillFor(root.motion, root.now) > root.life + 0.6 ? 33 : Math.round(1000 / (AequalynSettings.light ? 30 : Number(root.cfg.fps))))
         repeat: true
         running: root.tracking
         onTriggered: root.tick()

@@ -17,6 +17,15 @@ function haloAlpha(show, still) {
     return 1;
 }
 
+// may the next frame differ from the last one, with the pointer where it was? points: the
+// path still showing, moving: the last frame had a trail or something moving on its own
+function alive(cfg, still, findAge, points, moving) {
+    if (moving || points > 0) return true;
+    if (findAge >= 0 && findAge < 1.7) return true;
+    // the halo fades in or out as the pointer comes to rest
+    return cfg.halo !== "none" && cfg.haloShow !== "always" && still < 1.2;
+}
+
 function frame(ctx, s) {
     const cfg = s.cfg;
     const c = Object.assign({}, s.colors, { speed: s.speed, time: s.time });
