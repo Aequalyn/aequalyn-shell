@@ -670,12 +670,11 @@ Scope {
             .filter(i => (i.label || "Built-in") !== "Community")
             .map(i => ({ id: i.id, label: i.name || i.id, about: "A theme shipped with Aequalyn.",
                          icon: "\u{F03D8}", installed: !!i.installed, preview: i.preview || "",
-                         source: root.themeRepoDir + "/themes/" + i.id }));
+                         source: i.source }));
         if (kind === "wallpaper") return root.wallpaperCatalog
             .map(i => ({ id: i.id, label: i.id, about: "A wallpaper shipped with Aequalyn.",
                          icon: "\u{F02E9}", installed: !!i.installed,
-                         preview: root.themeRepoDir + "/wallpapers/" + i.id,
-                         source: root.themeRepoDir + "/wallpapers/" + i.id }));
+                         preview: i.source, source: i.source }));
         if (kind === "cursor") return root.builtInCursors;
         if (kind === "look") return root.builtInLooks;
         return [];
@@ -910,7 +909,10 @@ Scope {
     }
 
     // ---- themes & wallpapers published in Aequalyn/aequalyn-themes ---------------------
-    readonly property string themeRepoDir: Quickshell.env("HOME") + "/.cache/aequalyn/aequalyn-themes"
+    // aequalyn-update keeps a clone for the whole system, where the built-in themes are
+    // too: that one is read, with no download here. Without it, the Store keeps its own.
+    readonly property string themeRepoSh: "d=/var/lib/aequalyn/src/aequalyn-themes; own=; "
+        + "[ -d \"$d/themes\" ] || { own=1; d=\"$HOME/.cache/aequalyn/aequalyn-themes\"; }; "
     property var themeCatalog: []
     property var wallpaperCatalog: []
     property bool repoSyncing: false
@@ -931,14 +933,15 @@ Scope {
         }
     }
 
-    // sync the published themes/wallpapers repo, then read its contents
+    // sync the Store's own clone, if it is the one in use, then read what there is
     Process {
         id: repoSync
         command: ["sh", "-c",
-            "d=\"" + root.themeRepoDir + "\"; "
+            root.themeRepoSh
+            + "[ -n \"$own\" ] || exit 0; "
             + "mkdir -p \"$(dirname \"$d\")\"; "
             + "if [ -d \"$d/.git\" ]; then git -C \"$d\" pull -q; "
-            + "else git clone -q https://github.com/Aequalyn/aequalyn-themes \"$d\"; fi"]
+            + "else git clone -q --depth 1 https://github.com/Aequalyn/aequalyn-themes \"$d\"; fi"]
         onRunningChanged: root.repoSyncing = running
         onExited: code => {
             // a failed pull still leaves the last synced catalogue on disk, so
@@ -950,7 +953,7 @@ Scope {
     Process {
         id: themeCatalogProc
         command: ["sh", "-c",
-            "d=\"" + root.themeRepoDir + "\"; "
+            root.themeRepoSh
             + "listed=$(aequalyn-themes list --json 2>/dev/null | jq -r '.[].id' 2>/dev/null || true); "
             + "for t in \"$d\"/themes/*/theme.json; do "
             + "  [ -f \"$t\" ] || continue; "
@@ -961,7 +964,7 @@ Scope {
             + "  dir=$(dirname \"$t\"); "
             + "  preview=$(find \"$dir/backgrounds\" -maxdepth 1 -type f 2>/dev/null | sort | head -1); "
             + "  [ -n \"$preview\" ] || preview=\"$dir/preview.jpg\"; "
-            + "  printf '%s\\t%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$lab\" \"$preview\"; "
+            + "  printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \"$id\" \"$name\" \"$inst\" \"$lab\" \"$preview\" \"$dir\"; "
             + "done"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -970,7 +973,7 @@ Scope {
                     if (line.trim() === "") continue;
                     const p = line.split("\t");
                     out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1",
-                               label: p[3] || "Built-in", preview: p[4] || "" });
+                               label: p[3] || "Built-in", preview: p[4] || "", source: p[5] || "" });
                 }
                 root.themeCatalog = out;
             }
@@ -979,13 +982,14 @@ Scope {
     Process {
         id: wallpaperCatalogProc
         command: ["sh", "-c",
-            "d=\"" + root.themeRepoDir + "\"/wallpapers; "
+            root.themeRepoSh
+            + "d=\"$d/wallpapers\"; "
             + "for f in \"$d\"/*; do "
             + "  [ -f \"$f\" ] || continue; "
             + "  case \"$f\" in *.jpg|*.jpeg|*.png|*.webp|*.gif|*.mp4|*.webm|*.mkv|*.mov) ;; *) continue ;; esac; "
             + "  base=$(basename \"$f\"); "
             + "  if [ -f \"$HOME/.local/share/aequalyn/wallpapers/$base\" ]; then inst=1; else inst=0; fi; "
-            + "  printf '%s\\t%s\\n' \"$base\" \"$inst\"; "
+            + "  printf '%s\\t%s\\t%s\\n' \"$base\" \"$inst\" \"$f\"; "
             + "done"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -993,7 +997,7 @@ Scope {
                 for (const line of text.split("\n")) {
                     if (line.trim() === "") continue;
                     const p = line.split("\t");
-                    out.push({ id: p[0], installed: p[1] === "1" });
+                    out.push({ id: p[0], installed: p[1] === "1", source: p[2] || "" });
                 }
                 root.wallpaperCatalog = out;
             }
