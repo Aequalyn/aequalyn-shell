@@ -268,16 +268,26 @@ Scope {
         id: installProc
         property string wayland: "wayland-0"
         command: ["sh", "-c",
-            'mkdir -p "$HOME/.local/state/aequalyn/gate" '
-            + '&& printf \'{"wayland": "%s"}\' "$1" > "$HOME/.local/state/aequalyn/gate/install.json" '
-            + '&& aequalyn-watchdog exec-root --as settings install-aequalyn; r=$?; '
-            + 'rm -f "$HOME/.local/state/aequalyn/gate/install.json"; exit $r',
+            'pgrep -u 0 -f "^([^ ]*/)?(quickshell|qs) -p [^ ]*installer/shell\\.qml" >/dev/null && { echo "already open"; exit 3; }; '
+            + 'mkdir -p "$HOME/.local/state/aequalyn/gate" '
+            + '&& printf \'{"wayland": "%s"}\' "$1" > "$HOME/.local/state/aequalyn/gate/install.json" || exit 1; '
+            // in a session of its own: the request outlives a restart of the shell, whose
+            // new window asks again
+            + 'out=$(setsid -w aequalyn-watchdog exec-root --as settings install-aequalyn 2>&1); r=$?; printf "%s" "$out"; '
+            // a request that is still open needs what was staged for it
+            + 'case "$out" in *"already waiting"*) ;; *) rm -f "$HOME/.local/state/aequalyn/gate/install.json" ;; esac; exit $r',
             "sh", installProc.wayland]
         stdout: StdioCollector { id: installOut }
         stderr: StdioCollector { id: installErr }
         onExited: (code) => {
             const denied = (installOut.text || "").indexOf("denied") >= 0
             if (code === 0) return          // the installer GUI is up
+            const waiting = (installOut.text || "").indexOf("already waiting") >= 0
+            if (waiting || code === 3) {
+                Quickshell.execDetached(["notify-send", "-a", "Aequalyn", "Install Aequalyn",
+                    waiting ? "It is asking already: answer its approval window." : "The installer is open already."])
+                return
+            }
             Quickshell.execDetached(["notify-send", "-a", "Aequalyn",
                 denied ? "Install Aequalyn denied" : "Install Aequalyn failed",
                 denied ? "The approval window was denied or timed out; nothing started."
