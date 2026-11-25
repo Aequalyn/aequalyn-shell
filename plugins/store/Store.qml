@@ -632,10 +632,12 @@ Scope {
     }))
     // what others made: what is installed here, then what the Market has of it, each with
     // what the catalog says about it
+    function fromThemeRepo(source) { return /\/aequalyn-themes\/themes\/[^/]+\/?$/.test(String(source || "")); }
     function communityEntries(kind) {
         const glyph = (root.sections.find(s => s.key === kind) || {}).glyph || "\u{F0431}";
         const listed = root.market.filter(m => m.kind === kind);
-        const mine = root.itemsOf(kind).map(i => {
+        // a built-in theme that was installed is still a built-in one: it stays there
+        const mine = root.itemsOf(kind).filter(i => !(kind === "theme" && root.fromThemeRepo(i.source))).map(i => {
             const m = listed.find(x => x.id === i.id && x.repo === i.source);
             return Object.assign({}, i, {
                 label: (m && m.name) || i.label || i.id,
@@ -668,7 +670,7 @@ Scope {
     function builtInEntries(kind) {
         if (kind === "theme") return root.themeCatalog
             .map(i => ({ id: i.id, label: i.name || i.id, about: "A theme shipped with Aequalyn.",
-                         icon: "\u{F03D8}", installed: !!i.installed, preview: i.preview || "",
+                         icon: "\u{F03D8}", installed: !!i.installed, own: !!i.own, preview: i.preview || "",
                          source: i.source }));
         if (kind === "wallpaper") return root.wallpaperCatalog
             .map(i => ({ id: i.id, label: i.id, about: "A wallpaper shipped with Aequalyn.",
@@ -677,6 +679,14 @@ Scope {
         if (kind === "cursor") return root.builtInCursors;
         if (kind === "look") return root.builtInLooks;
         return [];
+    }
+    // your copy of a built-in theme: the Store's own to remove, or aequalyn-themes' when it
+    // was put there another way
+    function removeTheme(entry) {
+        if (root.itemsOf("theme").some(i => i.id === entry.id)) root.runJob("Removing " + entry.id, ["remove", "theme", entry.id]);
+        else root.runCmd("Removing " + entry.id, ["sh", "-c",
+            'if [ "$(aequalyn-themes current)" = "$1" ]; then echo "$1 is the theme you wear: pick another one first"; exit 1; fi; aequalyn-themes remove "$1" && echo OK',
+            "sh", entry.id]);
     }
     function getPrimary(kind, entry, builtIn) {
         const name = entry.label || entry.id;
@@ -958,7 +968,8 @@ Scope {
             + "  [ -f \"$t\" ] || continue; "
             + "  id=$(basename \"$(dirname \"$t\")\"); "
             + "  name=$(jq -r '.name // \"'\"$id\"'\"' \"$t\" 2>/dev/null || echo \"$id\"); "
-            + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ] || printf '%s\\n' \"$listed\" | grep -qx \"$id\"; then inst=1; else inst=0; fi; "
+            // 2: here as a copy of your own, which can be removed again
+            + "  if [ -d \"$HOME/.config/aequalyn/themes/$id\" ]; then inst=2; elif printf '%s\\n' \"$listed\" | grep -qx \"$id\"; then inst=1; else inst=0; fi; "
             + "  dir=$(dirname \"$t\"); "
             + "  preview=$(find \"$dir/backgrounds\" -maxdepth 1 -type f 2>/dev/null | sort | head -1); "
             + "  [ -n \"$preview\" ] || preview=\"$dir/preview.jpg\"; "
@@ -970,7 +981,7 @@ Scope {
                 for (const line of text.split("\n")) {
                     if (line.trim() === "") continue;
                     const p = line.split("\t");
-                    out.push({ id: p[0], name: p[1] || p[0], installed: p[2] === "1",
+                    out.push({ id: p[0], name: p[1] || p[0], installed: p[2] !== "0", own: p[2] === "2",
                                preview: p[3] || "", source: p[4] || "" });
                 }
                 root.themeCatalog = out;
@@ -2822,6 +2833,16 @@ Scope {
                         implicitHeight: 24
                         text: "Page"
                         onClicked: root.runSide(["qs", "ipc", "call", "aequalyn", "page", gcard.kind === "theme" ? "theme" : "wallpaper"])
+                    }
+                    Btn {
+                        visible: gcard.builtIn && gcard.kind === "theme" && gcard.entry.own === true
+                        Layout.preferredWidth: 28
+                        implicitHeight: 24
+                        icon: "\u{F0A7A}"
+                        Accessible.name: "Remove"
+                        danger: true
+                        enabled: !root.busy
+                        onClicked: root.removeTheme(gcard.entry)
                     }
                     // one row, as the built-in cards: Remove in words, or both as glyphs
                     // beside the first button when there is an Update too
