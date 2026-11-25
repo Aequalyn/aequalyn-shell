@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import errno
+import fcntl
 import json
 import os
 import re
@@ -75,6 +76,7 @@ DAEMON_LOG = STATE_DIR / "watchdog.log"
 RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
 SOCK_PATH = RUNTIME / "aequalyn-watchdog.sock"
 PID_FILE = RUNTIME / "aequalyn-watchdog.pid"
+LOCK_FILE = RUNTIME / "aequalyn-watchdog.lock"
 # written by `stop`: a deliberate stop must stick (the shell's Watchdog.qml
 # would otherwise restart the supervisor two minutes later)
 STOP_MARKER = RUNTIME / "aequalyn-watchdog.stopped"
@@ -1604,8 +1606,37 @@ def daemon_alive() -> bool:
         return False
 
 
+def take_lock():
+    """The one lock a supervisor holds for as long as it lives (the kernel drops it
+    with the process): an open file, or None while another supervisor has it."""
+    f = open(LOCK_FILE, "a")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    return f
+
+
+def supervisor_there() -> bool:
+    """Is there a supervisor? One too busy to answer still holds the lock: a machine
+    under load must not get a second one, both restarting the shell. One that is just
+    stopping lets go of the lock in a moment, and is waited for."""
+    until = time.monotonic() + 8
+    while True:
+        if daemon_alive():
+            return True
+        f = take_lock()
+        if f is not None:
+            f.close()
+            return False
+        if time.monotonic() > until:
+            return True
+        time.sleep(0.25)
+
+
 def cmd_start(args) -> int:
-    if daemon_alive():
+    if supervisor_there():
         print("aequalyn-watchdog is already running")
         return 0
     conf = {**DEFAULTS, **read_json(WATCHDOG_CONF, {})}
@@ -1613,7 +1644,12 @@ def cmd_start(args) -> int:
         print("aequalyn-watchdog: qs/quickshell not found", file=sys.stderr)
         return 127
     if args.foreground:
+        lock = take_lock()
+        if lock is None:
+            print("aequalyn-watchdog is already running")
+            return 0
         Supervisor(conf).run(adopt=True)
+        lock.close()
         return 0
     # detach: double fork, own session, output to the log
     if os.fork() > 0:
@@ -1636,6 +1672,16 @@ def cmd_start(args) -> int:
     os.dup2(fd, 2)
     devnull = os.open(os.devnull, os.O_RDONLY)
     os.dup2(devnull, 0)
+    # two starts at once: the second one leaves (a start that only looks holds the
+    # lock for an instant)
+    lock = None
+    for _ in range(10):
+        lock = take_lock()
+        if lock is not None:
+            break
+        time.sleep(0.1)
+    if lock is None:
+        os._exit(0)
     with open(PID_FILE, "w") as f:
         f.write(str(os.getpid()))
     Supervisor(conf).run(adopt=True)
@@ -1645,9 +1691,7 @@ def cmd_start(args) -> int:
 def cmd_ensure(_args) -> int:
     """For the shell's keep-alive timer: nothing to do when the supervisor is
     running (or was deliberately stopped), start it otherwise."""
-    if daemon_alive():
-        return 0
-    if STOP_MARKER.exists():
+    if STOP_MARKER.exists() or supervisor_there():
         return 0
     return cmd_start(_args)
 
