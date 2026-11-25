@@ -123,31 +123,29 @@ Scope {
   // 1 for a command-line program (a terminal app), 0 for the rest: they always list last
   function cliRank(d) { return (d.runInTerminal === true) ? 1 : 0; }
 
-  ScriptModel {
-    id: filteredApps
-    objectProp: "id"
-    values: {
-      const all = root.mergedApps();
-      const q = searchInput.text.trim().toLowerCase();
-      if (q === "") return all.sort((a, b) => root.cliRank(a) - root.cliRank(b) || a.name.localeCompare(b.name));
-      return all.filter(d =>
-        (d.name && d.name.toLowerCase().includes(q)) ||
-        (d.genericName && d.genericName.toLowerCase().includes(q)) ||
-        (d.keywords && d.keywords.some(k => k.toLowerCase().includes(q))) ||
-        (d.categories && d.categories.some(c => c.toLowerCase().includes(q)))
-      ).sort((a, b) => {
-        // command-line programs after the apps, whatever matches better
-        const cli = root.cliRank(a) - root.cliRank(b);
-        if (cli !== 0) return cli;
-        const an = a.name.toLowerCase();
-        const bn = b.name.toLowerCase();
-        const aStarts = an.startsWith(q);
-        const bStarts = bn.startsWith(q);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        return an.localeCompare(bn);
-      });
-    }
+  // A plain array model is intentional here. ScriptModel reorders rows as the
+  // query changes; Qt 6.12's DelegateModel can crash while applying those moves.
+  readonly property var filteredApps: {
+    const all = root.mergedApps();
+    const q = searchInput.text.trim().toLowerCase();
+    if (q === "") return all.sort((a, b) => root.cliRank(a) - root.cliRank(b) || a.name.localeCompare(b.name));
+    return all.filter(d =>
+      (d.name && d.name.toLowerCase().includes(q)) ||
+      (d.genericName && d.genericName.toLowerCase().includes(q)) ||
+      (d.keywords && d.keywords.some(k => k.toLowerCase().includes(q))) ||
+      (d.categories && d.categories.some(c => c.toLowerCase().includes(q)))
+    ).sort((a, b) => {
+      // command-line programs after the apps, whatever matches better
+      const cli = root.cliRank(a) - root.cliRank(b);
+      if (cli !== 0) return cli;
+      const an = a.name.toLowerCase();
+      const bn = b.name.toLowerCase();
+      const aStarts = an.startsWith(q);
+      const bStarts = bn.startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return an.localeCompare(bn);
+    });
   }
 
   function launchApp(entry) {
@@ -278,7 +276,7 @@ Scope {
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                   event.accepted = true;
                   if (root.selectedIndex >= 0) {
-                    const entry = filteredApps.values[root.selectedIndex];
+                    const entry = root.filteredApps[root.selectedIndex];
                     if (entry) root.launchApp(entry);
                   }
                 } else if (event.key === Qt.Key_Tab) {
@@ -304,7 +302,7 @@ Scope {
           id: resultsList
           Layout.fillWidth: true
           Layout.fillHeight: true
-          model: filteredApps
+          model: root.filteredApps
           clip: true
           spacing: 2
           boundsBehavior: Flickable.StopAtBounds
