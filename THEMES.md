@@ -21,7 +21,7 @@ Store's install pipeline, see the `aequalyn` core repo and `aequalyn-themes`.
 - Activated via `setFolderTheme(id)` → writes `~/.config/quickshell/theme.conf`
   (`theme:<id>` or `wallpaper`), calls `aequalyn-themes set`, applies palette, updates
   `~/.config/aequalyn/current/theme` symlink.
-- Atelier (`plugins/atelier/`) is the picker UI; settings page
+- `plugins/atelier/` is the picker (Themes and wallpapers); settings page
   `settings/center/pages/Theme.qml` (and `Picker.qml`).
 
 ## Sources of colour

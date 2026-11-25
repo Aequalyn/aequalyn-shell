@@ -1,98 +1,136 @@
 # aequalyn-shell
 
-The Aequalyn desktop shell, written in QML for [Quickshell](https://quickshell.org)
-on Hyprland: a shaped top bar, up to 16 docks, launcher, notifications, OSD, Clipscape clipboard history,
-display manager, power menu, settings and **Atelier**.
+The Aequalyn desktop, written in QML for [Quickshell](https://quickshell.org) on Hyprland:
+the bar, up to 16 docks, the control center, the Store, the lock screen, launchers,
+notifications, Aequalyn FM, Showcase desktop widgets and more than forty plugins, each on or
+off at once.
+
+![The desktop](docs/screenshots/desktop.jpg)
 
 Installed to `~/.config/quickshell` by [aequalyn](https://github.com/Aequalyn/aequalyn)'s
 `install.sh`, which also provides the `aequalyn-*` commands the shell calls.
 
-## Atelier
+## Control center
 
-One picker for everything that sets the look of the desktop.
+`Super + ,` — every setting, and a search over all of them (`Ctrl + K`).
 
 | | |
 | --- | --- |
-| **Themes** | Folder themes (palette + backgrounds), wallpaper colours and 200+ curated palettes. The whole shell previews the theme under the cursor. |
-| **Wallpapers** | Images, videos, theme backgrounds and painted wallpapers, filterable and searchable. |
-| **Layouts** | 38 window layouts as pictures: pick one for any workspace, choose which ones Super + L goes through, set the main pane and gap. |
-| **Rotation** | Static, theme set, slideshow, time of day, per workspace or live video; transitions; monitors; painting a wallpaper from the palette. |
-| **Palette** | Wallpaper or fixed colours, lock, dark / light / auto, matugen scheme, contrast. |
-| **Bar** | Band, Pill, Isles or Pebbles; 26 looks in five families; 8 ensembles that dress the bar and every dock at once; placement, hover, separators, colours and every part (ends, surface, lines, ornaments). |
-| **Docks** | Up to 16 docks, 4 per edge of each screen: apps, edge, size, 8 auto-hide effects, and the bar's look or one of 16 of their own, for one dock, its edge or all. |
-| **Panel** | Open as a docked panel, a window or full screen; what the bar buttons do. |
+| **Look** | Wallpaper (pick one, or change it over time), theme and colours, the theme picker, text, cursor, login screen |
+| **Desktop** | Bar, dock, media, clipboard, showcase |
+| **Windows** | 38 layouts for any workspace, window look, window switcher |
+| **Devices** | Screens, sound, keyboard and mouse, keyboard shortcuts, Bluetooth, Wi-Fi |
+| **System** | Lock and sleep, clock, plugins, updates, backup, about |
 
-Themes and Wallpapers each have six layouts, remembered per collection:
-
-| Grid | Carousel | Filmstrip |
+| Home | Bar | Dock |
 | --- | --- | --- |
-| ![](docs/screenshots/atelier-themes-grid.jpg) | ![](docs/screenshots/atelier-wallpapers-carousel.jpg) | ![](docs/screenshots/atelier-wallpapers-filmstrip.jpg) |
-| **Radial** | **List** | **Spotlight** |
-| ![](docs/screenshots/atelier-themes-radial.jpg) | ![](docs/screenshots/atelier-themes-list.jpg) | ![](docs/screenshots/atelier-wallpapers-spotlight.jpg) |
+| ![](docs/screenshots/control-center.jpg) | ![](docs/screenshots/control-center-bar.jpg) | ![](docs/screenshots/control-center-dock.jpg) |
+| **Theme** | **Arranging windows** | **Window look** |
+| ![](docs/screenshots/control-center-theme.jpg) | ![](docs/screenshots/control-center-layouts.jpg) | ![](docs/screenshots/control-center-windows.jpg) |
+| **Plugins** | **Login screen** | |
+| ![](docs/screenshots/control-center-plugins.jpg) | ![](docs/screenshots/control-center-login.jpg) | |
 
-| Layouts | Rotation | Palette |
+## Themes and wallpapers
+
+`Super + T` and `Super + W` open the picker. The whole shell previews the theme
+under the cursor; each collection remembers its layout, of eight: slices, showcase, carousel,
+grid, filmstrip, radial, list and spotlight.
+
+| Grid | List | Radial |
 | --- | --- | --- |
-| ![](docs/screenshots/atelier-layouts.jpg) | ![](docs/screenshots/atelier-rotation.jpg) | ![](docs/screenshots/atelier-palette.jpg) |
+| ![](docs/screenshots/picker-themes-grid.jpg) | ![](docs/screenshots/picker-themes-list.jpg) | ![](docs/screenshots/picker-themes-radial.jpg) |
+| **Showcase** | **Slices** | **Filmstrip** |
+| ![](docs/screenshots/picker-wallpapers-showcase.jpg) | ![](docs/screenshots/picker-wallpapers-slices.jpg) | ![](docs/screenshots/picker-wallpapers-filmstrip.jpg) |
+
+![Spotlight, over the whole screen](docs/screenshots/picker-wallpapers.jpg)
 
 ## Bar and docks
 
-The bar is painted behind its widgets and the docks are painted by the same
-engine (`style/`), so they can wear one look or each their own. Looks come in
-five families (Calm, Isles, Pebbles, Glow, Crafted); an ensemble dresses the
-bar and every dock in one click. Right-click any dock to open Atelier on it.
+The bar is painted behind its widgets and the docks are painted by the same engine
+(`style/`), so they can wear one look or each their own. The bar has 58 looks and a dock 32,
+in five families (Calm, Isles, Pebbles, Glow, Crafted); 8 ensembles dress the bar and every
+dock in one click. Most widgets open a quick panel under them, on the click you choose.
+Right-click any dock for its settings.
 
-| Bar tab | Docks tab |
+| Battery | Clipboard |
 | --- | --- |
-| ![](docs/screenshots/atelier-bar.jpg) | ![](docs/screenshots/atelier-docks.jpg) |
-| ![](docs/screenshots/atelier-bar-looks.jpg) | ![](docs/screenshots/atelier-docks-looks.jpg) |
-| **Tide ensemble** | **16 docks** |
-| ![](docs/screenshots/desktop-tide.jpg) | ![](docs/screenshots/desktop-sixteen-docks.jpg) |
+| ![](docs/screenshots/quick-panel-battery.jpg) | ![](docs/screenshots/quick-panel-clipscape.jpg) |
+
+**Quick looks** change the bar, the docks, the lock screen and the login screen from a list,
+without opening the control center:
+
+| Bar · `Super + Ctrl + B` | Docks · `Super + Ctrl + D` |
+| --- | --- |
+| ![](docs/screenshots/quick-looks-bar.jpg) | ![](docs/screenshots/quick-looks-dock.jpg) |
+| **Lock screen · `Super + Ctrl + K`** | **Login screen · `Super + Ctrl + G`** |
+| ![](docs/screenshots/quick-looks-lock.jpg) | ![](docs/screenshots/quick-looks-login.jpg) |
 
 Settings: `settings.json` → `barStyle` (checked by `style/BarLooks.js`), and
-`~/.config/aequalyn/docks.json` (the first start takes the old `dock` block).
+`~/.config/aequalyn/docks.json`.
 
-## AI and development tools
+## Store
 
-**Settings → AI tools** manages optional Claude Code, Codex CLI, GitHub Copilot
-CLI and Gemini CLI installations for the current user. The page also links to
-the package Store for runtimes, editors and other development packages. The
-agent installer and programming package profile live in the sibling
-`aequalyn` and `aequalyn-pkgs` repositories.
+`Super + Alt + S` — plugins, themes, cursors, wallpapers, looks, apps (Arch, AUR, Flathub,
+Snap), web apps, AI tools and AppImages. What others made comes from the
+[Market](https://github.com/Aequalyn/aequalyn-market), reviewed, and is installed and updated
+only to the exact commit that was. A plugin may bring a bar widget of its own (`widget` in
+its `plugin.json`). `Super + I` and `Super + R` choose what to install and remove.
+
+| Plugins | Market |
+| --- | --- |
+| ![](docs/screenshots/store-plugins.jpg) | ![](docs/screenshots/store-market.jpg) |
+
+## Lock screen
+
+Thirty designs, set on the Lock and sleep page or with `Super + Ctrl + K`; `Super + Ctrl +
+Shift + L` locks.
+
+![](docs/screenshots/lock-screen.jpg)
+
+## Aequalyn FM
+
+`Super + Alt + F` — the file manager, and the open and save dialogs of every app.
+
+![](docs/screenshots/files.jpg)
 
 ### Keys
 
+Everything is in **Keyboard shortcuts** in the control center, and `Super + /` shows it. In
+the picker:
+
 | Key | |
 | --- | --- |
-| `Super + T`, `Super + Ctrl + Shift + Space` | Open on Themes |
-| `Super + W` | Open on Wallpapers |
-| `Super + Shift + W` | Open on Rotation |
-| `Super + Alt + L` | Open on Layouts |
-| `Super + Ctrl + Space` | Next wallpaper (no picker) |
-| Arrows, PgUp / PgDn | Move |
+| Arrows | Move |
 | `Enter` / `Shift + Enter` | Apply and close / apply and keep browsing |
 | Typing | Search |
-| `Tab` / `Shift + Tab` | Next / previous collection |
-| `Ctrl + 1…6`, `Ctrl + L` | Pick / cycle layout |
-| `Ctrl + N` / `Ctrl + P` / `Ctrl + R` | Next / previous / random wallpaper |
-| `Esc` | Clear search, then close |
+| `Tab` | Themes or wallpapers |
+| `Ctrl + 1…8` | Pick a layout |
+| `Ctrl + F` | Favorite |
+| `Ctrl + ,` | Its settings |
+| `Esc` | Close |
 
 ### IPC
 
 ```sh
-qs ipc call atelier toggle themes        # themes | wallpapers | layouts | rotation | palette | bar | docks | panel
-qs ipc call atelier layout radial        # grid | carousel | filmstrip | radial | list | spotlight
+qs ipc show                              # everything there is
+qs ipc call aequalyn page bar            # a page of the control center
+qs ipc call aequalyn plugin docks off    # on | off | toggle
+qs ipc call atelier toggle themes        # themes | wallpapers (the rest opens its control center page)
+qs ipc call atelier layout radial        # slices | showcase | carousel | grid | filmstrip | radial | list | spotlight
 qs ipc call wallpaper next               # prev | random | set <file> | mode <mode>
-qs ipc call theme set tidal              # folder theme id, "Family/Name" or palette index
+qs ipc call theme set tidal              # a theme's id
 qs ipc call theme follow                 # colours follow the wallpaper again
 qs ipc call dock add                     # toggle | show | hide | add | settings <n>
+qs ipc call store section plugin         # a page of the Store
+qs ipc call quickLooks bar               # bar | dock | lock | login
 ```
 
 ### Adding a layout
 
-A layout is one file in `atelier/layouts/` taking `theme`, `font`, `items`
+A layout of the picker is one file in `plugins/atelier/layouts/` taking `theme`, `font`, `items`
 and `currentIndex`, exposing `columns` (for Up / Down) and emitting
-`hovered(index)` and `picked(index)`. Add it to `layouts/qmldir`, to the
-switch in `Atelier.qml` and to `LayoutPicker.qml`.
+`hovered(index)` and `picked(index)`. Add it to `layouts/qmldir`, to `layoutKeys` in
+`Atelier.qml` and `PickerPreview.qml`, and to the switch in `Switcher.qml`.
 
 ## Watchdog and plugin sandbox
 
@@ -103,7 +141,7 @@ plugin — never the shell, never the other plugins.
 
 | | |
 | --- | --- |
-| **Sandboxed** | Plugins marked `sandbox: true` in `Plugins.js` (`batteryGuard`, `breaks`, `diskWatch`, `nightLight`) and Store plugins whose manifest group is `background`: each runs as its own Quickshell instance with its own RAM budget, heartbeat and IPC. A crash, hang or leak restarts it; three failures in ten minutes turn it off, with a notification saying why. |
+| **Sandboxed** | Plugins marked `sandbox: true` in `Plugins.js` (`batteryGuard`, `breaks`, `diskWatch`, `nightLight` and the two self-tests) and Store plugins whose manifest group is `background`: each runs as its own Quickshell instance with its own RAM budget, heartbeat and IPC. A crash, hang or leak restarts it; three failures in ten minutes turn it off, with a notification saying why. |
 | **Watched, not sandboxed** | The bar, docks, panels and every visual plugin share the shell's process (their pixels are painted on its windows). A plugin that keeps failing to load -- after a moment's grace, so an update swapping the config tree never turns anything off by mistake -- is disabled with a notification; the shell itself is supervised: crash restart, freeze detection by heartbeat, a 2048 MiB memory ceiling. |
 
 ```sh
@@ -113,7 +151,7 @@ aequalyn-watchdog sandboxed                  # what would run out of process, an
 aequalyn-watchdog test <id> leak|hang|crash  # inject a fault and watch the policy work
 ```
 
-**See it happen**: Settings → Plugins → **Watchdog self-test**. Turned on, that
+**See it happen**: control center → Plugins → **Watchdog self-test**. Turned on, that
 plugin crashes, leaks and crashes again on purpose -- three narrated failures
 in its own process -- while the shell never goes down, until the watchdog
 turns it off with a notification. Turn it on again to watch once more.
@@ -138,21 +176,20 @@ expect out of process — is in [`tools/watchdog/README.md`](tools/watchdog/READ
 
 ```
 shell.qml          entry point, shares the palette as ts.theme
-atelier/           Atelier picker, AtelierService, layouts/, controls/, Bar and Docks tabs
+Plugins.js         every plugin; PluginInfo.js what its card says; PluginManager.qml loads them
+plugins/           one folder a plugin: bar/ (Bar.qml, BarSlot.qml, widgets/, quick/), docks/,
+                   atelier/, store/, lock/, aequalynfm/, showcase/, media/, kit/ (shared parts) ...
+settings/          AequalynSettings.qml (settings.json), UserPlugins.qml (the Store's plugins),
+                   ControlCenter.qml and center/ (its parts Cc*.qml and pages/)
 style/             the painter shared by bar and docks, AequalynLooks.js (looks, ensembles)
-bar/               Bar.qml (shared state, one bar per screen), BarSection.qml (a region that scrolls
-                   when full), BarSlot.qml, BarDecor.qml (the shapes behind the widgets),
-                   widgets/ (one file per widget, listed in widgets/Widgets.js)
-docks/             DocksService.qml (up to 16), DockWindow.qml
-theme-switcher/    Theme.qml: the colours of the current theme (a theme is its colours and wallpapers)
-settings/          AequalynSettings.qml (settings.json contract), ControlCenter.qml and center/ (the control center)
-app-launcher/ notifications/ osd/ clipscape/ power-menu/
-monitor-manager/ bluetooth/ idle-inhibitor/
+theme-switcher/    Theme.qml: the colours of the current theme
+tools/             the watchdog, and generators
+tests/             node tests
 ```
 
 ## Web apps
 
-Settings → **Web apps** turns a website into a window of its own: it appears in the
+The Store's **Web apps** page turns a website into a window of its own: it appears in the
 launcher, gets an icon, and has a `Super + Shift + <letter>` shortcut.
 
 - The chosen browser opens them. Chromium-based browsers use `--app=URL`, so each
@@ -172,7 +209,7 @@ launcher, gets an icon, and has a `Super + Shift + <letter>` shortcut.
 ## Tests
 
 ```sh
-node tests/looks.test.js     # every look, dock look, ensemble and bar shape
+for t in tests/*.test.js; do node "$t"; done
 ```
 
 ## Run from a checkout
@@ -194,3 +231,6 @@ See [LICENSE](LICENSE) for the full text.
 
 - `SECURITY.md` — security model and concerns.
 - `SKILL.md` — development/install skill reference.
+- `PLUGINS.md` — how a plugin is made; `plugins.md` — how they are loaded.
+- `THEMES.md` — how the shell takes a theme.
+- `tools/watchdog/README.md` — the supervisor and the sandbox.

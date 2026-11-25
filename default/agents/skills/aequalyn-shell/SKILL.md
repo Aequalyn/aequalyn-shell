@@ -7,7 +7,7 @@ description: Develop the Aequalyn QuickShell desktop under shell/ (QML, Hyprland
 
 Read this before editing the QuickShell desktop under `shell/` (or the installed copy at `/usr/share/aequalyn/shell/` and `~/.config/quickshell/`).
 
-The QuickShell desktop runs as a single long-running process. Hyprland autostart launches it via `qs`; do not start additional standalone Quickshell instances for individual components. Run `aequalyn-restart-shell` (or restart `qs`) after editing QML.
+The QuickShell desktop runs as a single long-running process. Hyprland autostart launches it via `qs`; do not start additional standalone Quickshell instances for individual components. Run `aequalyn-shell-restart` (or restart `qs`) after editing QML.
 
 ## Layout
 
@@ -21,7 +21,7 @@ The QuickShell desktop runs as a single long-running process. Hyprland autostart
 - Use `root:/` imports for cross-directory QML (e.g. `import "root:/settings"`, `import "root:/plugins/docks"`).
 - Bar widgets must declare `required property var bar`; pass `screen` explicitly when per-monitor behavior is needed (see `BarSlot.qml`).
 - Keep plugin entry points as `Item`s, not `ShellRoot`.
-- Restart the shell after changes: `pkill -x qs && qs &`.
+- Restart the shell after changes: `aequalyn-watchdog restart shell`.
 
 ## Hyprland integration
 
@@ -31,7 +31,7 @@ The QuickShell desktop runs as a single long-running process. Hyprland autostart
 
 ## Testing
 
-- Quickshell config load check: `timeout 8 quickshell -p /home/mihai/Projects/aequalyn-shell/shell.qml`.
+- Quickshell config load check: `timeout 8 quickshell -p ./shell.qml`.
 - Dry-run webapp commands: `AEQUALYN_WEBAPP_DRY_RUN=1 aequalyn-webapp ...`.
 
 ## References

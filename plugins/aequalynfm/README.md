@@ -30,7 +30,7 @@ Qt apps to use the portal. The shell config sets `GTK_USE_PORTAL=1` and floats
 dialog windows by their ` — Aequalyn FM` title suffix.
 
 Register the plugin in `Plugins.js` and restart the shell; it can be toggled
-under Settings → Plugins.
+under Control center → Plugins.
 
 ## Use
 

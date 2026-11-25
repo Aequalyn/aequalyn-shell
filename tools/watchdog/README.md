@@ -54,7 +54,7 @@ A plugin is only supervised while it is enabled: `enabledPlugins` in
 `~/.config/aequalyn/settings.json` is the single source of truth, and
 the watchdog follows the file wherever it was changed (the Settings
 page, its own CLI, or an automatic turn-off). Toggling a sandboxed
-plugin in Settings → Plugins starts or stops its process within a
+plugin in Control center → Plugins starts or stops its process within a
 second, no restart needed.
 
 Not everything *can* be sandboxed: a bar widget, a dock, an embedded
@@ -94,6 +94,8 @@ so the shell's keep-alive does not bring it straight back; `start` (or
 `ensure`) clears the marker. The shell calls `ensure` every two minutes,
 so a supervisor killed behind its back -- anything but a deliberate
 `stop` -- is back within two minutes, adopting the running shell.
+A supervisor holds a lock for as long as it lives, so there is never a second
+one: one too busy to answer is left alone, a dead one is replaced.
 The next `start` also kills leftover sandbox instances (a previous
 supervisor's hosts still hold their configs, and `qs -n` refuses a
 duplicate) and starts them fresh.
@@ -266,12 +268,12 @@ Two reload facts worth knowing when testing plugins:
 
 Two ways to watch the protection work:
 
-* **Watchdog self-test** (Settings → Plugins): a built-in plugin that stages
+* **Watchdog self-test** (Control center → Plugins): a built-in plugin that stages
   the whole policy on itself when turned on -- crash, leak, crash, each step
   narrated in a notification, ending turned off by the watchdog. The demo
   runs only inside its sandbox: it refuses to do anything in-process, so it
   can never hurt the shell it is demonstrating the protection of.
-* **Root gate self-test** (Settings → Plugins): the gate's own demo, a
+* **Root gate self-test** (Control center → Plugins): the gate's own demo, a
   built-in whose one root action is pinned on its `Plugins.js` line. Turned
   on, it asks through the gate immediately -- the approval window names the
   plugin and the exact command, the password goes to sudo on a pipe, and a

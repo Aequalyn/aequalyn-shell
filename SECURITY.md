@@ -17,7 +17,7 @@ needs privileges.
 
 ## Sandbox
 
-- Supervisor: `/home/mihai/Projects/aequalyn-shell/tools/watchdog/aequalyn-watchdog` (Python).
+- Supervisor: `tools/watchdog/aequalyn-watchdog` (Python).
   Runs the shell plus sandboxed plugins as separate QuickShell processes; refuses to
   run as root; monitors RAM and heartbeats; kills and disables on failure.
 - Sandbox set: built-ins with `sandbox:true` (`batteryGuard`, `breaks`, `diskWatch`,

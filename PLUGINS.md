@@ -65,7 +65,7 @@ being summoned by a bare `qs ipc call <id>` (only the main shell's targets answe
 that). Plugins people summon with a key, or that draw inside the shell's windows
 (bar widgets, docks, embedded panels), stay in-process and are not sandboxable.
 
-To see all of it happen on purpose, turn on **Watchdog self-test** in Settings →
+To see all of it happen on purpose, turn on **Watchdog self-test** in Control center →
 Plugins: it crashes, leaks and crashes again in its own process -- with a message
 narrating each step -- while the shell stays up, until the watchdog turns it off.
 
@@ -105,7 +105,7 @@ In `plugin.json` (a Store plugin):
     "command": ["/usr/bin/id", "-u"] }] }
   ```
 
-  That one is real: **Root gate self-test** (Settings → Plugins) is the gate's
+  That one is real: **Root gate self-test** (Control center → Plugins) is the gate's
   own demo, the worked example. Turned on, it asks for its one action at
   once -- the window names it, you answer, and a notification narrates what
   became of the request: allowed and it really ran as root, denied or timed
