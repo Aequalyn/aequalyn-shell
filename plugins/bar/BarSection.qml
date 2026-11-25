@@ -1,14 +1,13 @@
 // One region of the bar (left, center or right): its widgets in a row, kept against its
 // own side (the center one centered). When they don't fit, the row scrolls sideways
 // instead of running into the next region: with the mouse wheel or a touchpad's swipe
-// anywhere over it, or by dragging the space between widgets. The widgets themselves
-// never take the wheel.
+// anywhere over the bar (Bar.qml), or by dragging the space between widgets. The widgets
+// themselves never take the wheel.
 // A full right region starts at its end, so the widgets nearest the screen edge stay in
 // view, and the center at its middle; where you scroll to stays put while widgets change
 // width (the CPU reading does every few seconds).
 import QtQuick
 import "root:/settings"
-import "root:/style/Wheel.js" as Wheel
 
 Item {
   id: section
@@ -101,21 +100,6 @@ Item {
           inkStart: section.inkStart
         }
       }
-    }
-  }
-
-  // The mouse wheel (and a touchpad's two-finger swipe) slides a full region, over its
-  // widgets and the room between them alike. No widget takes the wheel itself: it never
-  // changes the volume, the brightness or anything else. Taken here, over the whole
-  // region, so it always means the same. A MouseArea, not a WheelHandler: a
-  // WheelHandler never hears a real mouse wheel here.
-  MouseArea {
-    anchors.fill: parent
-    acceptedButtons: Qt.NoButton
-    onWheel: wheel => {
-      wheel.accepted = true;
-      if (section.overflowing && !section.band.dragging)
-        section.scrollBy(-Wheel.amount(wheel) / 2);
     }
   }
 }

@@ -18,6 +18,7 @@ import  "../../style/Shapes.js" as Shapes
 import  "../../style/BarLooks.js" as BarLooks
 import  "../../style/Colors.js" as Colors
 import "root:/plugins/atelier"
+import "root:/style/Wheel.js" as Wheel
 
 Scope {
   id: root
@@ -482,6 +483,33 @@ Scope {
             width: root.vertical ? parent.width : regions.rightW
             height: root.vertical ? regions.rightW : parent.height
           }
+          // the full region at a place along the bar: the one there, else the nearest
+          function fullAt(x, y) {
+            let best = null, least = Infinity;
+            for (const s of [leftSec, centerSec, rightSec]) {
+              if (!s.overflowing) continue;
+              const from = root.vertical ? s.y : s.x, to = from + (root.vertical ? s.height : s.width);
+              const at = root.vertical ? y : x, d = Math.max(0, from - at, at - to);
+              if (d < least) { least = d; best = s; }
+            }
+            return best;
+          }
+        }
+      }
+
+      // The mouse wheel (and a touchpad's two-finger swipe) slides a full region, from
+      // anywhere on the bar: its widgets, the room between them, a region that fits, the
+      // empty bar and its edge alike. No widget takes the wheel itself: it never changes the
+      // volume, the brightness or anything else. A MouseArea, not a WheelHandler: a
+      // WheelHandler never hears a real mouse wheel here.
+      MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.NoButton
+        onWheel: wheel => {
+          wheel.accepted = true;
+          if (band.dragging) return;
+          const p = mapToItem(regions, wheel.x, wheel.y), s = regions.fullAt(p.x, p.y);
+          if (s) s.scrollBy(-Wheel.amount(wheel) / 2);
         }
       }
     }
