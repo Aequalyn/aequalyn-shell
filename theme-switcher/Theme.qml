@@ -384,8 +384,9 @@ Singleton {
     // plugin uses.
     function applyBrowserTheme(t) {
         browserProc.command = ["sh", "-c",
-            'aequalyn-browser-theme sync --color "$1" >/dev/null 2>&1 || true',
-            "sh", String(t.bgBase || "")];
+            'aequalyn-browser-theme sync --color "$1" --palette "$2" >/dev/null 2>&1 || true',
+            "sh", String(t.bgBase || ""),
+            ["bgBase", "bgSurface", "bgHover", "bgBorder", "textPrimary", "textMuted", "accentPrimary"].map(k => String(t[k] || "").slice(0, 7)).join(",")];
         browserProc.running = true;
     }
 
