@@ -58,7 +58,7 @@ var sections = [
       ["Built-in pack", [
         "Super + / — Key hints",
         "Super + Shift + Space — Command palette",
-        "Super + = — Calculator",
+        "Super + Alt + C — Calculator",
         "Super + . — Emoji picker",
         "Super + Shift + P — Color picker",
         "Super + Alt + N — Quick notes",

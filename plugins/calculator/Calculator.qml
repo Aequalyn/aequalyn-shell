@@ -1,4 +1,4 @@
-// Calculator (Super + =): a graphing calculator with the keys of one, and the answer
+// Calculator (Super + Alt + C): a graphing calculator with the keys of one, and the answer
 // as you type. Four views, Tab between them:
 //   Calc    sums, equations (solved for their unknown), letters to store in, the answer
 //           as a fraction or a multiple of π too, and every sum so far to reuse

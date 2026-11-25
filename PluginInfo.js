@@ -62,7 +62,7 @@ var info = {
     plume:          { icon: "\u{F01C0}", group: "background", keys: "",                     page: "cursor",
                       about: "Your own cursor, and trails and halos around the pointer." },
     // ---- the built-in pack ----
-    calculator:     { icon: "\u{F00EC}", group: "key",        keys: "Super + =",            page: "", pack: true,
+    calculator:     { icon: "\u{F00EC}", group: "key",        keys: "Super + Alt + C",      page: "", pack: true,
                       about: "A graphing calculator with its keys: sums with the answer as you type, equations solved, graphs, tables and lists." },
     colorPicker:    { icon: "\u{F0266}", group: "key",        keys: "Super + Shift + P",    page: "", pack: true,
                       about: "Click any pixel on the screen; its colour is copied as #rrggbb." },

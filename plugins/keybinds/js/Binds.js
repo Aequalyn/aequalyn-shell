@@ -154,7 +154,7 @@ var labels = {
     "SUPER + SLASH": ["Key hints", "pack"],
     "SUPER + F1": ["Manual", "pack"],
     "SUPER + SHIFT + SPACE": ["Command palette", "pack"],
-    "SUPER + EQUAL": ["Calculator", "pack"],
+    "SUPER + ALT + C": ["Calculator", "pack"],
     "SUPER + PERIOD": ["Emoji", "pack"],
     "SUPER + CTRL + PERIOD": ["Fonts", "pack"],
     "SUPER + CTRL + B": ["Quick looks: the bar", "pack"],
