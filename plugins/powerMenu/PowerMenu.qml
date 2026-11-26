@@ -22,7 +22,7 @@ Scope {
 
     readonly property var actions: [
         { label: "Lock screen", icon: "󰌾", cmd: ["aequalyn-lock", "lock"] },
-        { label: "Log out",     icon: "󰍃", cmd: ["hyprctl", "dispatch", "hl.dsp.exit()"] },
+        { label: "Log out",     icon: "󰍃", cmd: ["sh", "-c", "loginctl terminate-session \"$XDG_SESSION_ID\" 2>/dev/null || hyprctl dispatch 'hl.dsp.exit()'"] },
         { label: "Reboot",      icon: "󰜉", cmd: ["systemctl", "reboot"] },
         { label: "Shutdown",    icon: "󰐥", cmd: ["systemctl", "poweroff"] }
     ]
