@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import errno
 import fcntl
+import hashlib
 import json
 import os
 import queue
@@ -1364,9 +1365,39 @@ class Supervisor:
             log(f"escalation flow failed: {e!r}")
             self.esc_reply(conn, {"ok": False, "error": f"internal error: {e}"})
 
+    # The Store's package actions run one fixed command, but what it installs is the list
+    # the Store staged. The window shows that list, and root gets its sha256 so a list
+    # changed after the person saw it is refused (aequalyn-store gate-pkg --expect).
+    STORE_PKG = {"pkg-install": "install", "pkg-remove": "remove"}
+    PKG_NAME_RE = re.compile(r"^[A-Za-z0-9@_+][A-Za-z0-9@._+-]{0,127}$")
+
+    def staged_packages(self, act: dict) -> tuple[list[str], str] | str:
+        """(the argv to run, what the window shows), or why the request is refused."""
+        stage = Path.home() / ".local" / "state" / "aequalyn" / "gate" / "pkg.json"
+        try:
+            raw = stage.read_bytes()
+            d = json.loads(raw)
+        except (OSError, ValueError):
+            return "the staged packages could not be read"
+        names = d.get("packages") if isinstance(d, dict) else None
+        if d.get("op") != self.STORE_PKG[act["id"]] or not isinstance(names, list) \
+                or not 1 <= len(names) <= 32 or not all(isinstance(n, str) and self.PKG_NAME_RE.match(n) for n in names):
+            return "the staged packages are not a valid request"
+        pacman = "pacman -S --needed --noconfirm" if d["op"] == "install" else "pacman -Rns --noconfirm"
+        return (act["command"] + ["--expect", hashlib.sha256(raw).hexdigest()],
+                pacman + " -- " + " ".join(names))
+
     def escalate(self, conn: socket.socket, rid: str, pend: dict, plugin_id: str, act: dict) -> None:
         action_id = act["id"]
         cmd_text = " ".join(act["command"])
+        if plugin_id == "store" and action_id in self.STORE_PKG:
+            staged = self.staged_packages(act)
+            if isinstance(staged, str):
+                log(f"escalation {rid}: refused, {staged}")
+                self.esc_reply(conn, {"ok": False, "error": staged})
+                return
+            act = dict(act, command=staged[0])
+            cmd_text = staged[1]
         log(f"escalation {rid}: '{plugin_id}' asks to run as root: {cmd_text}")
         payload = json.dumps({
             "requestId": rid, "plugin": plugin_id,
