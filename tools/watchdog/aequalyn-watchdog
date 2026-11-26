@@ -89,6 +89,35 @@ STORE_DIR = Path(os.environ.get("AEQUALYN_STORE_DIR")
 # the mask of what is started: -1 leaves it as it is
 CHILD_UMASK = -1
 QS_BIN = os.environ.get("AEQUALYN_QS_BIN") or shutil.which("qs") or shutil.which("quickshell") or "qs"
+# The Hyprland session this supervisor belongs to. It must never outlive it: one left over from
+# a session that was logged out of (started from a terminal, it survives the logout) hands every
+# shell it starts that session's address, and the shell can no longer reach Hyprland at all.
+HYPR_SIG = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+
+
+def hyprland_alive(sig: str) -> bool:
+    """Is the Hyprland of this signature still running? Without one, it cannot be told: yes."""
+    if not sig:
+        return True
+    return any((base / sig / ".socket.sock").exists() for base in (RUNTIME / "hypr", Path("/tmp/hypr")))
+
+
+def session_of(pid: int) -> str:
+    """The Hyprland session a process was started in ("" when it cannot be read)."""
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as f:
+            for item in f.read().split(b"\0"):
+                if item.startswith(b"HYPRLAND_INSTANCE_SIGNATURE="):
+                    return item.split(b"=", 1)[1].decode("utf-8", "replace")
+    except OSError:
+        pass
+    return ""
+
+
+def of_ended_session(pid: int) -> bool:
+    """Was this process started in another Hyprland session, one that has ended?"""
+    sig = session_of(pid)
+    return bool(sig) and sig != HYPR_SIG and not hyprland_alive(sig)
 
 # folders from the config root that a plugin may import with root:/
 HOST_LINKS = ["plugins", "settings", "style", "assets", "theme-switcher", "default"]
@@ -627,8 +656,34 @@ def find_shell_pid() -> int | None:
     for pid, args in qs_processes():
         # it must point at the main config dir, not at a sandbox host
         if any(str(CONFIG_DIR) in a for a in args) and not any("watchdog/hosts" in a for a in args):
-            return pid
+            # never one of an ended session: it can no longer reach Hyprland
+            if not of_ended_session(pid):
+                return pid
     return None
+
+
+def end_stale_shells() -> None:
+    """Stop the main shells left from a Hyprland session that has ended: they cannot reach
+    Hyprland, and while one runs, `qs -n` refuses to start this session's own."""
+    stale = [pid for pid, args in qs_processes()
+             if any(str(CONFIG_DIR) in a for a in args)
+             and not any("watchdog/hosts" in a for a in args)
+             and of_ended_session(pid)]
+    for pid in stale:
+        log(f"stopping a shell of an ended Hyprland session (pid {pid})")
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+    deadline = time.time() + 4
+    while time.time() < deadline and any(proc_alive(p) for p in stale):
+        time.sleep(0.1)
+    for pid in stale:
+        if proc_alive(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------- units ----
@@ -853,6 +908,7 @@ class Supervisor:
         if unit.alive:
             return
         if adopt:
+            end_stale_shells()
             pid = find_shell_pid()
             if pid:
                 unit.pid, unit.popen = pid, None
@@ -1623,6 +1679,7 @@ class Supervisor:
         return {
             "running": True,
             "pid": os.getpid(),
+            "hyprland": HYPR_SIG,
             "shell": {"running": bool(shell and shell.alive),
                       "pid": shell.current_pid if shell else None,
                       "rssMiB": round(shell.ram_kb / 1024, 1) if shell else 0,
@@ -1684,8 +1741,18 @@ class Supervisor:
         ram_every = max(2, int(self.conf["ramCheckSeconds"]))
         hb_every = max(5, float(self.conf["heartbeatSeconds"]))
 
+        gone = 0
         while not self.shutting_down:
             time.sleep(1.0)
+            # its Hyprland session ended (a logout): leave with what it started, so the next
+            # session gets a supervisor of its own. Three seconds in a row, never one glance
+            gone = 0 if hyprland_alive(HYPR_SIG) else gone + 1
+            if gone >= 3:
+                log("its Hyprland session has ended: stopping, with what it started")
+                self.shutting_down = True
+                for unit in list(self.units.values()):
+                    self.stop_unit(unit, "Hyprland session ended")
+                break
             self.reap()
             self.start_due()
             self.sync_units()
@@ -1765,10 +1832,43 @@ def supervisor_there() -> bool:
         time.sleep(0.25)
 
 
+def supervisor_stale() -> bool:
+    """Does the running supervisor belong to a Hyprland session that has ended? (One from
+    before it said so is known by what it was started with.)"""
+    try:
+        st = send_to_daemon({"cmd": "status"}, timeout=3)
+    except (OSError, ValueError):
+        return False
+    sig = st.get("hyprland")
+    if sig is None:
+        try:
+            sig = session_of(int(st.get("pid") or 0))
+        except (TypeError, ValueError):
+            return False
+    return bool(sig) and sig != HYPR_SIG and not hyprland_alive(sig)
+
+
 def cmd_start(args) -> int:
     if supervisor_there():
-        print("aequalyn-watchdog is already running")
-        return 0
+        if not supervisor_stale():
+            print("aequalyn-watchdog is already running")
+            return 0
+        # left from a session that was logged out of: replaced, never adopted
+        print("aequalyn-watchdog: the running one is of an ended Hyprland session; replacing it")
+        try:
+            send_to_daemon({"cmd": "stop-daemon", "args": [True]}, timeout=30)
+        except (OSError, ValueError):
+            pass
+        until = time.monotonic() + 15
+        while True:
+            f = take_lock()
+            if f is not None:
+                f.close()
+                break
+            if time.monotonic() > until:
+                print("aequalyn-watchdog: the old one did not stop", file=sys.stderr)
+                return 1
+            time.sleep(0.25)
     conf = {**DEFAULTS, **read_json(WATCHDOG_CONF, {})}
     if not shutil.which(QS_BIN):
         print("aequalyn-watchdog: qs/quickshell not found", file=sys.stderr)
