@@ -4,6 +4,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import "root:/plugins/kit"
 
 Scope {
@@ -46,6 +47,13 @@ Scope {
         }
     }
     Timer { interval: 60000; repeat: true; running: true; onTriggered: root.update() }
+    // a reload of Hyprland's config (a theme change, a key changed) clears the screen
+    // shader: put it back at once, so the night light stays on through it
+    Connections {
+        target: Hyprland
+        // the shader file is already written: no need to wait for it
+        function onRawEvent(event) { if (event.name === "configreloaded" && root.applied) apply.triggered() }
+    }
     Connections { target: store; function onValuesChanged() { root.update() } function onLoadedChanged() { root.update() } }
 
     IpcHandler {
