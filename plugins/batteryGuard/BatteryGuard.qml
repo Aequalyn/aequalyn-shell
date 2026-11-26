@@ -20,7 +20,8 @@ Scope {
             const l = String(out).trim().split("\n")
             if (code !== 0 || l.length < 2) { root.level = -1; return }
             root.level = parseInt(l[0]); root.status = l[1]
-            const charging = root.status === "Charging" || root.status === "Full"
+            // plugged in: "Charging", "Full", or "Not charging" (held by a charge limit)
+            const charging = root.status !== "Discharging"
             const low = Number(store.get("low")), crit = Number(store.get("critical"))
             if (!charging && root.level <= crit && root.told !== "critical") { root.told = "critical"; KitHost.notify("Battery nearly empty", root.level + "% left. Plug in now.") }
             else if (!charging && root.level <= low && root.level > crit && root.told === "") { root.told = "low"; KitHost.notify("Battery low", root.level + "% left.") }
