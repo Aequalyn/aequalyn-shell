@@ -11,8 +11,9 @@ QuickPopup {
     required property var bar
 
     // log out, restart and shut down: a second click within four seconds does it.
-    // Log out ends the logind session, never a bare Hyprland exit: start-hyprland
-    // takes that for a crash and restarts Hyprland, skipping SDDM every other time.
+    // Log out runs aequalyn-logout (a fresh desktop with SDDM autologin on, else
+    // the greeter), never a bare Hyprland exit: start-hyprland can take that for
+    // a crash and restart Hyprland, which skipped SDDM every other time.
     property string armed: ""
     Timer { id: disarm; interval: 4000; onTriggered: q.armed = "" }
     onVisibleChanged: if (!visible) q.armed = ""
@@ -59,7 +60,7 @@ QuickPopup {
             glyph: "\u{F0343}"; title: "Log out"
             sub: q.armed === "logout" ? "Click again to log out" : "Close every app"
             on: q.armed === "logout"
-            onToggled: q.act("logout", ["sh", "-c", "loginctl terminate-session \"$XDG_SESSION_ID\" 2>/dev/null || hyprctl dispatch 'hl.dsp.exit()'"], true)
+            onToggled: q.act("logout", ["sh", "-c", "command -v aequalyn-logout >/dev/null && exec aequalyn-logout; loginctl terminate-session \"$XDG_SESSION_ID\" 2>/dev/null || hyprctl dispatch 'hl.dsp.exit()'"], true)
         }
         QuickTile {
             glyph: "\u{F0709}"; title: "Restart"
