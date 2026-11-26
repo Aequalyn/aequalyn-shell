@@ -131,8 +131,11 @@ Scope {
                 anchors.centerIn: parent
                 opacity: veil.progress
                 scale: 0.97 + 0.03 * veil.progress
-                width: 480
-                height: col.implicitHeight + 32
+                // wide enough for the buttons and the countdown on one line, never wider
+                // than the screen; as tall as it needs, the command scrolling if it is long
+                width: Math.min(Math.max(520, buttons.implicitWidth + countdownWidth.advanceWidth + 48),
+                                parent.width - 48)
+                height: Math.min(col.implicitHeight + 36, parent.height - 48)
                 radius: 16
                 color: root.theme.bgBase
                 border.color: root.theme.bgBorder
@@ -153,6 +156,7 @@ Scope {
                         font.bold: true
                         font.family: root.font
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                     }
 
                     Text {
@@ -166,6 +170,7 @@ Scope {
                         font.pixelSize: 12
                         font.family: root.font
                         Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
                     }
 
                     Text {
@@ -181,20 +186,29 @@ Scope {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.topMargin: 3
-                        implicitHeight: cmdText.implicitHeight + 20
+                        // all of the command is always there to read: a long one scrolls
+                        implicitHeight: Math.min(cmdText.implicitHeight, 160) + 20
                         radius: 10
                         color: root.theme.bgSurface
                         border.width: 1
                         border.color: root.theme.bgBorder
-                        Text {
-                            id: cmdText
+                        Flickable {
                             anchors.fill: parent
                             anchors.margins: 10
-                            text: root.request ? root.request.command : ""
-                            color: root.theme.textPrimary
-                            font.pixelSize: 12
-                            font.family: root.font
-                            wrapMode: Text.WrapAnywhere
+                            clip: true
+                            contentWidth: width
+                            contentHeight: cmdText.implicitHeight
+                            boundsBehavior: Flickable.StopAtBounds
+                            interactive: contentHeight > height
+                            Text {
+                                id: cmdText
+                                width: parent.width
+                                text: root.request ? root.request.command : ""
+                                color: root.theme.textPrimary
+                                font.pixelSize: 12
+                                font.family: root.font
+                                wrapMode: Text.WrapAnywhere
+                            }
                         }
                     }
 
@@ -205,6 +219,7 @@ Scope {
                         color: root.theme.textMuted
                         font.pixelSize: 11
                         font.family: root.font
+                        wrapMode: Text.WordWrap
                     }
 
                     Text {
@@ -214,6 +229,7 @@ Scope {
                         color: root.theme.textMuted
                         font.pixelSize: 11
                         font.family: root.font
+                        wrapMode: Text.WordWrap
                     }
 
                     // the password: straight to sudo through the supervisor
@@ -233,6 +249,7 @@ Scope {
                             anchors.leftMargin: 12
                             anchors.right: parent.right
                             anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
                             verticalAlignment: TextInput.AlignVCenter
                             color: root.theme.textPrimary
                             selectionColor: root.theme.accentPrimary
@@ -246,12 +263,24 @@ Scope {
                         }
                     }
 
-                    RowLayout {
+                    // the countdown beside the buttons, or above them when both do not fit
+                    // measured on its longest text, so the window does not change size as it counts
+                    TextMetrics {
+                        id: countdownWidth
+                        font.pixelSize: 11
+                        font.family: root.font
+                        text: "Denied automatically in " + root.timeoutSeconds + " s"
+                    }
+                    GridLayout {
+                        id: footer
                         Layout.fillWidth: true
                         Layout.topMargin: 4
-                        spacing: 8
+                        columns: width >= countdownWidth.advanceWidth + buttons.implicitWidth + columnSpacing ? 2 : 1
+                        columnSpacing: 12
+                        rowSpacing: 8
 
                         Text {
+                            id: countdownLabel
                             Layout.fillWidth: true
                             text: root.request
                                   ? "Denied automatically in " + root.secondsLeft + " s"
@@ -259,15 +288,21 @@ Scope {
                             color: root.theme.textMuted
                             font.pixelSize: 11
                             font.family: root.font
+                            elide: Text.ElideRight
                         }
 
-                        Btn { text: "Deny"; onClicked: root.answer("deny") }
-                        Btn {
-                            text: "Always allow this"
-                            visible: root.request !== null && !root.request.allowed
-                            onClicked: root.answer("always")
+                        RowLayout {
+                            id: buttons
+                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                            spacing: 8
+                            Btn { text: "Deny"; onClicked: root.answer("deny") }
+                            Btn {
+                                text: "Always allow this"
+                                visible: root.request !== null && !root.request.allowed
+                                onClicked: root.answer("always")
+                            }
+                            Btn { text: "Allow once"; primary: true; onClicked: root.answer("once") }
                         }
-                        Btn { text: "Allow once"; primary: true; onClicked: root.answer("once") }
                     }
                 }
             }
