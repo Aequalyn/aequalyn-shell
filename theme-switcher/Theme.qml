@@ -462,40 +462,13 @@ Singleton {
             "color14 " + t.accentCyan,
             "color15 " + t.textPrimary
         ].join("\n");
-        var colorsArgs = [
-            "foreground=" + t.textPrimary,
-            "background=" + t.bgBase,
-            "cursor=" + t.accentPrimary,
-            "cursor_text_color=" + t.bgBase,
-            "selection_foreground=" + t.textPrimary,
-            "selection_background=" + t.bgSelected,
-            "active_tab_foreground=" + t.textPrimary,
-            "active_tab_background=" + t.bgSurface,
-            "inactive_tab_foreground=" + t.textMuted,
-            "inactive_tab_background=" + t.bgBase,
-            "color0=" + t.bgSurface,
-            "color1=" + t.accentRed,
-            "color2=" + t.accentGreen,
-            "color3=" + t.accentOrange,
-            "color4=" + t.accentPrimary,
-            "color5=" + t.accentPrimary,
-            "color6=" + t.accentCyan,
-            "color7=" + t.textSecondary,
-            "color8=" + t.textMuted,
-            "color9=" + t.accentRed,
-            "color10=" + t.accentGreen,
-            "color11=" + t.accentOrange,
-            "color12=" + t.accentPrimary,
-            "color13=" + t.accentPrimary,
-            "color14=" + t.accentCyan,
-            "color15=" + t.textPrimary
-        ].join(" ");
+        // kitty's remote control is off: the colours go in theme-preview.conf, which kitty.conf
+        // includes last, and SIGUSR1 makes every kitty read its config again. A real colour
+        // change (aequalyn-apply-palette, matugen) removes the file. The colours go in as an
+        // argument, never as part of the command.
         kittyProc.command = ["sh", "-c",
-            "printf '%s\\n' '" + colorsConf + "' > $HOME/.config/kitty/theme-colors.conf; " +
-            "for sock in /tmp/kitty-*; do " +
-            "[ -S \"$sock\" ] && kitty @ --to \"unix:$sock\" set-colors --all --configured " + colorsArgs + "; " +
-            "done"
-        ];
+            'printf "%s\\n" "$1" > "$HOME/.config/kitty/theme-preview.conf" && pkill -USR1 -x kitty; true',
+            "sh", colorsConf];
         kittyProc.running = true;
     }
 
