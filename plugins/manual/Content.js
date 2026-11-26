@@ -16,6 +16,7 @@ var sections = [
         "Super + Alt + A — Default apps launcher",
         "Super + Alt + S — Store",
         "Super + , — Aequalyn settings",
+        "Super + Alt + K — Keyboard shortcuts (change any key)",
         "Super + T — Themes picker",
         "Super + W — Wallpapers picker",
         "Super + Shift + W — Wallpaper rotation",
@@ -129,6 +130,30 @@ var sections = [
       ["Notes", [
         "Aequalyn manages some generated Hyprland files; prefer Settings or Aequalyn commands when available.",
         "Layout behavior is handled by Aequalyn layout modules and can be changed from layouts controls."
+      ]]
+    ]
+  },
+  {
+    id: "quickshell",
+    icon: "\u{F0169}",
+    title: "Quickshell",
+    body: [
+      ["What it is", [
+        "Quickshell draws the whole Aequalyn desktop: the bar, docks, launchers, control center, notifications, lock screen and these panels.",
+        "It is one long-running process (qs), started by Hyprland; each part is a plugin you can turn on or off in Settings > Plugins."
+      ]],
+      ["Useful commands", [
+        "aequalyn-shell-restart — Restart the shell after a change",
+        "qs ipc show — Every panel and what it can be asked to do",
+        "qs ipc call manual toggle — Open or close a panel from a key or a script",
+        "qs ipc call aequalyn page keybinds — Open a control center page",
+        "qs log — The shell's log, to see why something did not load"
+      ]],
+      ["Where it lives", [
+        "~/.config/quickshell/ — The live shell (replaced on every update)",
+        "~/.config/quickshell/plugins/ — One folder per plugin",
+        "~/.config/aequalyn/settings.json — What you chose in the control center",
+        "~/.config/hypr/keybinds.lua — The keys that call the panels (qs ipc call ...)"
       ]]
     ]
   },

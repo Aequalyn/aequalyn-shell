@@ -221,7 +221,7 @@ var ipcNames = {
     calculator: "Calculator", colorPicker: "Color picker", emoji: "Emoji",
     notes: "Quick notes", keyHints: "Key hints", palette: "Command palette",
     sysmon: "System monitor", screenText: "Copy text from the screen", timer: "Timer",
-    focus: "Focus", keybinds: "Keyboard shortcuts", bar: "The bar"
+    focus: "Focus", keybinds: "Keyboard shortcuts", bar: "The bar", manual: "Manual"
 };
 var varNames = { term: "Open a terminal", files: "Open your files", browser: "Open the browser" };
 var dspWords = {
