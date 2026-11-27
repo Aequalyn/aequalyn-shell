@@ -213,6 +213,11 @@ launcher, gets an icon, and has a `Super + Shift + <letter>` shortcut.
 for t in tests/*.test.js; do node "$t"; done
 ```
 
+[tests/README.md](tests/README.md) explains every unit test and how to read its
+output. For a live session, `python3 tests/live/shell_test.py` checks keybinds,
+opens/screenshots every plugin and restores any plugin the watchdog killed
+during the run; see [tests/live/README.md](tests/live/README.md).
+
 ## Run from a checkout
 
 ```sh
