@@ -279,4 +279,12 @@ const settings = fs.readFileSync(path.join(__dirname, "../settings/AequalynSetti
 ok(/readonly property var newPlugins: \[[^\]]*"atelier"/.test(settings),
     "existing installs gain the theme and wallpaper picker once");
 
+// Super + / calls `qs ipc call keyHints toggle`: with the plugin off there is no
+// IPC target at all, so a fresh install must ship it on and older ones gain it.
+ok(/readonly property var newPlugins: \[[^\]]*"keyHints"/.test(settings),
+    "existing installs gain key hints once, so Super + / starts working");
+const defaults = settings.match(/property var enabledPlugins: \[([\s\S]*?)\]/);
+ok(defaults && defaults[1].indexOf('"keyHints"') >= 0,
+    "fresh installs have key hints on by default");
+
 console.log("keybinds: " + n + " ok");
