@@ -12,6 +12,7 @@ CcMore 1.0 CcMore.qml
 CcCard 1.0 CcCard.qml
 CcNote 1.0 CcNote.qml
 CcField 1.0 CcField.qml
+SpeedGauge 1.0 SpeedGauge.qml
 AppsService 1.0 AppsService.qml
 WebappsService 1.0 WebappsService.qml
 UpdatesService 1.0 UpdatesService.qml

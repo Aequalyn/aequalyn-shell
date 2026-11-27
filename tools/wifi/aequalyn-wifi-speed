@@ -1,0 +1,209 @@
+#!/usr/bin/env python3
+"""Measure download/upload speed using fast.com's own endpoints.
+
+Fast.com has no public API, so this follows what its web client does: ask
+api.fast.com for Netflix Open Connect targets, then transfer to/from them and
+time the bytes. Progress is printed as one JSON object per line so QML can move
+two gauges while the test runs:
+
+  {"phase":"download","mbps":42.1}
+  {"phase":"upload","mbps":18.6}
+  {"ok":true,"download":44.3,"upload":18.9,"mbps":44.3}
+
+The final line is the result. Errors are {"ok":false,"error":"..."} and exit 1.
+--self-test checks the pure helpers without touching the network.
+"""
+
+import http.client
+import json
+import re
+import sys
+import threading
+import time
+import urllib.parse
+import urllib.request
+
+TOKEN = "YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm"  # the token fast.com's own page ships
+API = "https://api.fast.com/netflix/speedtest/v2"
+RANGE = "/range/0-26214400"
+DOWNLOAD_SECONDS = 8.0
+UPLOAD_SECONDS = 8.0
+CONNECTIONS = 3
+CHUNK = 65536
+BODY = b"\0" * CHUNK
+UA = "Mozilla/5.0 (X11; Linux x86_64) Aequalyn/1.0"
+
+
+def log(obj):
+    print(json.dumps(obj, sort_keys=True), flush=True)
+
+
+def target_url(url):
+    """Append fast.com's byte-range path without losing the query string."""
+    p = urllib.parse.urlparse(url)
+    return urllib.parse.urlunparse(p._replace(path=p.path.rstrip("/") + RANGE))
+
+
+def mbps(byte_count, seconds):
+    return byte_count * 8.0 / seconds / 1000000.0 if seconds > 0 else 0.0
+
+
+def fetch(url, limit=2097152, timeout=10):
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return response.read(limit).decode("utf-8", "replace")
+
+
+def get_token():
+    """Refresh the token only if fast.com rejects the built-in one."""
+    try:
+        page = fetch("https://fast.com/")
+        script = re.search(r'app-[a-z0-9]+\.js', page)
+        if script:
+            js = fetch(urllib.parse.urljoin("https://fast.com/", script.group(0)))
+            token = re.search(r'token:"([^"]+)"', js)
+            if token:
+                return token.group(1)
+    except Exception:
+        pass
+    return TOKEN
+
+
+def get_targets():
+    last = None
+    for token in (TOKEN, get_token()):
+        url = "%s?https=true&token=%s&urlCount=%d" % (
+            API, urllib.parse.quote(token, safe=""), CONNECTIONS)
+        try:
+            data = json.loads(fetch(url))
+            targets = [target_url(t["url"]) for t in data.get("targets", []) if t.get("url")]
+            if targets:
+                return targets
+            last = "fast.com returned no targets"
+        except Exception as e:
+            last = str(e)
+    raise RuntimeError(last or "could not reach fast.com")
+
+
+class Traffic:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.bytes = 0
+        self.errors = []
+        self.active = 0
+
+    def add(self, count):
+        with self.lock:
+            self.bytes += count
+
+    def fail(self, error):
+        with self.lock:
+            self.errors.append(str(error))
+
+    def enter(self):
+        with self.lock:
+            self.active += 1
+
+    def leave(self):
+        with self.lock:
+            self.active -= 1
+
+
+def download_worker(url, deadline, traffic):
+    traffic.enter()
+    try:
+        with urllib.request.urlopen(
+            urllib.request.Request(url, headers={"User-Agent": UA}), timeout=10
+        ) as response:
+            while time.monotonic() < deadline:
+                chunk = response.read(CHUNK)
+                if not chunk:
+                    break
+                traffic.add(len(chunk))
+    except Exception as e:
+        traffic.fail(e)
+    finally:
+        traffic.leave()
+
+
+def upload_worker(url, deadline, traffic):
+    traffic.enter()
+    try:
+        p = urllib.parse.urlparse(url)
+        conn = http.client.HTTPSConnection(p.hostname, p.port or 443, timeout=10)
+        conn.putrequest("POST", p.path + ("?" + p.query if p.query else ""))
+        conn.putheader("User-Agent", UA)
+        conn.putheader("Content-Type", "application/octet-stream")
+        conn.putheader("Content-Length", str(CHUNK * 512))
+        conn.endheaders()
+        try:
+            while time.monotonic() < deadline:
+                conn.send(BODY)
+                traffic.add(len(BODY))
+        finally:
+            conn.close()
+    except Exception as e:
+        traffic.fail(e)
+    finally:
+        traffic.leave()
+
+
+def measure(targets, workers, duration, phase):
+    traffic = Traffic()
+    deadline = time.monotonic() + duration
+    threads = []
+    for i in range(CONNECTIONS):
+        t = threading.Thread(target=workers[i % len(workers)],
+                             args=(targets[i % len(targets)], deadline, traffic), daemon=True)
+        t.start()
+        threads.append(t)
+
+    start = time.monotonic()
+    last_bytes, last_time = 0, start
+    while time.monotonic() < deadline + 0.2:
+        time.sleep(0.25)
+        now = time.monotonic()
+        with traffic.lock:
+            total = traffic.bytes
+            active = traffic.active
+        log({"phase": phase, "mbps": round(mbps(total - last_bytes, now - last_time), 2)})
+        last_bytes, last_time = total, now
+        if active == 0:
+            break
+
+    for t in threads:
+        t.join(timeout=2)
+    seconds = min(time.monotonic(), deadline + 0.2) - start
+    result = mbps(traffic.bytes, seconds)
+    if result <= 0 and traffic.errors:
+        raise RuntimeError(traffic.errors[0])
+    return round(result, 2)
+
+
+def self_test():
+    assert target_url("https://example.com/test?x=1") == \
+        "https://example.com/test" + RANGE + "?x=1"
+    assert target_url("https://example.com/test/") == \
+        "https://example.com/test" + RANGE
+    assert round(mbps(1000000, 1), 3) == 8.0
+    assert round(mbps(1000000, 0), 3) == 0.0
+    log({"ok": True, "selfTest": True})
+
+
+def main():
+    if "--self-test" in sys.argv[1:]:
+        self_test()
+        return
+    try:
+        targets = get_targets()
+        download = measure(targets, [download_worker], DOWNLOAD_SECONDS, "download")
+        upload = measure(targets, [upload_worker], UPLOAD_SECONDS, "upload")
+        log({"ok": True, "download": download, "upload": upload,
+             "provider": "fast.com"})
+    except Exception as e:
+        log({"ok": False, "error": str(e)})
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

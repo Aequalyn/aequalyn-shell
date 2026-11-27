@@ -88,6 +88,12 @@ QtObject {
     property string clockRightClick: "clock-settings"
     property string wallpaperPath: ""
 
+    // ---- Restricted Wi-Fi (captive portals, enterprise networks) ----------
+    // Off by default: opening a portal login page or handing credentials to
+    // NetworkManager is an explicit choice, not something done for every open
+    // hotspot the machine happens to see.
+    property bool wifiAllowRestricted: false
+
     // ---- Wallpaper rotation, palette and the Atelier picker ---------------
     // Kept as plain objects: aequalyn-wallpaper / aequalyn-theme read the same
     // keys straight from settings.json with jq.
@@ -626,6 +632,9 @@ QtObject {
             palette: root.paletteCfg,
             atelier: root.atelierCfg,
             backdrop: root.backdropCfg,
+            wifi: {
+                allowRestricted: root.wifiAllowRestricted
+            },
             uiFont: root.uiFont,
             monoFont: root.monoFont,
             fontSize: root.fontSize,
@@ -813,7 +822,10 @@ QtObject {
         const h = d.hyprland || {}
         const p = d.power || {}
         const dk = d.dock || {}
+        const w = d.wifi || {}
         const pick = (v, fallback) => (v === undefined || v === null) ? fallback : v
+
+        root.wifiAllowRestricted = pick(w.allowRestricted, false) === true
 
         root.themeMode = pick(a.themeMode, root.themeMode)
         root.themeApps = pick(a.themeApps, root.themeApps)

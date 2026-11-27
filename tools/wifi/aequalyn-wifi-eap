@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Join a WPA2-Enterprise (PEAP/MSCHAPv2) Wi-Fi network, e.g. eduroam.
+
+Credentials are read as one JSON object from stdin, so the password never
+shows up in the process list:
+
+  {"ssid": "eduroam", "identity": "user@example.edu",
+   "password": "...", "caCert": "/absolute/path/to/ca.pem"}
+
+The connection is created and activated in one NetworkManager D-Bus call
+(Seme4eg/captive-portal-sh style, but through libnm instead of a dispatcher
+script). A successful run prints {"ok": true, "uuid": "..."}; a failed one
+prints {"ok": false, "error": "..."} and exits non-zero.
+
+Pass "dryRun": true (or --dry-run) to only validate and print the profile
+that would be created, with the password redacted. No NetworkManager call is
+made in that mode, which makes it safe to use in tests.
+"""
+
+import json
+import os
+import sys
+
+
+LIMITS = {"ssid": 32, "identity": 256, "password": 512, "caCert": 4096}
+
+
+def emit(obj, code=0):
+    print(json.dumps(obj, sort_keys=True))
+    sys.exit(code)
+
+
+def fail(message):
+    emit({"ok": False, "error": message}, 1)
+
+
+def read_payload():
+    try:
+        raw = sys.stdin.read(16384)
+    except Exception as e:
+        fail("could not read stdin: %s" % e)
+    if len(raw) >= 16384:
+        fail("input too large")
+    try:
+        payload = json.loads(raw)
+    except Exception as e:
+        fail("invalid JSON: %s" % e)
+    if not isinstance(payload, dict):
+        fail("expected a JSON object")
+    return payload
+
+
+def validate(payload):
+    clean = {}
+    for key, limit in LIMITS.items():
+        value = payload.get(key, "")
+        if value is None:
+            value = ""
+        if not isinstance(value, str):
+            fail("%s must be a string" % key)
+        if "\0" in value or len(value.encode("utf-8")) > limit:
+            fail("%s is empty, contains NUL, or is too long" % key)
+        clean[key] = value
+    if not clean["ssid"]:
+        fail("ssid is required")
+    if not clean["identity"]:
+        fail("identity is required")
+    if not clean["password"]:
+        fail("password is required")
+    ca = clean["caCert"]
+    if ca and not ca.startswith("/"):
+        fail("caCert must be an absolute path")
+    dry = payload.get("dryRun", False)
+    if "--dry-run" in sys.argv[1:]:
+        dry = True
+    if not isinstance(dry, bool):
+        fail("dryRun must be a boolean")
+    return clean, dry
+
+
+def profile(request):
+    eap = {
+        "eap": ["peap"],
+        "phase2-auth": "mschapv2",
+        "identity": request["identity"],
+        "password": request["password"],
+    }
+    if request["caCert"]:
+        eap["ca-cert"] = request["caCert"]
+    return {
+        "connection": {"id": request["ssid"], "autoconnect": True},
+        "802-11-wireless": {"ssid": request["ssid"]},
+        "802-11-wireless-security": {"key-mgmt": "wpa-eap"},
+        "802-1x": eap,
+    }
+
+
+def redacted(settings):
+    out = json.loads(json.dumps(settings))
+    out["802-1x"]["password"] = "<redacted>"
+    return out
+
+
+def activate(request):
+    if request["caCert"] and not os.path.isfile(request["caCert"]):
+        fail("CA certificate is not a file: %s" % request["caCert"])
+    try:
+        import gi
+
+        gi.require_version("NM", "1.0")
+        from gi.repository import GLib, NM
+    except Exception as e:
+        fail("libnm is unavailable: %s" % e)
+
+    try:
+        client = NM.Client.new(None)
+        device = None
+        for dev in client.get_devices():
+            if dev.get_device_type() == NM.DeviceType.WIFI:
+                device = dev
+                break
+        if device is None:
+            fail("no Wi-Fi device is managed by NetworkManager")
+    except SystemExit:
+        raise
+    except Exception as e:
+        fail("could not reach NetworkManager: %s" % e)
+
+    try:
+        conn = NM.SimpleConnection.new()
+        basic = NM.SettingConnection.new()
+        basic.props.id = request["ssid"]
+        basic.props.autoconnect = True
+        conn.add_setting(basic)
+
+        wifi = NM.SettingWireless.new()
+        wifi.props.ssid = GLib.Bytes.new(request["ssid"].encode("utf-8"))
+        conn.add_setting(wifi)
+
+        security = NM.SettingWirelessSecurity.new()
+        security.props.key_mgmt = "wpa-eap"
+        conn.add_setting(security)
+
+        auth = NM.Setting8021x.new()
+        auth.props.eap = ["peap"]
+        auth.props.phase2_auth = "mschapv2"
+        auth.props.identity = request["identity"]
+        auth.props.password = request["password"]
+        if request["caCert"]:
+            auth.props.ca_cert = request["caCert"]
+        conn.add_setting(auth)
+    except SystemExit:
+        raise
+    except Exception as e:
+        fail("could not build the connection profile: %s" % e)
+
+    loop = GLib.MainLoop()
+    result = {}
+
+    def finished(_client, async_result, _user_data):
+        try:
+            active = client.add_and_activate_connection_finish(async_result)
+            result["ok"] = True
+            try:
+                result["uuid"] = active.get_connection().get_uuid()
+            except Exception:
+                result["uuid"] = conn.get_uuid()
+        except Exception as e:
+            result["error"] = str(e)
+        loop.quit()
+
+    def timeout():
+        result.setdefault("error", "timed out waiting for NetworkManager")
+        loop.quit()
+        return False
+
+    try:
+        client.add_and_activate_connection_async(conn, device, None, None, finished, None)
+        GLib.timeout_add(45000, timeout)
+        loop.run()
+    except SystemExit:
+        raise
+    except Exception as e:
+        fail("could not activate the connection: %s" % e)
+
+    if result.get("ok"):
+        emit({"ok": True, "uuid": result.get("uuid", "")})
+    fail(result.get("error", "unknown NetworkManager error"))
+
+
+def main():
+    payload = read_payload()
+    request, dry = validate(payload)
+    settings = profile(request)
+    if dry:
+        emit({"ok": True, "dryRun": True, "settings": redacted(settings)})
+    activate(request)
+
+
+if __name__ == "__main__":
+    main()
