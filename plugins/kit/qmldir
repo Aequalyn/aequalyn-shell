@@ -1,4 +1,5 @@
 singleton KitHost 1.0 KitHost.qml
+singleton SandboxSettings 1.0 SandboxSettings.qml
 singleton KitFollow 1.0 KitFollow.qml
 singleton KitMatch 1.0 KitMatch.qml
 KitPanel 1.0 KitPanel.qml

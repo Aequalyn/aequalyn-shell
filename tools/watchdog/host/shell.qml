@@ -60,6 +60,27 @@ ShellRoot {
                                    pid: Quickshell.processId, uptime: Math.round((Date.now() - host.startedAt) / 1000) })
         }
 
+        // The plugin's own settings live here, in its process. The main shell's
+        // KitHost.get() cannot see them, so Settings and quick panels read and
+        // write them through these two calls instead.
+        function settings(pluginId: string): string {
+            if (pluginId !== host.pluginId) return "wrong plugin"
+            const p = loader.item
+            const store = p ? p.settingsStore : null
+            return store ? JSON.stringify(store.values) : "{}"
+        }
+
+        function set(pluginId: string, key: string, value: string): string {
+            if (pluginId !== host.pluginId) return "wrong plugin"
+            const p = loader.item
+            const store = p ? p.settingsStore : null
+            if (!store) return "no store"
+            let v = value
+            try { v = JSON.parse(value) } catch (e) {}
+            store.set(key, v)
+            return "ok"
+        }
+
         // a clean stop, when the plugin is being turned off
         function stop(): string { Qt.quit(); return "ok" }
     }

@@ -14,11 +14,16 @@ ColumnLayout {
     Layout.fillWidth: true
 
     readonly property bool on: AequalynSettings.enabledPlugins.indexOf(plugin) >= 0
-    readonly property var store: { const s = KitHost.get(plugin); return s ? s.settingsStore : null }
-    function val(key, fallback) { return ps.store ? ps.store.get(key) : fallback }
-    function put(key, value) { if (ps.store) ps.store.set(key, value) }
+    // Sandboxed plugins own their KitStore in the watchdog process; the bridge
+    // reads and writes it there, and takes the direct route for in-process ones.
+    function val(key, fallback) { return SandboxSettings.value(ps.plugin, key, fallback) }
+    function put(key, value) { SandboxSettings.setValue(ps.plugin, key, value) }
     // which of these has settings here
     readonly property bool has: ["weather", "diskWatch", "batteryGuard", "nightLight", "breaks"].indexOf(plugin) >= 0
+
+    Component.onCompleted: SandboxSettings.refresh(ps.plugin)
+    onPluginChanged: SandboxSettings.refresh(ps.plugin)
+    onOnChanged: if (ps.on) SandboxSettings.refresh(ps.plugin)
 
     CcNote {
         visible: ps.has && !ps.on

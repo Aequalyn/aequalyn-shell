@@ -11,8 +11,9 @@ QuickPopup {
     id: q
     required property var bar
     readonly property bool nightOn: (AequalynSettings.enabledPlugins || []).indexOf("nightLight") >= 0
-    readonly property var night: KitHost.get("nightLight")
-    readonly property string nightMode: night ? night.mode : ""
+    // nightLight is sandboxed: its store is in the watchdog process, not here.
+    readonly property string nightMode: SandboxSettings.value("nightLight", "mode", "")
+    onOpenChanged: if (open) SandboxSettings.refresh("nightLight")
 
     glyph: "\u{F00E0}"
     title: "Brightness"
@@ -46,8 +47,8 @@ QuickPopup {
         visible: q.nightOn
         Layout.fillWidth: true
         spacing: 8
-        QuickWide { glyph: "\u{F0594}"; label: "On"; on: q.nightMode === "on"; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "nightLight", "on"]) }
-        QuickWide { label: "Off"; on: q.nightMode === "off"; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "nightLight", "off"]) }
-        QuickWide { glyph: "\u{F0954}"; label: "Schedule"; on: q.nightMode === "schedule"; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "nightLight", "schedule"]) }
+        QuickWide { glyph: "\u{F0594}"; label: "On"; on: q.nightMode === "on"; onClicked: SandboxSettings.setValue("nightLight", "mode", "on") }
+        QuickWide { label: "Off"; on: q.nightMode === "off"; onClicked: SandboxSettings.setValue("nightLight", "mode", "off") }
+        QuickWide { glyph: "\u{F0954}"; label: "Schedule"; on: q.nightMode === "schedule"; onClicked: SandboxSettings.setValue("nightLight", "mode", "schedule") }
     }
 }
