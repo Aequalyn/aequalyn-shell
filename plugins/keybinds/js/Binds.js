@@ -150,6 +150,7 @@ var labels = {
     "SUPER + R": ["Remove chooser", "apps"],
     "SUPER + N": ["Dismiss notifications", "apps"],
     "SUPER + SHIFT + N": ["Do not disturb", "apps"],
+    "SUPER + CTRL + N": ["Notification history", "apps"],
     // the built-in pack
     "SUPER + SLASH": ["Key hints", "pack"],
     "SUPER + F1": ["Manual", "pack"],

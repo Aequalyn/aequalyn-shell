@@ -97,11 +97,21 @@ QuickPopup {
             onMore: panel.page("bluetooth")
         }
         QuickTile {
-            glyph: "\u{F009B}"; title: "Do not disturb"
+            glyph: "\u{F009B}"; title: "Notifications"
+            hasMore: true                       // › opens the saved-message log
             on: panel.dnd
-            sub: !panel.notesOn ? "Notifications are off" : panel.dnd ? "Notifications wait" : "Off"
+            sub: !panel.notesOn ? "Notifications are off"
+               : panel.dnd ? "Notifications wait"
+               : NotificationService.history.length > 0
+                   ? NotificationService.history.length + " saved — tap › to re-read"
+                   : "Off"
             enabled: panel.notesOn
             onToggled: NotificationService.doNotDisturb = !NotificationService.doNotDisturb
+            onMore: {
+                const name = panel.anchorItem.screen ? panel.anchorItem.screen.name : ""
+                panel.close()
+                NotificationService.openHistory(name)
+            }
         }
         QuickTile {
             glyph: "\u{F0176}"; title: "Keep awake"; hasMore: true

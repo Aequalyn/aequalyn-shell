@@ -18,6 +18,12 @@ Scope {
     property var theme: DefaultTheme {}
     property string font: AequalynSettings.monoFont
 
+    // The saved-log reader: same panel style as the other keyboard-first tools.
+    NotificationHistory {
+        id: historyPanel
+        open: NotificationService.historyVisible
+    }
+
     IpcHandler {
         target: "notifications"
 
@@ -27,6 +33,33 @@ Scope {
 
         function dnd_toggle(): void {
             NotificationService.doNotDisturb = !NotificationService.doNotDisturb;
+        }
+
+        function history(): void {
+            NotificationService.toggleHistory();
+        }
+
+        function history_open(): void {
+            NotificationService.openHistory();
+        }
+
+        function history_monitor(m: string): void {
+            NotificationService.openHistory(m);
+        }
+
+        function history_close(): void {
+            NotificationService.closeHistory();
+        }
+
+        function history_clear(): void {
+            NotificationService.clearHistory();
+        }
+
+        function history_status(): string {
+            return JSON.stringify({ open: NotificationService.historyVisible,
+                                    panel: historyPanel.panelOpen,
+                                    monitor: historyPanel.monitor,
+                                    entries: NotificationService.history.length });
         }
     }
 

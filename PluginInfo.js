@@ -19,7 +19,7 @@ var info = {
     docks:          { icon: "\u{F10A9}", group: "screen",     keys: "",                     page: "dock",
                       about: "Your apps at the edges of the screen." },
     notifications:  { icon: "\u{F009A}", group: "screen",     keys: "Super + N",            page: "",
-                      about: "Messages from apps, in the corner. Super + Shift + N: do not disturb." },
+                      about: "Messages from apps, in the corner. Super + Shift + N: do not disturb. Super + Ctrl + N: re-read saved notifications." },
     osd:            { icon: "\u{F057E}", group: "screen",     keys: "",                     page: "",
                       about: "Shows the volume and brightness as they change." },
     snap:           { icon: "\u{F0B3B}", group: "screen",     keys: "Super + G",           page: "",

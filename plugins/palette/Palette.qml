@@ -20,6 +20,7 @@ Scope {
         { icon: "\u{F0E09}", title: "Next wallpaper", sub: "Action", cmd: ["aequalyn-wallpaper", "next"] },
         { icon: "\u{F009B}", title: "Do not disturb on or off", sub: "Action", cmd: ["qs", "ipc", "call", "notifications", "dnd_toggle"] },
         { icon: "\u{F0A20}", title: "Clear notifications", sub: "Action", cmd: ["qs", "ipc", "call", "notifications", "dismiss_all"] },
+        { icon: "\u{F009A}", title: "Notification history", sub: "Action", cmd: ["qs", "ipc", "call", "notifications", "history"] },
         { icon: "\u{F018D}", title: "Open a terminal", sub: "Action", cmd: ["kitty"] },
         { icon: "\u{F03D8}", title: "Pick a theme", sub: "Action", cmd: ["qs", "ipc", "call", "atelier", "open", "themes"] },
         { icon: "\u{F0E09}", title: "Pick a wallpaper", sub: "Action", cmd: ["qs", "ipc", "call", "atelier", "open", "wallpapers"] },
