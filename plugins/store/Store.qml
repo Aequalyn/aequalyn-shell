@@ -632,6 +632,15 @@ Scope {
     }))
     // what others made: what is installed here, then what the Market has of it, each with
     // what the catalog says about it
+    // On the live ISO the Store shows what ships with Aequalyn and community plugins only:
+    // themes, wallpapers, cursors and looks from others wait for the installed system,
+    // where they are kept (the live one forgets everything on restart).
+    property bool liveIso: false
+    Process {
+        running: true
+        command: ["test", "-d", "/run/archiso"]
+        onExited: code => root.liveIso = code === 0
+    }
     function fromThemeRepo(source) { return /\/aequalyn-themes\/themes\/[^/]+\/?$/.test(String(source || "")); }
     function communityEntries(kind) {
         const glyph = (root.sections.find(s => s.key === kind) || {}).glyph || "\u{F0431}";
@@ -3364,7 +3373,7 @@ Scope {
                                 }
 
                                 GetGrid {
-                                    kind: root.categoryOf(root.section) === "get" && root.section !== "plugin" ? root.section : ""
+                                    kind: !root.liveIso && root.categoryOf(root.section) === "get" && root.section !== "plugin" ? root.section : ""
                                     entriesTitle: "Community"
                                     entriesHint: root.communityHint(root.section)
                                     entries: root.communityEntries(root.section)
@@ -3372,7 +3381,7 @@ Scope {
                                 }
 
                                 InstallBox {
-                                    visible: !!root.kindWords[root.section]
+                                    visible: !!root.kindWords[root.section] && (!root.liveIso || root.section === "plugin")
                                     kind: root.kindWords[root.section] ? root.section : "plugin"
                                 }
 
