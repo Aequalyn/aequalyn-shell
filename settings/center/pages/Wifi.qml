@@ -339,6 +339,12 @@ CcPage {
         page.askingFor = ""; page.askingEnterprise = false;
     }
 
+    // the saved network's own settings (WifiNetworkSettings.qml)
+    WifiNetworkSettings {
+        visible: page.selectedKnown
+        ssid: page.selectedKnown ? page.selectedSsid : ""
+    }
+
     CcSection {
         visible: WifiService.wifiEnabled
         title: "Networks around you"
@@ -376,4 +382,6 @@ CcPage {
             }
         }
     }
+
+    WifiHidden { visible: WifiService.wifiEnabled }
 }

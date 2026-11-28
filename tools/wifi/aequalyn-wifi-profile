@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""A saved Wi-Fi network's own settings, for Settings > Wi-Fi (the KDE-style part).
+
+    aequalyn-wifi-profile show <ssid>             its settings and, when connected, its
+                                                  addresses and radio, as one JSON object
+    aequalyn-wifi-profile set <ssid> <key> <value>
+                                                  change one setting (keys below)
+    aequalyn-wifi-profile hidden <ssid> <open|wpa-psk>
+                                                  save and join a network that does not
+                                                  announce its name; the password, when
+                                                  there is one, is read from stdin (one line)
+
+Keys for set, and their values:
+    autoconnect   yes | no               join it by itself when it is near
+    priority      -999 .. 999            the higher one wins when several are near
+    metered       yes | no | unknown     a phone's hotspot: updates hold back on it
+    all-users     yes | no               every account on this machine may use it
+    band          any | 2.4 | 5          stay on one band
+    mac           default | permanent | random | stable
+                                         the address the network sees: the system's
+                                         choice, the card's own, a new one each time,
+                                         or one made up for this network
+    hidden        yes | no               it does not announce its name
+    mtu           auto | 576 .. 9000
+    ipv4          auto | <address/prefix> <gateway>
+    dns           auto | <server>[,<server>...]
+    ipv6          auto | off
+
+It only ever runs nmcli, as you; NetworkManager decides what you may change. Every value
+is checked before it is handed over, and a password never goes on a command line (where
+any program could read it): it goes to nmcli on stdin.
+"""
+import ipaddress
+import json
+import os
+import subprocess
+import sys
+
+
+def out(obj, code=0):
+    print(json.dumps(obj, sort_keys=True))
+    sys.exit(code)
+
+
+def fail(msg):
+    out({"ok": False, "error": msg}, 1)
+
+
+def nmcli(*args, stdin=None):
+    try:
+        p = subprocess.run(["nmcli", *args], input=stdin, capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        fail("nmcli could not run: %s" % e)
+    return p.returncode, p.stdout, p.stderr.strip()
+
+
+def fields(text):
+    """nmcli -t key:value lines; a ':' inside a value comes escaped as '\\:'"""
+    res = {}
+    for line in text.splitlines():
+        key, val, i, esc = "", "", 0, False
+        while i < len(line) and not (line[i] == ":" and not esc):
+            esc = line[i] == "\\" and not esc
+            i += 1
+        key, val = line[:i], line[i + 1:]
+        val = val.replace("\\:", ":").replace("\\\\", "\\")
+        base = key.split("[")[0]
+        if "[" in key:
+            res.setdefault(base, []).append(val)
+        else:
+            res[base] = val
+    return res
+
+
+def valid_ssid(ssid):
+    if not ssid or "\0" in ssid or len(ssid.encode("utf-8")) > 32:
+        fail("that is not a network name")
+    return ssid
+
+
+def saved(ssid):
+    """the uuid of the saved Wi-Fi connection for this network name"""
+    code, text, err = nmcli("-t", "-f", "UUID,TYPE", "connection", "show")
+    if code:
+        fail(err or "could not list the saved networks")
+    for line in text.splitlines():
+        uuid, _, kind = line.rpartition(":")
+        if kind != "802-11-wireless" or not uuid:
+            continue
+        c, s, _ = nmcli("-t", "-g", "802-11-wireless.ssid", "connection", "show", uuid)
+        if c == 0 and s.strip() == ssid:
+            return uuid
+    return None
+
+
+def show(ssid):
+    uuid = saved(ssid)
+    if not uuid:
+        out({"ok": True, "saved": False, "ssid": ssid})
+    code, text, err = nmcli("-t", "-f",
+        "connection.autoconnect,connection.autoconnect-priority,connection.metered,connection.permissions,"
+        "802-11-wireless.hidden,802-11-wireless.band,802-11-wireless.cloned-mac-address,802-11-wireless.mtu,"
+        "ipv4.method,ipv4.addresses,ipv4.gateway,ipv4.dns,ipv4.ignore-auto-dns,ipv6.method,GENERAL.STATE,GENERAL.DEVICES",
+        "connection", "show", uuid)
+    if code:
+        fail(err or "could not read the network")
+    f = fields(text)
+    mac = f.get("802-11-wireless.cloned-mac-address", "")
+    band = {"bg": "2.4", "a": "5"}.get(f.get("802-11-wireless.band", ""), "any")
+    method4 = f.get("ipv4.method", "auto")
+    res = {
+        "ok": True, "saved": True, "ssid": ssid, "uuid": uuid,
+        "autoconnect": f.get("connection.autoconnect") == "yes",
+        "priority": int(f.get("connection.autoconnect-priority", "0") or 0),
+        "metered": f.get("connection.metered", "unknown"),
+        "allUsers": f.get("connection.permissions", "") in ("", "--"),
+        "hidden": f.get("802-11-wireless.hidden") == "yes",
+        "band": band,
+        "mac": mac if mac in ("permanent", "random", "stable") else "default",
+        "mtu": f.get("802-11-wireless.mtu", "auto"),
+        "ipv4": "manual" if method4 == "manual" else "auto",
+        "address": f.get("ipv4.addresses", "").split(",")[0].strip() if method4 == "manual" else "",
+        "gateway": f.get("ipv4.gateway", "").replace("--", ""),
+        "dns": f.get("ipv4.dns", "").replace("--", "") if f.get("ipv4.ignore-auto-dns") == "yes" else "",
+        "ipv6": "off" if f.get("ipv6.method") in ("disabled", "ignore") else "auto",
+        "active": f.get("GENERAL.STATE", "") == "activated",
+    }
+    # what it has now, while connected: addresses and the radio
+    dev = f.get("GENERAL.DEVICES", "")
+    if res["active"] and dev:
+        c, t, _ = nmcli("-t", "-f", "IP4.ADDRESS,IP4.GATEWAY,IP4.DNS,IP6.ADDRESS,GENERAL.HWADDR", "device", "show", dev)
+        if c == 0:
+            d = fields(t)
+            res["live"] = {
+                "device": dev,
+                "ip4": d.get("IP4.ADDRESS", []) if isinstance(d.get("IP4.ADDRESS"), list) else [],
+                "gateway4": d.get("IP4.GATEWAY", "").replace("--", ""),
+                "dns4": d.get("IP4.DNS", []) if isinstance(d.get("IP4.DNS"), list) else [],
+                "ip6": d.get("IP6.ADDRESS", []) if isinstance(d.get("IP6.ADDRESS"), list) else [],
+                "hwaddr": d.get("GENERAL.HWADDR", ""),
+            }
+        c, t, _ = nmcli("-t", "-f", "ACTIVE,BSSID,FREQ,CHAN,RATE,SIGNAL,SECURITY", "device", "wifi", "list",
+                        "ifname", dev, "--rescan", "no")
+        if c == 0:
+            for line in t.splitlines():
+                parts, cur, esc = [], "", False
+                for ch in line:
+                    if ch == "\\" and not esc:
+                        esc = True
+                        continue
+                    if ch == ":" and not esc:
+                        parts.append(cur)
+                        cur = ""
+                    else:
+                        cur += ch
+                    esc = False
+                parts.append(cur)
+                if len(parts) >= 7 and parts[0] == "yes":
+                    res.setdefault("live", {}).update({"bssid": parts[1], "freq": parts[2], "channel": parts[3],
+                                                       "rate": parts[4], "signal": parts[5], "security": parts[6]})
+                    break
+    out(res)
+
+
+def set_key(ssid, key, values):
+    uuid = saved(ssid)
+    if not uuid:
+        fail("%s is not saved on this machine" % ssid)
+    v = values[0] if values else ""
+    mods = []
+    if key == "autoconnect" and v in ("yes", "no"):
+        mods = ["connection.autoconnect", v]
+    elif key == "priority":
+        try:
+            n = int(v)
+        except ValueError:
+            fail("the priority is a whole number")
+        if not -999 <= n <= 999:
+            fail("the priority is between -999 and 999")
+        mods = ["connection.autoconnect-priority", str(n)]
+    elif key == "metered" and v in ("yes", "no", "unknown"):
+        mods = ["connection.metered", v]
+    elif key == "all-users" and v in ("yes", "no"):
+        user = os.environ.get("USER") or ""
+        if v == "no" and not user:
+            fail("no USER to keep it for")
+        mods = ["connection.permissions", "" if v == "yes" else "user:" + user]
+    elif key == "band" and v in ("any", "2.4", "5"):
+        mods = ["802-11-wireless.band", {"any": "", "2.4": "bg", "5": "a"}[v]]
+    elif key == "mac" and v in ("default", "permanent", "random", "stable"):
+        mods = ["802-11-wireless.cloned-mac-address", "" if v == "default" else v]
+    elif key == "hidden" and v in ("yes", "no"):
+        mods = ["802-11-wireless.hidden", v]
+    elif key == "mtu":
+        if v == "auto":
+            mods = ["802-11-wireless.mtu", "0"]
+        else:
+            try:
+                n = int(v)
+            except ValueError:
+                fail("the MTU is a number, or auto")
+            if not 576 <= n <= 9000:
+                fail("the MTU is between 576 and 9000")
+            mods = ["802-11-wireless.mtu", str(n)]
+    elif key == "ipv4":
+        if v == "auto":
+            mods = ["ipv4.method", "auto", "ipv4.addresses", "", "ipv4.gateway", ""]
+        else:
+            try:
+                iface = ipaddress.IPv4Interface(v)
+                gw = ipaddress.IPv4Address(values[1]) if len(values) > 1 and values[1] else None
+            except (ValueError, IndexError):
+                fail("give the address as 192.168.1.20/24 and the gateway as 192.168.1.1")
+            if "/" not in v:
+                fail("give the address with its prefix, like 192.168.1.20/24")
+            if gw is not None and gw not in iface.network:
+                fail("the gateway is not in the address's network")
+            mods = ["ipv4.method", "manual", "ipv4.addresses", str(iface), "ipv4.gateway", str(gw) if gw else ""]
+    elif key == "dns":
+        if v == "auto":
+            mods = ["ipv4.ignore-auto-dns", "no", "ipv4.dns", ""]
+        else:
+            servers = [s.strip() for s in v.split(",") if s.strip()]
+            try:
+                servers = [str(ipaddress.IPv4Address(s)) for s in servers]
+            except ValueError:
+                fail("DNS servers are addresses like 1.1.1.1, separated by commas")
+            if not servers or len(servers) > 3:
+                fail("give one to three DNS servers")
+            mods = ["ipv4.ignore-auto-dns", "yes", "ipv4.dns", ",".join(servers)]
+    elif key == "ipv6" and v in ("auto", "off"):
+        mods = ["ipv6.method", "auto" if v == "auto" else "disabled"]
+    else:
+        fail("unknown setting or value: %s %s" % (key, v))
+    code, _, err = nmcli("connection", "modify", uuid, *mods)
+    if code:
+        fail(err or "NetworkManager did not take it")
+    # addresses, the MAC and the band only count from the next connection: reconnect now
+    if key in ("ipv4", "dns", "ipv6", "mac", "band", "mtu"):
+        c, s, _ = nmcli("-t", "-g", "GENERAL.STATE", "connection", "show", uuid)
+        if c == 0 and s.strip() == "activated":
+            nmcli("connection", "up", uuid)
+    out({"ok": True})
+
+
+def hidden(ssid, security):
+    if security not in ("open", "wpa-psk"):
+        fail("security is open or wpa-psk")
+    # one line: the shell keeps its end of the pipe open, so read up to the newline
+    password = sys.stdin.readline() if security == "wpa-psk" else ""
+    password = password.rstrip("\n")
+    if "\n" in password or "\r" in password:
+        fail("a password is one line")
+    if security == "wpa-psk" and not 8 <= len(password) <= 63:
+        fail("a WPA password is 8 to 63 characters")
+    if saved(ssid):
+        fail("%s is saved already: choose it in the list" % ssid)
+    add = ["connection", "add", "type", "wifi", "con-name", ssid, "ssid", ssid, "wifi.hidden", "yes"]
+    if security == "wpa-psk":
+        add += ["wifi-sec.key-mgmt", "wpa-psk"]
+    code, text, err = nmcli("-t", *add)
+    if code:
+        fail(err or "could not save the network")
+    uuid = saved(ssid)
+    if not uuid:
+        fail("the network was not saved")
+    if security == "wpa-psk":
+        # nmcli's editor reads its commands from stdin: the password stays off the command line
+        code, _, err = nmcli("connection", "edit", uuid,
+                             stdin="set wifi-sec.psk %s\nsave persistent\nquit\n" % password)
+        # the editor says 0 even when a line failed: look whether the password is there
+        c, s, _ = nmcli("-s", "-g", "802-11-wireless-security.psk", "connection", "show", uuid)
+        if code or c or not s.strip():
+            nmcli("connection", "delete", uuid)
+            fail(err or "could not save the password")
+    code, _, err = nmcli("connection", "up", uuid)
+    if code:
+        out({"ok": False, "saved": True, "error": err or "saved, but it did not connect"}, 1)
+    out({"ok": True})
+
+
+def main():
+    a = sys.argv[1:]
+    if len(a) >= 2 and a[0] == "show":
+        show(valid_ssid(a[1]))
+    elif len(a) >= 3 and a[0] == "set":
+        set_key(valid_ssid(a[1]), a[2], a[3:])
+    elif len(a) == 3 and a[0] == "hidden":
+        hidden(valid_ssid(a[1]), a[2])
+    else:
+        print(__doc__.strip(), file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()

@@ -13,6 +13,8 @@ CcCard 1.0 CcCard.qml
 CcNote 1.0 CcNote.qml
 CcField 1.0 CcField.qml
 SpeedGauge 1.0 SpeedGauge.qml
+WifiNetworkSettings 1.0 WifiNetworkSettings.qml
+WifiHidden 1.0 WifiHidden.qml
 AppsService 1.0 AppsService.qml
 WebappsService 1.0 WebappsService.qml
 UpdatesService 1.0 UpdatesService.qml
