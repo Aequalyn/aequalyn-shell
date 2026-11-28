@@ -846,8 +846,12 @@ class Supervisor:
         them running): they still hold their configs, and qs -n then refuses
         every restart with a quiet exit 0. Hosts are stateless services, so
         they are stopped here and started again as needed right after."""
+        # only hosts under this watchdog's own hosts folder: another watchdog's (a test's,
+        # with its own state folder) are not ours to stop, and stopping them made this
+        # session's plugins look as if they crashed, until they were turned off
+        mine = str(HOSTS_DIR) + os.sep
         strays = [(pid, args) for pid, args in qs_processes()
-                  if any("watchdog/hosts" in a for a in args)]
+                  if any(a.startswith(mine) for a in args)]
         if not strays:
             return
         for pid, _args in strays:
