@@ -321,6 +321,50 @@ CcPage {
         }
         CcNote { text: "The Themes and Layouts buttons choose theirs below, with their other clicks." }
     }
+    // the gear's quick panel: which tiles it has and which rows it shows
+    CcSection {
+        visible: page.tab === 3
+        title: "The quick panel"
+        hint: "What the gear on the bar opens: the tiles you switch most, and the rows under them."
+        Repeater {
+            model: [
+                { key: "wifi", label: "Wi-Fi" }, { key: "bluetooth", label: "Bluetooth" },
+                { key: "notifications", label: "Notifications" }, { key: "caffeine", label: "Keep awake" },
+                { key: "nightLight", label: "Night light" }, { key: "power", label: "Power mode" },
+                { key: "mic", label: "Microphone" }, { key: "airplane", label: "Airplane mode" }
+            ]
+            delegate: CcToggle {
+                required property var modelData
+                title: modelData.label + " tile"
+                checked: (AequalynSettings.quickPanelCfg.tiles || []).indexOf(modelData.key) >= 0
+                onToggled: v => {
+                    const all = AequalynSettings.quickPanelDefaults.tiles
+                    const now = AequalynSettings.quickPanelCfg.tiles || []
+                    // kept in the panel's own order, whatever order they were switched in
+                    AequalynSettings.setIn("quickPanel", "tiles",
+                        all.filter(k => k === modelData.key ? v : now.indexOf(k) >= 0))
+                }
+            }
+        }
+        CcToggle {
+            title: "Microphone level"
+            sub: "A slider under the volume."
+            checked: AequalynSettings.quickPanelCfg.mic !== false
+            onToggled: v => AequalynSettings.setIn("quickPanel", "mic", v)
+        }
+        CcToggle {
+            title: "What is playing"
+            checked: AequalynSettings.quickPanelCfg.media !== false
+            onToggled: v => AequalynSettings.setIn("quickPanel", "media", v)
+        }
+        CcToggle {
+            title: "Quick actions"
+            sub: "Screenshot, recording, and the colour picker, clipboard, calculator and keyboard shortcuts while their plugins are on."
+            checked: AequalynSettings.quickPanelCfg.actions !== false
+            onToggled: v => AequalynSettings.setIn("quickPanel", "actions", v)
+        }
+    }
+
     // the widgets on the bar with a quick panel, whose plugin is on
     readonly property var quickWidgets: AequalynSettings.pluginOrder.filter(id => Widgets.quickDefault(id) !== "none"
         && (Widgets.pluginFor(id) === "" || AequalynSettings.enabledPlugins.indexOf(Widgets.pluginFor(id)) >= 0))

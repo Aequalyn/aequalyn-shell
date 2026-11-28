@@ -137,6 +137,12 @@ QtObject {
     // and how dark, 0..100 (50 = each panel's own shade); its colour "theme" (the theme's
     // background and a little of its accent) or "neutral" (black)
     readonly property var backdropDefaults: ({ style: "smooth", strength: 60, dim: 50, colour: "theme" })
+    // the bar's quick panel (the gear): which tiles, in order, and which rows it shows
+    readonly property var quickPanelDefaults: ({
+        tiles: ["wifi", "bluetooth", "notifications", "caffeine", "nightLight", "power", "mic", "airplane"],
+        mic: true, media: true, actions: true
+    })
+    property var quickPanelCfg: quickPanelDefaults
     property var backdropCfg: backdropDefaults
     property var wallpaperCfg: wallpaperDefaults
     property var paletteCfg: paletteDefaults
@@ -633,6 +639,7 @@ QtObject {
             palette: root.paletteCfg,
             atelier: root.atelierCfg,
             backdrop: root.backdropCfg,
+            quickPanel: root.quickPanelCfg,
             wifi: {
                 allowRestricted: root.wifiAllowRestricted
             },
@@ -910,6 +917,7 @@ QtObject {
         root.paletteCfg = root._merge(root.paletteDefaults, d.palette)
         root.atelierCfg = root._merge(root.atelierDefaults, d.atelier)
         root.backdropCfg = root._merge(root.backdropDefaults, d.backdrop)
+        root.quickPanelCfg = root._merge(root.quickPanelDefaults, d.quickPanel)
         // the plugins: worked out whole and set once (every change rebuilds them all)
         {
             // plugins renamed since: the old id stands for the new one
